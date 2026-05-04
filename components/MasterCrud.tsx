@@ -88,72 +88,52 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
+  const recordCount = filteredData.length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-4">
+      {/* Title and Actions Bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">{title}</h2>
-          <p className="text-sm text-slate-500">{description}</p>
+          <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
+          <p className="mt-1 text-slate-600">{description}</p>
         </div>
         <button 
           onClick={() => setIsAdding(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
         >
           <Plus size={16} /> Add New
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Table Container */}
+      <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-           <div className="relative w-full max-w-sm">
-             <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-             <input 
-               type="text" 
-               placeholder="Search records..." 
-               value={searchTerm}
-               onChange={(e) => setSearchTerm(e.target.value)}
-               className="pl-9 pr-4 py-2 w-full border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-             />
-           </div>
+        <div className="border-b border-slate-200 px-4 py-3 sm:px-6">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search records..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+            />
+          </div>
         </div>
 
-        {/* Content */}
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+            <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
               <tr>
                 {columns.map(col => (
-                  <th key={col.key} className="px-6 py-4 font-medium">{col.label}</th>
+                  <th key={col.key} className="px-4 py-3 sm:px-6">{col.label}</th>
                 ))}
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-4 py-3 sm:px-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isAdding && (
-                <tr className="bg-blue-50/50">
-                  {columns.map(col => (
-                    <td key={col.key} className="px-6 py-4">
-                      <input 
-                        autoFocus={col.key === columns[0].key}
-                        type="text"
-                        placeholder={col.type === 'array' ? 'Comma separated values' : ''}
-                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={newData[col.key] || ''}
-                        onChange={e => setNewData({...newData, [col.key]: e.target.value})}
-                      />
-                    </td>
-                  ))}
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                       <button onClick={handleSave} className="text-green-600 hover:bg-green-100 p-1 rounded"><Save size={18}/></button>
-                       <button onClick={() => setIsAdding(false)} className="text-red-600 hover:bg-red-100 p-1 rounded"><X size={18}/></button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-              
+            <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
                   <td colSpan={columns.length + 1} className="py-8 text-center text-slate-500">
@@ -165,27 +145,27 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
               ) : filteredData.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + 1} className="py-8 text-center text-slate-500">
-                     No records found.
+                    No records found.
                   </td>
                 </tr>
               ) : (
                 filteredData.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                     {columns.map(col => (
-                      <td key={col.key} className="px-6 py-4 text-slate-700">
+                      <td key={col.key} className="px-4 py-3 sm:px-6 text-slate-700">
                         {Array.isArray(item[col.key]) 
                           ? item[col.key].join(', ') 
                           : item[col.key]
                         }
                       </td>
                     ))}
-                    <td className="px-6 py-4 text-right">
-                       <button 
-                         onClick={() => handleDelete(item.id)}
-                         className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                       >
-                         <Trash2 size={16} />
-                       </button>
+                    <td className="px-4 py-3 sm:px-6 text-right">
+                      <button 
+                        onClick={() => handleDelete(item.id)}
+                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -194,6 +174,40 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Add New Modal */}
+      {isAdding && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black opacity-30" onClick={() => setIsAdding(false)} />
+          <div className="relative w-full max-w-2xl rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Add New</h3>
+              <button onClick={() => { setIsAdding(false); setNewData({}); }} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {columns.map((col, idx) => (
+                <div key={col.key}>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{col.label}</label>
+                  <input
+                    autoFocus={idx === 0}
+                    type={col.type === 'number' ? 'number' : 'text'}
+                    placeholder={col.type === 'array' ? 'Comma separated values' : ''}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-200"
+                    value={newData[col.key] || ''}
+                    onChange={e => setNewData({...newData, [col.key]: e.target.value})}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button onClick={() => { setIsAdding(false); setNewData({}); }} className="px-4 py-2 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"><Save size={16} /> Save</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

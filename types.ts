@@ -17,19 +17,36 @@ export interface InventoryItem {
   name: string;
   sku: string;
   category: string; // Stored as ID or Name
+  categoryId?: string;
   brand: string;
+  brandId?: string;
+  description?: string;
+  itemType: 'Raw Material' | 'Finished Goods' | 'Semi-Finished' | 'Consumable' | 'Trading';
   uom: string;
+  uomId?: string;
+  alternateUom?: string;
+  conversionFactor?: number;
   stock: number;
   consignmentStock: number; // Stock held by customers
   reorderLevel: number;
+  reorderQuantity?: number;
+  minimumStockLevel?: number;
+  maximumStockLevel?: number;
   unitPrice: number; // Cost Price
   mrp: number;
   salePrice: number;
   hsnCode: string;
+  hsnId?: string;
+  taxRate?: number;
   barcode: string;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  shelfLife?: number; // in days
+  leadTime?: number; // in days
+  images?: string[]; // URLs to product images
+  status: 'In Stock' | 'Low Stock' | 'Out of Stock' | 'Discontinued';
+  isActive: boolean;
   lastUpdated: string;
   attributes?: Record<string, string>;
+  variantGroupId?: string; // For grouped variants
 }
 
 export interface DashboardStats {
@@ -45,39 +62,131 @@ export interface Category {
   id: string;
   name: string;
   description: string;
+  parentCategoryId?: string; // For hierarchical categories
+  code?: string;
+  defaultAttributes?: string[]; // Attribute IDs
+  defaultTaxCode?: string;
+  valuationMethod?: 'FIFO' | 'LIFO' | 'Weighted Average' | 'Standard Cost';
+  isActive: boolean;
 }
 
 export interface Brand {
   id: string;
   name: string;
   manufacturer: string;
+  description?: string;
+  website?: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  isActive: boolean;
 }
 
 export interface UOM {
   id: string;
   name: string; // e.g., Kilogram
   code: string; // e.g., kg
+  symbol?: string; // e.g., kg
+  conversionTable?: UOMConversion[]; // Conversions to other UOMs
+  isActive: boolean;
+}
+
+export interface UOMConversion {
+  fromUomId: string;
+  toUomId: string;
+  conversionFactor: number; // e.g., 1 Carton = 12 Boxes
+  fromUomName?: string;
+  toUomName?: string;
 }
 
 export interface HSN {
   id: string;
-  code: string;
+  code: string; // e.g., 8517.62
   description: string;
   taxRate: number; // GST %
+  applicableForGoods: boolean;
+  applicableForServices: boolean;
+  isActive: boolean;
+  section?: string; // e.g., "Chapter 85"
 }
 
 export interface Attribute {
   id: string;
   name: string; // e.g., Color, Size
+  description?: string;
   values: string[]; // Comma separated options
+  dataType: 'Text' | 'Number' | 'Date' | 'Dropdown' | 'Checkbox';
+  isRequired: boolean;
+  isActive: boolean;
 }
 
 export interface Variant {
   id: string;
   itemId: string;
+  parentItemId?: string; // Parent item if this is a variant
   name: string; // e.g., Red / Large
-  skuModifier: string; // e.g., -RED-L
+  sku: string; // Unique SKU for variant
+  skuModifier?: string; // e.g., -RED-L
+  barcode?: string;
+  attributeValues: Record<string, string>; // e.g., { Color: "Red", Size: "Large" }
+  pricing?: {
+    costPrice?: number;
+    sellingPrice?: number;
+    mrp?: number;
+  };
+  stock?: number;
+  images?: string[];
+  isActive: boolean;
 }
+
+export interface BarcodeMapping {
+  id: string;
+  itemId: string;
+  barcodeValue: string;
+  barcodeType: 'EAN-13' | 'Code128' | 'QR' | 'GS1';
+  variantId?: string; // If barcode is for a specific variant
+  isManufacturerBarcode: boolean;
+  isPrimary: boolean;
+  isActive: boolean;
+  createdDate: string;
+}
+
+export interface ItemPricing {
+  id: string;
+  itemId: string;
+  priceListName: string; // e.g., "Standard", "Retail", "Wholesale"
+  costPrice: number;
+  sellingPrice: number;
+  mrp: number;
+  currency: string; // e.g., "USD", "INR"
+  effectiveFromDate: string;
+  effectiveToDate?: string;
+  customerSpecific?: string; // Customer ID if customer-specific price
+  quantityBreakTiers?: QuantityPriceTier[];
+  notes?: string;
+  isActive: boolean;
+}
+
+export interface QuantityPriceTier {
+  fromQuantity: number;
+  toQuantity?: number;
+  price: number;
+  discount?: number; // %
+}
+
+export interface ReorderLevel {
+  id: string;
+  itemId: string;
+  warehouseId?: string; // If warehouse-specific
+  minimumStockLevel: number;
+  reorderPoint: number;
+  reorderQuantity: number; // EOQ
+  maximumStockLevel: number;
+  leadTimeInDays?: number;
+  safetyStock?: number;
+  lastUpdated: string;
+}
+
 
 // --- Warehouse Management Types ---
 
