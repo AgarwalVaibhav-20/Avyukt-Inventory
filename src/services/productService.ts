@@ -13,7 +13,12 @@ export const productService = {
     const orgId = getOrgId();
     if (!orgId) return [];
     const response = await api.get(`/inventory/product/all/${orgId}`);
-    return response.data;
+    const products = response.data.products || [];
+    // Map _id to id for frontend compatibility
+    return products.map((item: any) => ({
+      ...item,
+      id: item._id
+    }));
   },
 
   createItem: async (item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> => {
@@ -70,7 +75,7 @@ export const productService = {
   // --- Category Operations ---
   getCategories: async () => { 
     const response = await api.get('/inventory/category');
-    return response.data;
+    return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
   addCategory: async (data: Omit<Category, 'id'>) => {
     const response = await api.post('/inventory', { ...data, type: 'category' });
@@ -83,7 +88,7 @@ export const productService = {
   // --- Brand Operations ---
   getBrands: async () => {
     const response = await api.get('/inventory/brand');
-    return response.data;
+    return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
   addBrand: async (data: Omit<Brand, 'id'>) => {
     const response = await api.post('/inventory', { ...data, type: 'brand' });
@@ -96,7 +101,7 @@ export const productService = {
   // --- UOM Operations ---
   getUOMs: async () => {
     const response = await api.get('/inventory/uom');
-    return response.data;
+    return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
   addUOM: async (data: Omit<UOM, 'id'>) => {
     const response = await api.post('/inventory', { ...data, type: 'uom' });
@@ -109,7 +114,7 @@ export const productService = {
   // --- HSN Operations ---
   getHSN: async () => {
     const response = await api.get('/inventory/hsn');
-    return response.data;
+    return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
   addHSN: async (data: Omit<HSN, 'id'>) => {
     const response = await api.post('/inventory', { ...data, type: 'hsn' });

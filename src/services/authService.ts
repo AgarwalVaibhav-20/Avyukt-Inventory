@@ -11,7 +11,21 @@ export const authService = {
   },
 
   register: async (userData: any) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/auth/signup', userData);
+    return response.data;
+  },
+
+  verifyOtp: async (otpData: { email: string; otp: string }) => {
+    const response = await api.post('/auth/verify-otp', otpData);
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
+  resendOtp: async (email: string) => {
+    const response = await api.post('/auth/resend-otp', { email });
     return response.data;
   },
 

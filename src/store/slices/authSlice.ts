@@ -36,7 +36,19 @@ export const registerUser = createAsyncThunk(
       const data = await authService.register(userData);
       return data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Registration failed');
+      return rejectWithValue(err.response?.data?.error || 'Registration failed');
+    }
+  }
+);
+
+export const verifyOtp = createAsyncThunk(
+  'auth/verifyOtp',
+  async (otpData: { email: string; otp: string }, { rejectWithValue }) => {
+    try {
+      const data = await authService.verifyOtp(otpData);
+      return data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.error || 'Verification failed');
     }
   }
 );
@@ -80,6 +92,20 @@ const authSlice = createSlice({
         // Depending on backend, we might auto-login or just stay on signup
       })
       .addCase(registerUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(verifyOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isAuthenticated = true;
+      })
+      .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });
