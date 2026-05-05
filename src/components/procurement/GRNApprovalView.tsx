@@ -1,0 +1,89 @@
+import React, { useState, useEffect } from 'react';
+import { approvalService } from '@/services/approvalService';
+import { GRN } from '@/types';
+import { CheckSquare, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+
+const GRNApprovalView: React.FC = () => {
+  const [grns, setGRNs] = useState<GRN[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    const data = await approvalService.getPendingGRNs();
+    setGRNs(data);
+    setLoading(false);
+  };
+
+  const handleAction = async (id: string, action: 'approve' | 'reject') => {
+      setProcessingId(id);
+      try {
+          if (action === 'approve') await approvalService.approveGRN(id);
+          else await approvalService.rejectGRN(id);
+          await loadData();
+      } catch (e) { alert("Error"); } finally { setProcessingId(null); }
+  };
+
+  return (
+    <div className="space-y-6">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <CheckSquare className="text-blue-600" size={20}/> GRN Approval (Post-QC)
+            </h2>
+
+            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
+             grns.length === 0 ? <p className="text-slate-500 text-center py-8">No GRNs awaiting approval.</p> :
+             <div className="space-y-4">
+                 {grns.map(grn => (
+                     <div key={grn.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                         <div className="flex justify-between items-start mb-2">
+                             <div>
+                                 <h3 className="font-bold text-slate-800">{grn.grnNumber}</h3>
+                                 <p className="text-sm text-slate-600">PO: {grn.poNumber} | Vendor: {grn.vendorName}</p>
+                             </div>
+                             <span className="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded font-medium">QC Completed</span>
+                         </div>
+                         
+                         <div className="bg-slate-50 p-3 rounded mb-3 text-sm">
+                             {grn.items.map((i, idx) => (
+                                 <div key={idx} className="flex justify-between py-1 border-b border-slate-100 last:border-0">
+                                     <span>{i.itemName}</span>
+                                     <div className="flex gap-3 text-xs font-medium">
+                                         <span>Rcvd: {i.receivedQty}</span>
+                                         <span className="text-green-600">Acc: {i.acceptedQty}</span>
+                                         <span className="text-red-600">Rej: {i.rejectedQty}</span>
+                                     </div>
+                                 </div>
+                             ))}
+                         </div>
+
+                         <div className="flex justify-end gap-2">
+                             <button 
+                                onClick={() => handleAction(grn.id, 'reject')}
+                                disabled={!!processingId}
+                                className="px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded flex items-center gap-1"
+                             >
+                                 <XCircle size={16}/> Reject
+                             </button>
+                             <button 
+                                onClick={() => handleAction(grn.id, 'approve')}
+                                disabled={!!processingId}
+                                className="px-4 py-2 text-sm bg-green-600 text-white hover:bg-green-700 rounded flex items-center gap-1"
+                             >
+                                 <CheckCircle size={16}/> Approve & Finalize
+                             </button>
+                         </div>
+                     </div>
+                 ))}
+             </div>
+            }
+        </div>
+    </div>
+  );
+};
+
+export default GRNApprovalView;
