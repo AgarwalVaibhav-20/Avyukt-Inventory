@@ -1,5 +1,24 @@
 import { mockDb } from './mockDb';
 import { Customer, SalesOrder, PickList, PackList, DeliveryChallan, DispatchNote, SalesReturn } from '@/types';
+import api from './api';
+
+const unwrapList = <T,>(response: any): T[] => response?.data?.data ?? response?.data ?? [];
+
+const toFrontendSalesReturn = (item: any): SalesReturn => ({
+    id: item.id || item._id,
+    returnNumber: item.returnNo || item.returnNumber,
+    soId: String(item.salesOrderId || item.soId || ''),
+    soNumber: item.soRef || item.soNumber || '',
+    customerName: item.customerName || '',
+    date: (item.returnDate || item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
+    items: (item.items || []).map((line: any) => ({
+        itemId: String(line.productId || line.itemId || ''),
+        itemName: line.description || line.itemName || '',
+        quantity: Number(line.returnQty || line.quantity || 0),
+        reason: line.reason || '',
+    })),
+    status: item.status || 'Pending',
+});
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -182,18 +201,13 @@ export const salesService = {
   getDispatchNotes: async () => { await delay(200); return mockDb.getDispatchNotes(); },
 
   // --- Returns ---
-  getSalesReturns: async () => { await delay(200); return mockDb.getSalesReturns(); },
+    getSalesReturns: async () => {
+        const response = await api.get('/api/sales-returns');
+        return unwrapList<SalesReturn>(response).map(toFrontendSalesReturn);
+    },
   
   createSalesReturn: async (data: Omit<SalesReturn, 'id' | 'returnNumber' | 'status'>) => {
-      await delay(300);
-      const list = mockDb.getSalesReturns();
-      const newRet: SalesReturn = {
-          ...data,
-          id: Math.random().toString(36).substr(2, 9),
-          returnNumber: `SR-${new Date().getFullYear()}-${String(list.length + 1).padStart(3, '0')}`,
-          status: 'Received'
-      };
-      mockDb.saveSalesReturns([newRet, ...list]);
-      return newRet;
+            const response = await api.post('/api/sales-returns', data);
+            return toFrontendSalesReturn(response.data.data ?? response.data);
   }
 };

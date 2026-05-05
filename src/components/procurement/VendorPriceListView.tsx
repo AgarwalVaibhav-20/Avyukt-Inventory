@@ -42,16 +42,20 @@ const VendorPriceListView: React.FC = () => {
       const vendor = vendors.find(v => v.id === form.vendorId);
       const item = items.find(i => i.id === form.itemId);
       
-      await vendorService.saveVendorItemMap({
-          ...form,
-          vendorName: vendor?.name || 'Unknown',
-          itemName: item?.name || 'Unknown',
-          sku: item?.sku || '',
-          vendorSku: '' // Optional
-      });
-      setIsAdding(false);
-      setForm({ vendorId: '', itemId: '', price: 0, currency: 'USD', leadTimeDays: 0 });
-      loadData();
+      try {
+          await vendorService.saveVendorItemMap({
+              ...form,
+              vendorName: vendor?.name || 'Unknown',
+              itemName: item?.name || 'Unknown',
+              sku: item?.sku || '',
+              vendorSku: '' // Optional
+          });
+          setIsAdding(false);
+          setForm({ vendorId: '', itemId: '', price: 0, currency: 'USD', leadTimeDays: 0 });
+          loadData();
+      } catch (error) {
+          alert((error as any)?.response?.data?.message || (error as any)?.response?.data?.error || 'Failed to save price entry');
+      }
   };
 
   const handleDelete = async (id: string) => {
@@ -73,7 +77,7 @@ const VendorPriceListView: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <DollarSign className="text-green-600" size={20}/> Vendor Price List
                 </h2>
-                <button onClick={() => setIsAdding(!isAdding)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex gap-2">
+                <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex gap-2">
                     <Plus size={16}/> Add Price
                 </button>
             </div>
@@ -92,8 +96,13 @@ const VendorPriceListView: React.FC = () => {
                             <label className="block text-xs font-bold text-green-800 mb-1">Item</label>
                             <select className="w-full border rounded p-2 text-sm" value={form.itemId} onChange={e => setForm({...form, itemId: e.target.value})}>
                                 <option value="">Select Item</option>
-                                {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>)}
+                                {items.length === 0 ? (
+                                    <option value="" disabled>No items available</option>
+                                ) : (
+                                    items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>)
+                                )}
                             </select>
+                            {items.length === 0 && <p className="text-xs text-slate-400 mt-1">No items found. Ensure you're logged in and your organisation has items.</p>}
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-green-800 mb-1">Price</label>
@@ -113,8 +122,10 @@ const VendorPriceListView: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
-                        <button onClick={handleSave} className="bg-green-600 text-white px-6 py-2 rounded text-sm hover:bg-green-700">Save Price</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
+                        <button type="button" onClick={handleSave} disabled={!form.vendorId || !form.itemId || items.length === 0 || vendors.length === 0} className={`px-6 py-2 rounded text-sm ${(!form.vendorId || !form.itemId || items.length === 0 || vendors.length === 0) ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}>
+                            Save Price
+                        </button>
                     </div>
                 </div>
             )}

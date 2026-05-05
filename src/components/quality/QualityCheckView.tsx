@@ -16,8 +16,8 @@ const QualityCheckView: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const all = await procurementService.getAllGRNs();
-    setPendingGRNs(all.filter(g => g.status === 'Pending QC'));
+    const all = await procurementService.getQualityQueue();
+    setPendingGRNs(all);
     setLoading(false);
   };
 
@@ -53,7 +53,7 @@ const QualityCheckView: React.FC = () => {
     if (!activeGRN) return;
     setSubmitting(true);
     try {
-        await procurementService.updateQC(activeGRN.id, qcItems);
+        await procurementService.updateQC((activeGRN as any).inspectionId || activeGRN.id, qcItems);
         alert("Quality Check Submitted & Stock Updated!");
         setActiveGRN(null);
         loadData();

@@ -4,7 +4,8 @@ import { Plus, Trash2, Search, Save, X, Loader2 } from 'lucide-react';
 interface ColumnDef {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'array';
+  type?: 'text' | 'number' | 'array' | 'select';
+  options?: string[];
 }
 
 interface MasterCrudProps {
@@ -34,9 +35,11 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     setLoading(true);
     try {
       const result = await fetchData();
+      console.log('Loaded data:', result);
       setData(result);
     } catch (error) {
       console.error("Failed to load data", error);
+      alert(`Failed to load data: ${(error as any)?.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -46,7 +49,8 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     loadData();
     setIsAdding(false);
     setNewData({});
-  }, [fetchData]);
+    // Empty dependency array - load once on mount
+  }, []);
 
   const handleSave = async () => {
     // Basic validation
@@ -66,13 +70,17 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     });
 
     try {
+      console.log('Saving data:', formattedData);
       await addData(formattedData);
       setIsAdding(false);
       setNewData({});
+      console.log('Save successful, reloading data...');
       await loadData();
+      alert("Record saved successfully!");
     } catch (e) {
-      console.error(e);
-      alert("Failed to save");
+      console.error('Save error:', e);
+      const errorMessage = (e as any)?.response?.data?.message || (e as any)?.response?.data?.error || (e as any)?.message || "Failed to save record";
+      alert(`Error: ${errorMessage}`);
     }
   };
 
@@ -97,6 +105,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
           <p className="text-sm text-slate-500">{description}</p>
         </div>
         <button 
+          type="button"
           onClick={() => setIsAdding(true)}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium"
         >
@@ -135,20 +144,34 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                 <tr className="bg-blue-50/50">
                   {columns.map(col => (
                     <td key={col.key} className="px-6 py-4">
-                      <input 
-                        autoFocus={col.key === columns[0].key}
-                        type="text"
-                        placeholder={col.type === 'array' ? 'Comma separated values' : ''}
-                        className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        value={newData[col.key] || ''}
-                        onChange={e => setNewData({...newData, [col.key]: e.target.value})}
-                      />
+                      {col.type === 'select' && col.options ? (
+                        <select 
+                          autoFocus={col.key === columns[0].key}
+                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          value={newData[col.key] || ''}
+                          onChange={e => setNewData({...newData, [col.key]: e.target.value})}
+                        >
+                          <option value="">Select {col.label}</option>
+                          {col.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input 
+                          autoFocus={col.key === columns[0].key}
+                          type={col.type === 'number' ? 'number' : 'text'}
+                          placeholder={col.type === 'array' ? 'Comma separated values' : ''}
+                          className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          value={newData[col.key] || ''}
+                          onChange={e => setNewData({...newData, [col.key]: e.target.value})}
+                        />
+                      )}
                     </td>
                   ))}
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                       <button onClick={handleSave} className="text-green-600 hover:bg-green-100 p-1 rounded"><Save size={18}/></button>
-                       <button onClick={() => setIsAdding(false)} className="text-red-600 hover:bg-red-100 p-1 rounded"><X size={18}/></button>
+                       <button type="button" onClick={handleSave} className="text-green-600 hover:bg-green-100 p-1 rounded"><Save size={18}/></button>
+                       <button type="button" onClick={() => setIsAdding(false)} className="text-red-600 hover:bg-red-100 p-1 rounded"><X size={18}/></button>
                     </div>
                   </td>
                 </tr>
@@ -181,6 +204,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                     ))}
                     <td className="px-6 py-4 text-right">
                        <button 
+                         type="button"
                          onClick={() => handleDelete(item.id)}
                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                        >

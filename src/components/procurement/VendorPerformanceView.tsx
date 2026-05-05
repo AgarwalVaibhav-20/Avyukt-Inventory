@@ -51,7 +51,7 @@ const VendorPerformanceView: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <TrendingUp className="text-purple-600" size={20}/> Vendor Performance Scorecard
                 </h2>
-                <button onClick={() => setIsAdding(!isAdding)} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium flex gap-2">
+                <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 text-sm font-medium flex gap-2">
                     <Plus size={16}/> Add Review
                 </button>
             </div>
@@ -98,8 +98,8 @@ const VendorPerformanceView: React.FC = () => {
                     </div>
 
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
-                        <button onClick={handleAddReview} className="bg-purple-600 text-white px-6 py-2 rounded text-sm hover:bg-purple-700">Submit Review</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 text-sm">Cancel</button>
+                        <button type="button" onClick={handleAddReview} className="bg-purple-600 text-white px-6 py-2 rounded text-sm hover:bg-purple-700">Submit Review</button>
                     </div>
                 </div>
             )}

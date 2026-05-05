@@ -86,7 +86,7 @@ const VendorMasterView: React.FC = () => {
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
-                <button onClick={handleAddNew} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2 items-center">
+                <button type="button" onClick={handleAddNew} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2 items-center">
                     <Plus size={16}/> Add Vendor
                 </button>
             </div>
@@ -139,8 +139,8 @@ const VendorMasterView: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex justify-end gap-2">
-                    <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-white border rounded text-slate-600 hover:bg-slate-50 text-sm">Cancel</button>
-                    <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm flex items-center gap-2"><Save size={16}/> Save Vendor</button>
+                    <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2 bg-white border rounded text-slate-600 hover:bg-slate-50 text-sm">Cancel</button>
+                    <button type="button" onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm flex items-center gap-2"><Save size={16}/> Save Vendor</button>
                 </div>
             </div>
         )}
@@ -172,10 +172,10 @@ const VendorMasterView: React.FC = () => {
                         <p className="text-slate-400">{v.phone}</p>
                     </div>
                     <div className="flex border-t pt-3 gap-2">
-                        <button onClick={() => handleEdit(v)} className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 py-1.5 rounded text-xs font-medium flex items-center justify-center gap-1">
+                        <button type="button" onClick={() => handleEdit(v)} className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-600 py-1.5 rounded text-xs font-medium flex items-center justify-center gap-1">
                             <Edit size={14}/> Edit
                         </button>
-                        <button onClick={() => handleDelete(v.id)} className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-1.5 rounded text-xs font-medium flex items-center justify-center gap-1">
+                        <button type="button" onClick={() => handleDelete(v.id)} classNameName="flex-1 bg-red-50 hover:bg-red-100 text-red-600 py-1.5 rounded text-xs font-medium flex items-center justify-center gap-1">
                             <Trash2 size={14}/> Delete
                         </button>
                     </div>

@@ -45,7 +45,7 @@ const NCRView: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <AlertTriangle className="text-red-600" size={20}/> Non-Conformance Reports (NCR)
                 </h2>
-                <button onClick={() => setIsAdding(!isAdding)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex gap-2">
+                <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex gap-2">
                     <Plus size={16}/> Raise NCR
                 </button>
             </div>
@@ -83,7 +83,7 @@ const NCRView: React.FC = () => {
                         <textarea className="w-full border rounded p-2 text-sm" rows={3} value={form.description} onChange={e => setForm({...form, description: e.target.value})}></textarea>
                     </div>
                     <div className="flex justify-end">
-                        <button onClick={handleCreate} className="bg-red-600 text-white px-6 py-2 rounded text-sm hover:bg-red-700">Submit Report</button>
+                        <button type="button" onClick={handleCreate} className="bg-red-600 text-white px-6 py-2 rounded text-sm hover:bg-red-700">Submit Report</button>
                     </div>
                 </div>
             )}

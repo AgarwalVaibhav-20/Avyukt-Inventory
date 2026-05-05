@@ -49,7 +49,7 @@ const ReworkManagementView: React.FC = () => {
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <Wrench className="text-orange-600" size={20}/> Rework Management
             </h2>
-            <button onClick={() => setIsAdding(!isAdding)} className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm font-medium">
+            <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 text-sm font-medium">
                 + New Job
             </button>
         </div>
@@ -71,7 +71,7 @@ const ReworkManagementView: React.FC = () => {
                     <label className="text-xs font-bold text-orange-800">Defect Reason</label>
                     <input type="text" className="w-full border rounded p-2 text-sm" value={newRework.reason} onChange={e => setNewRework({...newRework, reason: e.target.value})}/>
                 </div>
-                <button onClick={handleCreate} className="bg-orange-600 text-white px-6 py-2 rounded text-sm hover:bg-orange-700 h-10">Start Job</button>
+                <button type="button" onClick={handleCreate} className="bg-orange-600 text-white px-6 py-2 rounded text-sm hover:bg-orange-700 h-10">Start Job</button>
             </div>
         )}
 
@@ -93,13 +93,13 @@ const ReworkManagementView: React.FC = () => {
                                 <p className="text-xs text-slate-500 mb-3">{job.reason}</p>
                                 
                                 {job.status === 'Pending' && (
-                                    <button onClick={() => handleStatusUpdate(job.id, 'In Progress')} className="w-full bg-blue-50 text-blue-600 text-xs py-1.5 rounded hover:bg-blue-100">Start Work</button>
+                                    <button type="button" onClick={() => handleStatusUpdate(job.id, 'In Progress')} className="w-full bg-blue-50 text-blue-600 text-xs py-1.5 rounded hover:bg-blue-100">Start Work</button>
                                 )}
                                 
                                 {job.status === 'In Progress' && (
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleStatusUpdate(job.id, 'Completed', 'Restocked')} className="flex-1 bg-green-50 text-green-700 text-xs py-1.5 rounded hover:bg-green-100">Restock</button>
-                                        <button onClick={() => handleStatusUpdate(job.id, 'Scrapped', 'Scrapped')} className="flex-1 bg-red-50 text-red-700 text-xs py-1.5 rounded hover:bg-red-100">Scrap</button>
+                                        <button type="button" onClick={() => handleStatusUpdate(job.id, 'Completed', 'Restocked')} className="flex-1 bg-green-50 text-green-700 text-xs py-1.5 rounded hover:bg-green-100">Restock</button>
+                                        <button type="button" onClick={() => handleStatusUpdate(job.id, 'Scrapped', 'Scrapped')} className="flex-1 bg-red-50 text-red-700 text-xs py-1.5 rounded hover:bg-red-100">Scrap</button>
                                     </div>
                                 )}
 

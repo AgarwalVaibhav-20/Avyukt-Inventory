@@ -63,28 +63,54 @@ const InspectionPlansView: React.FC = () => {
       if(!newPlan.itemId || !newPlan.name || newPlan.parameters.length === 0) return alert("Please fill all fields");
       const item = items.find(i => i.id === newPlan.itemId);
       
+      // Validate all parameters have required fields
+      for(let i = 0; i < newPlan.parameters.length; i++) {
+          const p = newPlan.parameters[i];
+          if(!p.parameterId) {
+              return alert(`Parameter ${i+1}: Please select a parameter`);
+          }
+          const paramDef = params.find(pd => pd.id === p.parameterId);
+          if(!paramDef) {
+              return alert(`Parameter ${i+1}: Parameter not found`);
+          }
+          if(paramDef.type === 'Numeric' && (p.minValue === null || p.minValue === undefined || p.maxValue === null || p.maxValue === undefined)) {
+              return alert(`Parameter ${i+1} (${paramDef.name}): Please enter Min and Max values`);
+          }
+          if(paramDef.type !== 'Numeric' && !p.expectedValue) {
+              return alert(`Parameter ${i+1} (${paramDef.name}): Please enter expected value`);
+          }
+      }
+      
       const parameters = newPlan.parameters.map(p => {
           const paramDef = params.find(pd => pd.id === p.parameterId);
           return {
               parameterId: p.parameterId,
               parameterName: paramDef?.name || 'Unknown',
-              minValue: p.minValue,
-              maxValue: p.maxValue,
-              expectedValue: p.expectedValue
+              minValue: p.minValue || 0,
+              maxValue: p.maxValue || 0,
+              expectedValue: p.expectedValue || '',
+              unit: paramDef?.uom || ''
           };
       });
 
-      await qualityService.saveInspectionPlan({
-          itemId: newPlan.itemId,
-          itemName: item?.name || 'Unknown',
-          name: newPlan.name,
-          sampleSize: newPlan.sampleSize,
-          parameters
-      });
-      
-      setIsAdding(false);
-      setNewPlan({ itemId: '', name: '', sampleSize: 10, parameters: [] });
-      loadData();
+      try {
+          await qualityService.saveInspectionPlan({
+              itemId: newPlan.itemId,
+              itemName: item?.name || 'Unknown',
+              name: newPlan.name,
+              sampleSize: newPlan.sampleSize,
+              parameters
+          });
+          
+          setIsAdding(false);
+          setNewPlan({ itemId: '', name: '', sampleSize: 10, parameters: [] });
+          await loadData();
+          alert("Inspection plan saved successfully!");
+      } catch (error) {
+          console.error('Failed to save inspection plan:', error);
+          const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || "Failed to save inspection plan";
+          alert(`Error: ${errorMessage}`);
+      }
   };
 
   const handleDelete = async (id: string) => {
@@ -101,7 +127,7 @@ const InspectionPlansView: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <FileSearch className="text-blue-600" size={20}/> Inspection Plans
                 </h2>
-                <button onClick={() => setIsAdding(!isAdding)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2 items-center">
+                <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2 items-center">
                     <Plus size={16}/> Create Plan
                 </button>
             </div>
@@ -148,16 +174,16 @@ const InspectionPlansView: React.FC = () => {
                                         <input type="text" placeholder="Expected Value (e.g. Pass)" className="w-40 border rounded p-2 text-sm" value={p.expectedValue} onChange={e => updateParam(idx, 'expectedValue', e.target.value)}/>
                                     )}
                                     
-                                    <button onClick={() => removeParam(idx)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                                    <button type="button" onClick={() => removeParam(idx)} className="text-red-500 p-1 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
                                 </div>
                             );
                         })}
-                        <button onClick={handleAddParam} className="text-xs text-blue-600 font-medium mt-1 hover:underline">+ Add Parameter</button>
+                        <button type="button" onClick={handleAddParam} className="text-xs text-blue-600 font-medium mt-1 hover:underline">+ Add Parameter</button>
                     </div>
 
                     <div className="flex justify-end gap-2">
-                        <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded text-sm">Cancel</button>
-                        <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Save Plan</button>
+                        <button type="button" onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded text-sm">Cancel</button>
+                        <button type="button" onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Save Plan</button>
                     </div>
                 </div>
             )}
@@ -172,7 +198,7 @@ const InspectionPlansView: React.FC = () => {
                                 <h3 className="font-bold text-slate-800">{p.name}</h3>
                                 <p className="text-sm text-slate-600">{p.itemName}</p>
                             </div>
-                            <button onClick={() => handleDelete(p.id)} className="text-slate-400 hover:text-red-600"><Trash2 size={18}/></button>
+                            <button type="button" onClick={() => handleDelete(p.id)} className="text-slate-400 hover:text-red-600"><Trash2 size={18}/></button>
                         </div>
                         <div className="text-xs text-slate-500 bg-white p-3 rounded border border-slate-200">
                             <p className="font-semibold mb-1">Parameters ({p.parameters.length}):</p>

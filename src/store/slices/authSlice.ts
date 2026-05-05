@@ -24,7 +24,9 @@ export const login = createAsyncThunk(
       const data = await authService.login(credentials);
       return data;
     } catch (err: any) {
-      return rejectWithValue(err.response?.data?.message || 'Login failed');
+      return rejectWithValue(
+        err.response?.data?.message || err.response?.data?.error || 'Login failed'
+      );
     }
   }
 );
@@ -49,6 +51,18 @@ export const verifyOtp = createAsyncThunk(
       return data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.error || 'Verification failed');
+    }
+  }
+);
+
+export const resendOtp = createAsyncThunk(
+  'auth/resendOtp',
+  async ({ email }: { email: string }, { rejectWithValue }) => {
+    try {
+      const data = await authService.resendOtp(email);
+      return data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.error || 'Failed to resend OTP');
     }
   }
 );
@@ -106,6 +120,17 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(verifyOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(resendOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resendOtp.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(resendOtp.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

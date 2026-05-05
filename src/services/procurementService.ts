@@ -1,6 +1,70 @@
 import api from './api';
 import { Vendor, PurchaseOrder, GRN, POItem, GRNItem, PutAwayTask, PurchaseReturn } from '@/types';
 
+const unwrapList = <T,>(response: any): T[] => response?.data?.data ?? response?.data?.vendors ?? response?.data ?? [];
+
+const toFrontendGRNStatus = (status?: string): GRN['status'] => {
+  switch (status) {
+    case 'QC Pending':
+    case 'Pending QC':
+      return 'Pending QC';
+    case 'QC Completed':
+    case 'Stocked':
+      return 'QC Completed';
+    case 'Approved':
+      return 'Approved';
+    case 'Rejected':
+    case 'QC Failed':
+      return 'Rejected';
+    default:
+      return 'Pending QC';
+  }
+};
+
+const getItemId = (item: any) =>
+  String(item.itemId || item.productId || item.materialId || item._id || '');
+
+const toFrontendGRNItem = (item: any): GRNItem & { grnItemId?: string } => ({
+  grnItemId: String(item.grnItemId || item._id || ''),
+  itemId: getItemId(item),
+  itemName: item.itemName || item.name || '',
+  poQty: Number(item.poQty ?? item.orderedQty ?? item.quantity ?? item.qty ?? 0),
+  receivedQty: Number(item.receivedQty ?? item.inspectedQty ?? item.qty ?? item.quantity ?? 0),
+  acceptedQty: Number(item.acceptedQty ?? 0),
+  rejectedQty: Number(item.rejectedQty ?? 0),
+  qcRemarks: item.qcRemarks || item.remarks || '',
+});
+
+const toFrontendGRN = (grn: any, inspection?: any): GRN & { inspectionId?: string } => {
+  const supplier = grn?.supplierId;
+  const po = grn?.purchaseOrderId;
+
+  return {
+    inspectionId: inspection?._id || inspection?.id,
+    id: String(grn?._id || grn?.id || ''),
+    grnNumber: grn?.grnNumber || '',
+    poId: String(po?._id || po || grn?.poId || ''),
+    poNumber: po?.poNo || po?.poNumber || grn?.poNumber || '',
+    vendorId: String(supplier?._id || supplier || grn?.vendorId || ''),
+    vendorName: supplier?.vendorName || po?.vendor || grn?.vendorName || '',
+    date: (grn?.date || grn?.createdAt || new Date().toISOString()).toString().slice(0, 10),
+    challanNumber: grn?.challanNumber || grn?.transportInfo?.challanNumber || '',
+    status: toFrontendGRNStatus(grn?.status),
+    items: (grn?.items || []).map(toFrontendGRNItem),
+  };
+};
+
+const toFrontendQCInspection = (inspection: any): GRN & { inspectionId?: string } => {
+  const grn = toFrontendGRN(inspection.grnId || {}, inspection);
+  const inspectionItems = Array.isArray(inspection.items) ? inspection.items : [];
+
+  return {
+    ...grn,
+    status: 'Pending QC',
+    items: inspectionItems.length ? inspectionItems.map(toFrontendGRNItem) : grn.items,
+  };
+};
+
 export const procurementService = {
   // --- Vendors ---
   getVendors: async () => {
@@ -27,128 +91,122 @@ export const procurementService = {
   },
 
   // --- GRN (Goods Receipt Note) ---
-  getAllGRNs: async () => { await delay(300); return mockDb.getGRNs(); },
+  getAllGRNs: async (): Promise<GRN[]> => {
+    const response = await api.get('/api/inward/grns', { params: { limit: 1000 } });
+    return unwrapList<any>(response).map((grn) => toFrontendGRN(grn));
+  },
+
+  getQualityQueue: async (): Promise<(GRN & { inspectionId?: string })[]> => {
+    const response = await api.get('/api/inward/qc-queue', { params: { limit: 1000 } });
+    return unwrapList<any>(response).map(toFrontendQCInspection);
+  },
 
   createGRN: async (poId: string, challanNo: string, items: GRNItem[]): Promise<GRN> => {
-    await delay(500);
-    const pos = mockDb.getPOs();
-    const poIndex = pos.findIndex(p => p.id === poId);
-    if (poIndex === -1) throw new Error("PO not found");
-    const po = pos[poIndex];
-
-    const list = mockDb.getGRNs();
-    const newGRN: GRN = {
-        id: Math.random().toString(36).substr(2, 9),
-        grnNumber: `GRN-${new Date().getFullYear()}-${String(list.length + 1).padStart(3, '0')}`,
-        poId,
-        poNumber: po.poNumber,
-        vendorId: po.vendorId,
-        vendorName: po.vendorName,
-        date: new Date().toISOString().split('T')[0],
-        challanNumber: challanNo,
-        status: 'Pending QC',
-        items
-    };
-
-    // Update PO Received Qty status (Simple logic)
-    const updatedPOItems = po.items.map(pItem => {
-        const received = items.find(i => i.itemId === pItem.itemId)?.receivedQty || 0;
-        return { ...pItem, receivedQty: pItem.receivedQty + received };
+    const po = (await procurementService.getAllPOs()).find((order: PurchaseOrder) => order.id === poId);
+    const response = await api.post('/api/inward/grn', {
+      purchaseOrderId: poId,
+      supplierId: po?.vendorId,
+      challanNumber: challanNo,
+      items: items.map((item: any) => ({
+        productId: item.productId || item.itemId,
+        materialId: item.materialId,
+        itemName: item.itemName,
+        qty: Number(item.receivedQty || item.quantity || 0),
+        orderedQty: Number(item.poQty || item.quantity || 0),
+      })),
     });
-    
-    // Check if fully received
-    const isFullyReceived = updatedPOItems.every(i => i.receivedQty >= i.quantity);
-    const newStatus = isFullyReceived ? 'Completed' : 'Partially Received';
-    
-    pos[poIndex] = { ...po, items: updatedPOItems, status: newStatus };
-    mockDb.savePOs(pos);
-    mockDb.saveGRNs([newGRN, ...list]);
-    
-    return newGRN;
+
+    return toFrontendGRN(response.data.data ?? response.data);
   },
 
   // --- QC Process ---
   updateQC: async (grnId: string, qcItems: GRNItem[]): Promise<void> => {
-    await delay(400);
-    const grns = mockDb.getGRNs();
-    const index = grns.findIndex(g => g.id === grnId);
-    if (index === -1) throw new Error("GRN not found");
+    const hasRejected = qcItems.some((item) => Number(item.rejectedQty || 0) > 0);
+    const hasAccepted = qcItems.some((item) => Number(item.acceptedQty || 0) > 0);
 
-    const grn = grns[index];
-    
-    // 1. Update GRN status
-    grns[index] = {
-        ...grn,
-        items: qcItems,
-        status: 'QC Completed'
-    };
-    mockDb.saveGRNs(grns);
-
-    // 2. Generate PutAway Tasks for ACCEPTED items
-    const putAwayTasks = mockDb.getPutAwayTasks();
-    const newTasks: PutAwayTask[] = qcItems
-        .filter(i => i.acceptedQty > 0)
-        .map(i => ({
-            id: Math.random().toString(36).substr(2, 9),
-            grnId: grn.id,
-            grnNumber: grn.grnNumber,
-            itemId: i.itemId,
-            itemName: i.itemName,
-            quantity: i.acceptedQty,
-            status: 'Pending'
-        }));
-    
-    if (newTasks.length > 0) {
-        mockDb.savePutAwayTasks([...newTasks, ...putAwayTasks]);
-    }
-    
-    // NOTE: Main stock is NOT updated here anymore. 
-    // It is updated only after "Put Away" is completed to ensure process discipline.
+    await api.post('/api/inward/qc', {
+      inspectionId: grnId,
+      overallResult: hasRejected && hasAccepted ? 'Partial' : hasRejected ? 'Fail' : 'Pass',
+      items: qcItems.map((item: any) => ({
+        grnItemId: item.grnItemId || item.id || item.itemId,
+        acceptedQty: Number(item.acceptedQty || 0),
+        rejectedQty: Number(item.rejectedQty || 0),
+        result: Number(item.rejectedQty || 0) > 0
+          ? Number(item.acceptedQty || 0) > 0 ? 'Partial' : 'Fail'
+          : 'Pass',
+        remarks: item.qcRemarks || '',
+      })),
+    });
   },
 
   // --- Put Away Process ---
-  getPutAwayTasks: async () => { await delay(300); return mockDb.getPutAwayTasks(); },
+  getPutAwayTasks: async (): Promise<PutAwayTask[]> => {
+    const response = await api.get('/api/inward/put-away-queue', { params: { limit: 1000 } });
+    return unwrapList<any>(response).map((task: any) => ({
+      id: String(task.grnItemId || task.id || task._id || ''),
+      grnId: String(task.grnId || ''),
+      grnNumber: task.grnNumber || '',
+      itemId: String(task.materialId || task.productId || task.grnItemId || ''),
+      itemName: task.itemName || '',
+      quantity: Number(task.qty || task.quantity || 0),
+      status: 'Pending',
+      assignedLocation: task.suggestedLocation || task.warehouseId,
+    }));
+  },
 
   completePutAway: async (taskId: string, location: string): Promise<void> => {
-    await delay(400);
-    const tasks = mockDb.getPutAwayTasks();
-    const index = tasks.findIndex(t => t.id === taskId);
-    if (index === -1) throw new Error("Task not found");
+    const tasks = await procurementService.getPutAwayTasks();
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) throw new Error("Task not found");
 
-    const task = tasks[index];
-    
-    // 1. Update Task
-    tasks[index] = { ...task, status: 'Completed', assignedLocation: location };
-    mockDb.savePutAwayTasks(tasks);
-
-    // 2. Update Inventory Master Stock
-    const inventory = mockDb.getItems();
-    const invIndex = inventory.findIndex(i => i.id === task.itemId);
-    if (invIndex !== -1) {
-        inventory[invIndex].stock += task.quantity;
-        inventory[invIndex].lastUpdated = new Date().toISOString().split('T')[0];
-        if(inventory[invIndex].stock > inventory[invIndex].reorderLevel) {
-            inventory[invIndex].status = 'In Stock';
-        }
-    }
-    mockDb.saveItems(inventory);
-
-    // 3. Check if all tasks for a GRN are done to update GRN status? 
-    // For simplicity, we assume GRN stays "QC Completed" or can be marked "Put Away Completed" if we check all tasks.
+    await api.post('/api/inward/put-away', {
+      location,
+      items: [{
+        grnId: task.grnId,
+        grnItemId: task.id,
+        qty: task.quantity,
+        itemName: task.itemName,
+      }],
+    });
   },
 
   // --- Inward Returns ---
-  getPurchaseReturns: async () => { await delay(300); return mockDb.getPurchaseReturns(); },
+  getPurchaseReturns: async () => {
+    const response = await api.get('/api/purchase-returns');
+    return unwrapList<PurchaseReturn>(response).map((item: any) => ({
+      id: item.id || item._id,
+      returnNumber: item.returnNo || item.returnNumber,
+      grnId: item.grnId || '',
+      vendorId: String(item.vendorId || ''),
+      vendorName: item.vendor || item.vendorName || '',
+      date: (item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
+      items: (item.items || []).map((line: any) => ({
+        itemId: String(line.itemId || ''),
+        itemName: line.name || line.itemName || '',
+        quantity: Number(line.qty || line.quantity || 0),
+        reason: line.reason || '',
+      })),
+      status: item.status || 'Draft',
+    }));
+  },
 
   createPurchaseReturn: async (returnNote: Omit<PurchaseReturn, 'id' | 'returnNumber'>): Promise<PurchaseReturn> => {
-      await delay(400);
-      const list = mockDb.getPurchaseReturns();
-      const newReturn: PurchaseReturn = {
-          ...returnNote,
-          id: Math.random().toString(36).substr(2, 9),
-          returnNumber: `PR-${new Date().getFullYear()}-${String(list.length + 1).padStart(3, '0')}`,
+      const response = await api.post('/api/purchase-returns', returnNote);
+      const item = response.data.data ?? response.data;
+      return {
+          id: item.id || item._id,
+          returnNumber: item.returnNo || item.returnNumber,
+          grnId: item.grnId || '',
+          vendorId: String(item.vendorId || ''),
+          vendorName: item.vendor || item.vendorName || '',
+          date: (item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
+          items: (item.items || []).map((line: any) => ({
+              itemId: String(line.itemId || ''),
+              itemName: line.name || line.itemName || '',
+              quantity: Number(line.qty || line.quantity || 0),
+              reason: line.reason || '',
+          })),
+          status: item.status || 'Draft',
       };
-      mockDb.savePurchaseReturns([newReturn, ...list]);
-      return newReturn;
   }
 };

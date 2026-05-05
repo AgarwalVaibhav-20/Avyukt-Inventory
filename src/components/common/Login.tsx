@@ -32,13 +32,15 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { login, clearError, registerUser, verifyOtp } from "@/store/slices/authSlice";
+import { login, clearError, registerUser, verifyOtp, resendOtp } from "@/store/slices/authSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LoginProps {
   onLoginSuccess?: () => void;
 }
+
+type AuthStep = "login" | "signup" | "verify";
 
 interface PasswordStrength {
   score: number;
@@ -477,6 +479,119 @@ function SignupForm({ onSignupSuccess }: { onSignupSuccess: (email: string) => v
   );
 }
 
+// ─── OTP Verification Form ───────────────────────────────────────────────────
+
+function OtpFormLegacy({
+  email,
+  onBackToLogin,
+}: {
+  email: string;
+  onBackToLogin: () => void;
+}) {
+  const [otp, setOtp] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state) => state.auth);
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !otp) {
+      return;
+    }
+
+    setSuccess("");
+    dispatch(clearError());
+
+    const result = await dispatch(verifyOtp({ email, otp }));
+    if (verifyOtp.fulfilled.match(result)) {
+      setSuccess("OTP verified successfully. Signing you in…");
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email) {
+      return;
+    }
+
+    setSuccess("");
+    dispatch(clearError());
+    const result = await dispatch(resendOtp({ email }));
+    if (resendOtp.fulfilled.match(result)) {
+      setSuccess("A new OTP has been sent to your email.");
+    }
+  };
+
+  return (
+    <form onSubmit={handleVerify} className="space-y-4">
+      {error && (
+        <Alert
+          variant="destructive"
+          className="py-2.5 border-red-200 bg-red-50 text-red-700"
+        >
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert className="py-2.5 border-green-200 bg-green-50 text-green-700">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium text-gray-700">Email Address</Label>
+        <Input value={email} disabled className="h-11 border-gray-200 bg-gray-50" />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="otp-code" className="text-sm font-medium text-gray-700">
+          OTP Code
+        </Label>
+        <Input
+          id="otp-code"
+          type="text"
+          inputMode="numeric"
+          placeholder="Enter the 6-digit code"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          maxLength={6}
+          className="h-11 border-gray-200 focus-visible:ring-blue-500 tracking-[0.3em] text-center text-lg"
+        />
+      </div>
+
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBackToLogin}
+          className="w-1/3 h-11 border-gray-200 text-gray-700"
+        >
+          Back
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleResend}
+          disabled={loading}
+          className="w-2/3 h-11 border-gray-200 text-gray-700"
+        >
+          Resend OTP
+        </Button>
+      </div>
+
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm shadow-blue-200 transition-all"
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify OTP"}
+      </Button>
+    </form>
+  );
+}
+
 // ─── Main Auth Page ───────────────────────────────────────────────────────────
 
 export default function AuthPage({ onLoginSuccess }: LoginProps) {
@@ -487,6 +602,9 @@ export default function AuthPage({ onLoginSuccess }: LoginProps) {
     setSignupEmail(email);
     setStep('otp');
   };
+
+  const [authStep, setAuthStep] = useState<AuthStep>("login");
+  const [pendingOtpEmail, setPendingOtpEmail] = useState("");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4 py-10">

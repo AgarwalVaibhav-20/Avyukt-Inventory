@@ -1,53 +1,37 @@
 import { mockDb } from './mockDb';
 import { ReplacementOrder, FinancialNote, InventoryItem } from '@/types';
+import api from './api';
+
+const unwrapList = <T,>(response: any): T[] => response?.data?.data ?? response?.data ?? [];
+
+const toFrontendReplacement = (item: any): ReplacementOrder => ({
+    id: item.id || item._id,
+    reference: item.orderNo || item.reference || `RO-${String(item.id || item._id || '').slice(-6)}`,
+    date: (item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
+    type: 'Vendor',
+    originalReturnId: item.refReturn || item.originalReturnId || '',
+    itemId: String(item.items?.[0]?.itemId || ''),
+    itemName: item.items?.[0]?.name || item.items?.[0]?.itemName || '',
+    quantity: Number(item.items?.[0]?.qty || item.items?.[0]?.quantity || 0),
+    status: item.status || 'Pending',
+});
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const returnsService = {
   // --- Replacements ---
   getReplacements: async (): Promise<ReplacementOrder[]> => {
-    await delay(200);
-    return mockDb.getReplacements();
+    const response = await api.get('/api/replacement-orders');
+    return unwrapList<ReplacementOrder>(response).map(toFrontendReplacement);
   },
 
   createReplacement: async (data: Omit<ReplacementOrder, 'id' | 'reference' | 'status' | 'date'>): Promise<ReplacementOrder> => {
-    await delay(300);
-    const list = mockDb.getReplacements();
-    const newRec: ReplacementOrder = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        reference: `REP-${new Date().getFullYear()}-${String(list.length + 1).padStart(3, '0')}`,
-        status: 'Pending',
-        date: new Date().toISOString().split('T')[0]
-    };
-    mockDb.saveReplacements([newRec, ...list]);
-
-    // Handle Stock Impact
-    const items = mockDb.getItems();
-    const itemIndex = items.findIndex(i => i.id === data.itemId);
-    if(itemIndex !== -1) {
-        if(data.type === 'Customer') {
-            // Sending replacement to customer -> Deduct Stock
-            items[itemIndex].stock -= data.quantity;
-            if(items[itemIndex].stock < 0) items[itemIndex].stock = 0;
-        } else {
-            // Receiving replacement from vendor -> Add Stock
-            items[itemIndex].stock += data.quantity;
-        }
-        mockDb.saveItems(items);
-    }
-
-    return newRec;
+    const response = await api.post('/api/replacement-orders', data);
+    return toFrontendReplacement(response.data.data ?? response.data);
   },
 
   updateReplacementStatus: async (id: string, status: ReplacementOrder['status']): Promise<void> => {
-      await delay(200);
-      const list = mockDb.getReplacements();
-      const idx = list.findIndex(r => r.id === id);
-      if(idx !== -1) {
-          list[idx].status = status;
-          mockDb.saveReplacements(list);
-      }
+      await api.put(`/api/replacement-orders/${id}`, { status });
   },
 
   // --- Financial Notes (Debit/Credit) ---

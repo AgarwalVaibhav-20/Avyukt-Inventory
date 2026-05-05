@@ -8,10 +8,10 @@ const QualityParametersView: React.FC = () => {
       title="Quality Parameters" 
       description="Define standard test parameters (e.g., pH, Dimensions, Weight) used in inspection plans."
       columns={[
-        { key: 'name', label: 'Parameter Name' },
-        { key: 'uom', label: 'Unit (UoM)' },
-        { key: 'type', label: 'Data Type' }, // Numeric, Pass/Fail
-        { key: 'description', label: 'Description' }
+        { key: 'name', label: 'Parameter Name', type: 'text' },
+        { key: 'uom', label: 'Unit (UoM)', type: 'text' },
+        { key: 'type', label: 'Data Type', type: 'select', options: ['Numeric', 'Pass/Fail', 'Text', 'Percentage', 'Boolean'] },
+        { key: 'description', label: 'Description', type: 'text' }
       ]}
       fetchData={qualityService.getParameters}
       addData={qualityService.addParameter}

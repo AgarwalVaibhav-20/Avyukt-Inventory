@@ -32,24 +32,30 @@ const ItemMaster: React.FC = () => {
     if (!name) return;
     const sku = prompt("Enter SKU:");
     if (!sku) return;
-    
-    await productService.createItem({
-        name,
-        sku,
-        category: 'Uncategorized',
-        brand: 'Generic',
-        uom: 'pcs',
-        stock: 0,
-        consignmentStock: 0,
-        reorderLevel: 10,
-        unitPrice: 0,
-        mrp: 0,
-        salePrice: 0,
-        hsnCode: '0000',
-        barcode: '',
-        status: 'Out of Stock',
-        lastUpdated: new Date().toISOString().split('T')[0]
-    });
+        try {
+            await productService.createItem({
+                name,
+                type: 'goods', // required by backend
+                sku,
+                category: 'Uncategorized',
+                brand: 'Generic',
+                uom: 'pcs',
+                stock: 0,
+                consignmentStock: 0,
+                reorderLevel: 10,
+                unitPrice: 0,
+                mrp: 0,
+                salePrice: 0,
+                hsnCode: '0000',
+                barcode: '',
+                // backend expects enum values: 'in-stock'|'low-stock'|'out-of-stock'
+                status: 'out-of-stock',
+                lastUpdated: new Date().toISOString().split('T')[0]
+            });
+        } catch (err: any) {
+            alert(err.response?.data?.message || err.message || 'Failed to add item');
+            return;
+        }
     loadItems();
   };
 

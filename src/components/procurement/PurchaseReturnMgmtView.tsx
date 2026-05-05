@@ -89,6 +89,7 @@ const PurchaseReturnMgmtView: React.FC = () => {
                                             <span className="text-green-600 text-xs font-bold flex items-center justify-end gap-1"><Banknote size={14}/> DN Issued</span>
                                         ) : (
                                             <button 
+                                                type="button"
                                                 onClick={() => handleCreateDebitNote(r)}
                                                 disabled={!!processingId}
                                                 className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded text-xs font-medium flex items-center gap-1 ml-auto"

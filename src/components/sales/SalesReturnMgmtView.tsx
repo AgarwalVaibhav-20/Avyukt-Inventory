@@ -99,13 +99,13 @@ const SalesReturnMgmtView: React.FC = () => {
                                             {hasCN ? (
                                                 <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">CN Issued</span>
                                             ) : (
-                                                <button onClick={() => handleCreateCreditNote(r)} disabled={!!processingId || hasRep} className="text-blue-600 hover:underline text-xs disabled:opacity-50">Credit Note</button>
+                                                <button type="button" onClick={() => handleCreateCreditNote(r)} disabled={!!processingId || hasRep} className="text-blue-600 hover:underline text-xs disabled:opacity-50">Credit Note</button>
                                             )}
                                             
                                             {hasRep ? (
                                                 <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">Replacing</span>
                                             ) : (
-                                                <button onClick={() => handleCreateReplacement(r)} disabled={!!processingId || hasCN} className="text-amber-600 hover:underline text-xs disabled:opacity-50">Replace</button>
+                                                <button type="button" onClick={() => handleCreateReplacement(r)} disabled={!!processingId || hasCN} className="text-amber-600 hover:underline text-xs disabled:opacity-50">Replace</button>
                                             )}
                                         </div>
                                     </td>
