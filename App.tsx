@@ -464,59 +464,57 @@ const App: React.FC = () => {
     }
   };
 
-   return (
-      <div className="flex h-screen overflow-hidden bg-slate-50 text-slate-900">
-        <Sidebar 
-          activeMenuId={activeMenuId} 
-          onMenuSelect={handleMenuSelect}
-          isOpen={isSidebarOpen}
-          setIsOpen={setIsSidebarOpen}
-        />
+  return (
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      <Sidebar 
+        activeMenuId={activeMenuId} 
+        onMenuSelect={handleMenuSelect}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+      />
 
-        <div className="flex flex-1 flex-col h-screen overflow-hidden">
-          {/* Header */}
-          <header className="sticky top-0 z-20 h-16 border-b border-slate-200 bg-white px-6">
-            <div className="flex h-full items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-slate-500 hover:text-slate-700">
-                  <Menu size={24} />
-                </button>
-                <div>
-                  <h1 className="text-lg font-semibold text-slate-900">{activeLabel}</h1>
-                  <p className="hidden text-xs text-slate-500 sm:block">ACT Business Solution / {parentLabel} / {activeLabel}</p>
-                </div>
-              </div>
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        {/* Header */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
+          <div className="flex items-center gap-4">
+             <button onClick={() => setIsSidebarOpen(true)} className="md:hidden text-slate-500 hover:text-slate-700">
+                <Menu size={24} />
+             </button>
+             <div>
+                <h1 className="text-xl font-bold text-slate-800">{activeLabel}</h1>
+                <p className="text-xs text-slate-500 hidden sm:block">ACT Business Solution / {parentLabel} / {activeLabel}</p>
+             </div>
+          </div>
 
-              <div className="flex items-center gap-4">
-                {/* AI Button */}
-                <button 
-                  onClick={() => setShowAiModal(true)}
-                  className="hidden sm:flex items-center gap-2 rounded-full bg-gradient-to-r from-slate-900 to-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-transform hover:-translate-y-0.5"
-                >
-                  <Rocket size={14} /> AI Analyst
-                </button>
+          <div className="flex items-center gap-4">
+             {/* AI Button */}
+             <button 
+                onClick={() => setShowAiModal(true)}
+                className="hidden sm:flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1.5 rounded-full text-sm font-medium hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+             >
+                <Rocket size={14} /> AI Analyst
+             </button>
 
-                <button className="relative rounded-lg border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:text-slate-600">
-                  <Bell size={20} />
-                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-white bg-red-500"></span>
-                </button>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-slate-100 text-slate-500">
-                  <User size={16} />
-                </div>
-              </div>
-            </div>
-          </header>
+             <button className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                <Bell size={20} />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+             </button>
+             <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 border border-slate-300">
+                <User size={16} />
+             </div>
+          </div>
+        </header>
 
-          {/* Main Content Scrollable Area */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-8">
-            <div className="mx-auto max-w-7xl space-y-6">
-              {renderContent()}
-            </div>
-          </main>
-        </div>
-
-        {showAiModal && <AiAssistantModal onClose={() => setShowAiModal(false)} />}
+        {/* Main Content Scrollable Area */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+           <div className="max-w-7xl mx-auto">
+             {renderContent()}
+           </div>
+        </main>
       </div>
+
+      {showAiModal && <AiAssistantModal onClose={() => setShowAiModal(false)} />}
+    </div>
   );
 };
 
