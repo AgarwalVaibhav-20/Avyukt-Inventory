@@ -6,6 +6,11 @@ import {
   StockAdjustment,
 } from '@/types';
 
+export interface ConsignmentCustomerOption {
+  id: string;
+  name: string;
+}
+
 const normalizeScrapReason = (reason: string) => {
   const value = reason.toLowerCase();
   if (value.includes('expir')) return 'expired';
@@ -80,15 +85,22 @@ const mapScrap = (scrap: any): ScrapEntry => ({
 
 const mapConsignment = (entry: any): ConsignmentEntry => ({
   id: entry._id,
-  reference: entry.reference,
-  date: entry.date,
+  reference: entry.reference || `CSG-${String(entry._id).slice(-6).toUpperCase()}`,
+  date:
+    entry.date ||
+    (entry.createdAt ? new Date(entry.createdAt).toISOString().split('T')[0] : ''),
   partyId: entry.partyId || '',
-  partyName: entry.partyName,
+  partyName: entry.partyName || 'Unknown Customer',
   itemId: typeof entry.itemId === 'object' ? entry.itemId?._id : entry.itemId,
-  itemName: entry.itemName,
+  itemName: entry.itemName || entry.itemId?.name || 'Inventory Item',
   quantity: Number(entry.quantity || 0),
-  type: entry.type,
-  status: entry.status || 'Active',
+  type: entry.type === 'Inward' ? 'Inward' : 'Outward',
+  status:
+    entry.status === 'Returned'
+      ? 'Returned'
+      : entry.status === 'Settled' || entry.status === 'Sold'
+        ? 'Settled'
+        : 'Active',
 });
 
 export const movementService = {
@@ -203,6 +215,44 @@ export const movementService = {
       return (response.data.data || []).map(mapConsignment);
     } catch (err) {
       console.error('Error fetching consignment entries:', err);
+      return [];
+    }
+  },
+
+  getConsignmentCustomers: async (): Promise<ConsignmentCustomerOption[]> => {
+    try {
+      const [salesOrdersResponse, consignmentsResponse] = await Promise.allSettled([
+        api.get('/api/sales-orders', { params: { page: 1, limit: 200 } }),
+        api.get('/api/consignments'),
+      ]);
+
+      const options = new Map<string, ConsignmentCustomerOption>();
+
+      if (salesOrdersResponse.status === 'fulfilled') {
+        const orders = salesOrdersResponse.value.data?.data || [];
+        orders.forEach((order: any) => {
+          const id = String(order.customerId || order._id || order.customerName || '').trim();
+          const name = String(order.customerName || '').trim();
+          if (!name) return;
+          options.set(name.toLowerCase(), { id, name });
+        });
+      }
+
+      if (consignmentsResponse.status === 'fulfilled') {
+        const consignments = consignmentsResponse.value.data?.data || [];
+        consignments.forEach((entry: any) => {
+          const name = String(entry.partyName || '').trim();
+          if (!name) return;
+          const id = String(entry.partyId || name).trim();
+          if (!options.has(name.toLowerCase())) {
+            options.set(name.toLowerCase(), { id, name });
+          }
+        });
+      }
+
+      return Array.from(options.values()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (err) {
+      console.error('Error fetching consignment customers:', err);
       return [];
     }
   },

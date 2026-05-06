@@ -448,7 +448,7 @@ export interface ConsignmentEntry {
   itemName: string;
   quantity: number;
   type: 'Outward' | 'Inward'; // Out to Customer or In from Vendor
-  status: 'Active' | 'Returned' | 'Sold';
+  status: 'Active' | 'Returned' | 'Settled';
 }
 
 // --- Stock Control Types ---
