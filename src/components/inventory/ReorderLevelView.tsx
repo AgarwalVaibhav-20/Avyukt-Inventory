@@ -1,25 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { productService } from '@/services/productService';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchStockControlData, updateReorderLevelRecord } from '@/store/slices/stockControlSlice';
 import { InventoryItem } from '@/types';
 import { BarChart3, Save, Search, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 
 const ReorderLevelView: React.FC = () => {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { items, loading, actionLoading, error } = useAppSelector((state) => state.stockControl);
   const [search, setSearch] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLevel, setEditLevel] = useState<number>(0);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const data = await productService.getAllItems();
-    setItems(data);
-    setLoading(false);
-  };
+    dispatch(fetchStockControlData());
+  }, [dispatch]);
 
   const handleEdit = (item: InventoryItem) => {
     setEditingId(item.id);
@@ -27,14 +21,18 @@ const ReorderLevelView: React.FC = () => {
   };
 
   const handleSave = async (id: string) => {
-    await productService.updateReorderLevel(id, editLevel);
+    await dispatch(updateReorderLevelRecord({ id, reorderLevel: editLevel })).unwrap();
     setEditingId(null);
-    loadData();
   };
 
-  const filteredItems = items.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
-    i.sku.toLowerCase().includes(search.toLowerCase())
+  const filteredItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(search.toLowerCase()) ||
+          item.sku.toLowerCase().includes(search.toLowerCase())
+      ),
+    [items, search]
   );
 
   return (
@@ -70,6 +68,8 @@ const ReorderLevelView: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
                         <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline mr-2"/> Loading...</td></tr>
+                    ) : error ? (
+                        <tr><td colSpan={5} className="py-8 text-center text-red-600">{error}</td></tr>
                     ) : filteredItems.length === 0 ? (
                         <tr><td colSpan={5} className="py-8 text-center text-slate-500">No items found.</td></tr>
                     ) : (
@@ -112,7 +112,7 @@ const ReorderLevelView: React.FC = () => {
                                     <td className="px-6 py-4 text-right">
                                         {isEditing ? (
                                             <div className="flex justify-end gap-2">
-                                                <button onClick={() => handleSave(item.id)} className="text-green-600 hover:bg-green-50 p-1 rounded"><Save size={16}/></button>
+                                                <button onClick={() => handleSave(item.id)} disabled={actionLoading} className="text-green-600 hover:bg-green-50 p-1 rounded disabled:opacity-60"><Save size={16}/></button>
                                                 <button onClick={() => setEditingId(null)} className="text-slate-400 hover:bg-slate-100 p-1 rounded">Cancel</button>
                                             </div>
                                         ) : (

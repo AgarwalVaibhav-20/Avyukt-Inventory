@@ -1,22 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { stockControlService } from '@/services/stockControlService';
-import { Batch } from '@/types';
+import React, { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchStockControlData } from '@/store/slices/stockControlSlice';
 import { CalendarX, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 
 const ExpiryTrackingView: React.FC = () => {
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { expiryBatches, loading, error } = useAppSelector((state) => state.stockControl);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const data = await stockControlService.getBatches();
-    setBatches(data);
-    setLoading(false);
-  };
+    dispatch(fetchStockControlData());
+  }, [dispatch]);
 
   const getStatus = (dateStr: string) => {
       const today = new Date();
@@ -30,7 +23,7 @@ const ExpiryTrackingView: React.FC = () => {
   };
 
   // Sort by nearest expiry
-  const sortedBatches = [...batches].sort((a,b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
+  const sortedBatches = [...expiryBatches].sort((a,b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
 
   return (
     <div className="space-y-6">
@@ -51,7 +44,8 @@ const ExpiryTrackingView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
+                        {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
+                         error ? <tr><td colSpan={5} className="py-8 text-center text-red-600">{error}</td></tr> :
                          sortedBatches.map(b => {
                              const status = getStatus(b.expiryDate);
                              const Icon = status.icon;

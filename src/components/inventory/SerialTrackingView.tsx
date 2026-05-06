@@ -1,41 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { stockControlService } from '@/services/stockControlService';
-import { productService } from '@/services/productService';
-import { SerialNumber, InventoryItem } from '@/types';
+import React, { useEffect, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createSerialRecord, fetchStockControlData } from '@/store/slices/stockControlSlice';
 import { ScanBarcode, MapPin, Plus, Loader2 } from 'lucide-react';
 
 const SerialTrackingView: React.FC = () => {
-  const [serials, setSerials] = useState<SerialNumber[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { serials, items, loading, actionLoading, error } = useAppSelector((state) => state.stockControl);
   const [isAdding, setIsAdding] = useState(false);
   const [newSerial, setNewSerial] = useState({ itemId: '', serialNumber: '', currentLocation: 'Warehouse A' });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [sData, iData] = await Promise.all([
-        stockControlService.getSerials(),
-        productService.getAllItems()
-    ]);
-    setSerials(sData);
-    setItems(iData);
-    setLoading(false);
-  };
+    dispatch(fetchStockControlData());
+  }, [dispatch]);
 
   const handleAdd = async () => {
       if(!newSerial.itemId || !newSerial.serialNumber) return;
       const item = items.find(i => i.id === newSerial.itemId);
-      await stockControlService.addSerial({
+      await dispatch(createSerialRecord({
           ...newSerial,
-          itemName: item?.name || 'Unknown'
-      });
+          itemName: item?.name || 'Unknown',
+          sku: item?.sku || '',
+      })).unwrap();
       setIsAdding(false);
       setNewSerial({ itemId: '', serialNumber: '', currentLocation: 'Warehouse A' });
-      loadData();
   };
 
   return (
@@ -56,7 +43,7 @@ const SerialTrackingView: React.FC = () => {
                         <label className="block text-xs font-medium text-indigo-800 mb-1">Item</label>
                         <select className="w-full border rounded p-2 text-sm" value={newSerial.itemId} onChange={e => setNewSerial({...newSerial, itemId: e.target.value})}>
                             <option value="">Select Item</option>
-                            {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                            {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>)}
                         </select>
                     </div>
                     <div className="flex-1 w-full">
@@ -67,9 +54,13 @@ const SerialTrackingView: React.FC = () => {
                         <label className="block text-xs font-medium text-indigo-800 mb-1">Location</label>
                         <input type="text" className="w-full border rounded p-2 text-sm" value={newSerial.currentLocation} onChange={e => setNewSerial({...newSerial, currentLocation: e.target.value})}/>
                     </div>
-                    <button onClick={handleAdd} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm hover:bg-indigo-700 h-10">Save</button>
+                    <button onClick={handleAdd} disabled={actionLoading} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm hover:bg-indigo-700 h-10 disabled:opacity-60">
+                        {actionLoading ? 'Saving...' : 'Save'}
+                    </button>
                 </div>
             )}
+
+            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">

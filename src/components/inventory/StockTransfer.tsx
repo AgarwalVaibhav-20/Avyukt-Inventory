@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { warehouseService } from '@/services/warehouseService';
-import { productService } from '@/services/productService';
 import { Warehouse, InventoryItem, StockTransfer as StockTransferType } from '@/types';
 import { ArrowRightLeft, Calendar, MapPin, Truck, CheckCircle2, Loader2, Package } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createWarehouseTransfer, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const StockTransfer: React.FC = () => {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [transfers, setTransfers] = useState<StockTransferType[]>([]);
-  
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch();
+  const { warehouses, items, transfers, loading, actionLoading, error } = useAppSelector((state) => state.stockMovement);
 
   // Form State
   const [sourceId, setSourceId] = useState('');
@@ -19,21 +15,8 @@ const StockTransfer: React.FC = () => {
   const [qty, setQty] = useState<number>(0);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [whData, itemData, trfData] = await Promise.all([
-      warehouseService.getAllWarehouses(),
-      productService.getAllItems(),
-      warehouseService.getAllTransfers()
-    ]);
-    setWarehouses(whData);
-    setItems(itemData);
-    setTransfers(trfData);
-    setLoading(false);
-  };
+    dispatch(fetchStockMovementData());
+  }, [dispatch]);
 
   const handleTransfer = async () => {
     if (!sourceId || !destId || !itemId || qty <= 0) {
@@ -45,11 +28,10 @@ const StockTransfer: React.FC = () => {
       return;
     }
 
-    setSubmitting(true);
     const selectedItem = items.find(i => i.id === itemId);
     
     try {
-      await warehouseService.createTransfer({
+      await dispatch(createWarehouseTransfer({
         sourceWarehouseId: sourceId,
         destinationWarehouseId: destId,
         items: [{
@@ -57,25 +39,23 @@ const StockTransfer: React.FC = () => {
           itemName: selectedItem?.name || 'Unknown Item',
           quantity: qty
         }]
-      });
+      })).unwrap();
       
       // Reset form
       setQty(0);
       setItemId('');
-      
-      // Reload history
-      const updatedTransfers = await warehouseService.getAllTransfers();
-      setTransfers(updatedTransfers);
       alert("Transfer Initiated Successfully!");
     } catch (e) {
       console.error(e);
       alert("Transfer failed.");
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const getWarehouseName = (id: string) => warehouses.find(w => w.id === id)?.name || id;
+
+  const typedWarehouses = warehouses as Warehouse[];
+  const typedItems = items as InventoryItem[];
+  const typedTransfers = transfers as StockTransferType[];
 
   return (
     <div className="space-y-6">
@@ -96,7 +76,7 @@ const StockTransfer: React.FC = () => {
                         onChange={(e) => setSourceId(e.target.value)}
                     >
                         <option value="">Select Source</option>
-                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        {typedWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                 </div>
             </div>
@@ -110,7 +90,7 @@ const StockTransfer: React.FC = () => {
                         onChange={(e) => setDestId(e.target.value)}
                     >
                         <option value="">Select Destination</option>
-                        {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                        {typedWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                     </select>
                 </div>
             </div>
@@ -127,7 +107,7 @@ const StockTransfer: React.FC = () => {
                         onChange={(e) => setItemId(e.target.value)}
                     >
                         <option value="">Select Item</option>
-                        {items.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (Curr: {i.stock})</option>)}
+                        {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (Curr: {i.stock})</option>)}
                     </select>
                 </div>
              </div>
@@ -147,20 +127,22 @@ const StockTransfer: React.FC = () => {
           <div className="flex justify-end">
             <button 
                 onClick={handleTransfer}
-                disabled={submitting || loading}
+                disabled={actionLoading || loading}
                 className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-sm font-medium disabled:opacity-50"
             >
-                {submitting ? <Loader2 className="animate-spin" size={18}/> : <ArrowRightLeft size={18}/>}
+                {actionLoading ? <Loader2 className="animate-spin" size={18}/> : <ArrowRightLeft size={18}/>}
                 Initiate Transfer
             </button>
           </div>
        </div>
 
+       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
        {/* History Table */}
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
             <h3 className="font-semibold text-slate-800">Transfer History</h3>
-            <button onClick={loadData} className="text-blue-600 hover:text-blue-800 text-sm">Refresh</button>
+            <button onClick={() => dispatch(fetchStockMovementData())} className="text-blue-600 hover:text-blue-800 text-sm">Refresh</button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -176,10 +158,10 @@ const StockTransfer: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
                          <tr><td colSpan={5} className="py-8 text-center text-slate-500">Loading...</td></tr>
-                    ) : transfers.length === 0 ? (
+                    ) : typedTransfers.length === 0 ? (
                          <tr><td colSpan={5} className="py-8 text-center text-slate-500">No transfers recorded.</td></tr>
                     ) : (
-                        transfers.map((trf) => (
+                        typedTransfers.map((trf) => (
                             <tr key={trf.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4 font-medium text-slate-900">{trf.referenceNo}</td>
                                 <td className="px-6 py-4 text-slate-600">

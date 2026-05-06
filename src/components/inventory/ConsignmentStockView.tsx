@@ -1,61 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { movementService } from '@/services/movementService';
-import { productService } from '@/services/productService';
-import { salesService } from '@/services/salesService';
-import { procurementService } from '@/services/procurementService';
-import { InventoryItem, Customer, Vendor, ConsignmentEntry } from '@/types';
+import { InventoryItem, ConsignmentEntry } from '@/types';
 import { Briefcase, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createConsignmentEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const ConsignmentStockView: React.FC = () => {
-  const [consignments, setConsignments] = useState<ConsignmentEntry[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch();
+  const { consignments, items, actionLoading, error } = useAppSelector((state) => state.stockMovement);
 
   const [formData, setFormData] = useState({
       type: 'Outward' as 'Outward' | 'Inward',
       partyId: '',
+      partyName: '',
       itemId: '',
       quantity: 1
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-      const [cData, iData, custData, vendData] = await Promise.all([
-          movementService.getConsignmentEntries(),
-          productService.getAllItems(),
-          salesService.getCustomers(),
-          procurementService.getVendors()
-      ]);
-      setConsignments(cData);
-      setItems(iData);
-      setCustomers(custData);
-      setVendors(vendData);
-  };
+    dispatch(fetchStockMovementData());
+  }, [dispatch]);
 
   const handleSubmit = async () => {
-      if(!formData.partyId || !formData.itemId) return alert("Fill all fields");
-      setSubmitting(true);
+      if(!formData.partyName || !formData.itemId) return alert("Fill all fields");
       const item = items.find(i => i.id === formData.itemId);
-      const partyName = formData.type === 'Outward' 
-        ? customers.find(c => c.id === formData.partyId)?.name 
-        : vendors.find(v => v.id === formData.partyId)?.name;
 
       try {
-          await movementService.createConsignment({
+          await dispatch(createConsignmentEntry({
               ...formData,
               itemName: item?.name || 'Unknown',
-              partyName: partyName || 'Unknown'
-          });
+              partyName: formData.partyName
+          })).unwrap();
           alert("Consignment Transferred");
-          setFormData({...formData, itemId: '', quantity: 1, partyId: ''});
-          loadData();
-      } catch(e) { alert("Error"); } finally { setSubmitting(false); }
+          setFormData({...formData, itemId: '', quantity: 1, partyId: '', partyName: ''});
+      } catch(e) { alert("Error"); }
   };
+
+  const typedItems = items as InventoryItem[];
+  const typedConsignments = consignments as ConsignmentEntry[];
 
   return (
     <div className="space-y-6">
@@ -77,15 +58,14 @@ const ConsignmentStockView: React.FC = () => {
                    </select>
                </div>
                <div className="md:col-span-2">
-                   <label className="block text-sm font-medium text-slate-700 mb-1">Customer / Vendor</label>
-                   <select 
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Party Name</label>
+                   <input
+                     type="text"
                      className="w-full border border-slate-300 rounded-lg p-2 text-sm"
-                     value={formData.partyId}
-                     onChange={e => setFormData({...formData, partyId: e.target.value})}
-                   >
-                       <option value="">Select Party</option>
-                       {customers.map(c => <option key={c.id} value={c.id}>{c.name} (Customer)</option>)}
-                   </select>
+                     value={formData.partyName}
+                     onChange={e => setFormData({...formData, partyName: e.target.value, partyId: e.target.value})}
+                     placeholder={formData.type === 'Outward' ? 'Customer name' : 'Return party name'}
+                   />
                </div>
                <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
@@ -101,16 +81,18 @@ const ConsignmentStockView: React.FC = () => {
                 onChange={e => setFormData({...formData, itemId: e.target.value})}
               >
                   <option value="">Select Item</option>
-                  {items.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (Held Consignment: {i.consignmentStock || 0})</option>)}
+                  {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (Held Consignment: {i.consignmentStock || 0})</option>)}
               </select>
            </div>
 
            <div className="flex justify-end">
-               <button onClick={handleSubmit} disabled={submitting} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-2">
-                   {submitting ? <Loader2 className="animate-spin" size={16}/> : <Briefcase size={16}/>} Process Transfer
+               <button onClick={handleSubmit} disabled={actionLoading} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-2">
+                   {actionLoading ? <Loader2 className="animate-spin" size={16}/> : <Briefcase size={16}/>} Process Transfer
                </button>
            </div>
        </div>
+
+       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
            <div className="p-4 border-b bg-slate-50">
@@ -129,7 +111,7 @@ const ConsignmentStockView: React.FC = () => {
                    </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                   {consignments.map(c => (
+                   {typedConsignments.map(c => (
                        <tr key={c.id}>
                            <td className="p-3 font-medium">{c.reference}</td>
                            <td className="p-3 text-slate-500">{c.date}</td>

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { stockControlService } from '@/services/stockControlService';
-import { productService } from '@/services/productService';
-import { Batch, InventoryItem } from '@/types';
-import { Package, Calendar, Search, Plus, Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createBatchRecord, fetchStockControlData } from '@/store/slices/stockControlSlice';
+import { Package, Calendar, Plus, Loader2 } from 'lucide-react';
 
 const BatchTrackingView: React.FC = () => {
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { batches, items, loading, actionLoading, error } = useAppSelector((state) => state.stockControl);
   const [isAdding, setIsAdding] = useState(false);
   
   // Form State
@@ -21,30 +19,19 @@ const BatchTrackingView: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [bData, iData] = await Promise.all([
-        stockControlService.getBatches(),
-        productService.getAllItems()
-    ]);
-    setBatches(bData);
-    setItems(iData);
-    setLoading(false);
-  };
+    dispatch(fetchStockControlData());
+  }, [dispatch]);
 
   const handleCreate = async () => {
       if(!formData.itemId || !formData.batchNumber) return alert("Fill all fields");
       const item = items.find(i => i.id === formData.itemId);
-      await stockControlService.createBatch({
+      await dispatch(createBatchRecord({
           ...formData,
-          itemName: item?.name || 'Unknown'
-      });
+          itemName: item?.name || 'Unknown',
+          sku: item?.sku || '',
+      })).unwrap();
       setIsAdding(false);
       setFormData({ itemId: '', batchNumber: '', quantity: 0, mfgDate: '', expiryDate: '', costPrice: 0 });
-      loadData();
   };
 
   return (
@@ -68,13 +55,13 @@ const BatchTrackingView: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                         <div>
                             <label className="block text-xs font-medium text-slate-500 mb-1">Item</label>
-                            <select 
+                            <select
                                 className="w-full border rounded p-2 text-sm"
                                 value={formData.itemId}
                                 onChange={e => setFormData({...formData, itemId: e.target.value})}
                             >
                                 <option value="">Select Item</option>
-                                {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                                {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.sku})</option>)}
                             </select>
                         </div>
                         <div>
@@ -99,10 +86,14 @@ const BatchTrackingView: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex justify-end">
-                        <button onClick={handleCreate} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700">Save Batch</button>
+                        <button onClick={handleCreate} disabled={actionLoading} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 disabled:opacity-60">
+                            {actionLoading ? 'Saving...' : 'Save Batch'}
+                        </button>
                     </div>
                 </div>
             )}
+
+            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loading ? <div className="col-span-3 text-center py-8"><Loader2 className="animate-spin inline"/></div> : 

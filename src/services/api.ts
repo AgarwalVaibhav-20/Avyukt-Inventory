@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { authService } from './authService';
 
 const api = axios.create({
   baseURL: 'http://localhost:4000',
@@ -9,9 +10,16 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  const organisationId = authService.getOrganisationId();
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  if (organisationId) {
+    config.headers['x-organisation-id'] = organisationId;
+  }
+
   return config;
 });
 

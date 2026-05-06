@@ -1,48 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { stockControlService } from '@/services/stockControlService';
-import { productService } from '@/services/productService';
-import { StockReservation, InventoryItem } from '@/types';
+import React, { useEffect, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  createReservationRecord,
+  fetchStockControlData,
+  releaseReservationRecord,
+} from '@/store/slices/stockControlSlice';
 import { Lock, Unlock, Plus, Loader2 } from 'lucide-react';
 
 const StockReservationView: React.FC = () => {
-  const [reservations, setReservations] = useState<StockReservation[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { reservations, items, loading, actionLoading, error } = useAppSelector((state) => state.stockControl);
   const [isAdding, setIsAdding] = useState(false);
   const [form, setForm] = useState({ itemId: '', quantity: 1, reference: '', expiryDate: '' });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [rData, iData] = await Promise.all([
-        stockControlService.getReservations(),
-        productService.getAllItems()
-    ]);
-    setReservations(rData);
-    setItems(iData);
-    setLoading(false);
-  };
+    dispatch(fetchStockControlData());
+  }, [dispatch]);
 
   const handleCreate = async () => {
       if(!form.itemId || !form.reference) return alert("Fill required fields");
       const item = items.find(i => i.id === form.itemId);
-      await stockControlService.createReservation({
+      await dispatch(createReservationRecord({
           ...form,
           itemName: item?.name || 'Unknown',
           reservedDate: new Date().toISOString().split('T')[0],
-      });
+          sku: item?.sku || '',
+      })).unwrap();
       setIsAdding(false);
       setForm({ itemId: '', quantity: 1, reference: '', expiryDate: '' });
-      loadData();
   };
 
   const handleRelease = async (id: string) => {
       if(confirm("Release this stock reservation?")) {
-          await stockControlService.releaseReservation(id);
-          loadData();
+          await dispatch(releaseReservationRecord(id)).unwrap();
       }
   };
 
@@ -65,7 +55,7 @@ const StockReservationView: React.FC = () => {
                             <label className="block text-xs font-medium text-amber-900 mb-1">Item</label>
                             <select className="w-full border rounded p-2 text-sm" value={form.itemId} onChange={e => setForm({...form, itemId: e.target.value})}>
                                 <option value="">Select Item</option>
-                                {items.map(i => <option key={i.id} value={i.id}>{i.name} (Available: {i.stock})</option>)}
+                                {items.map(i => <option key={i.id} value={i.id}>{i.name} ({i.sku}) - Available: {i.stock}</option>)}
                             </select>
                         </div>
                         <div>
@@ -82,10 +72,14 @@ const StockReservationView: React.FC = () => {
                         <input type="text" className="w-full border rounded p-2 text-sm" placeholder="e.g. SO-2023-999" value={form.reference} onChange={e => setForm({...form, reference: e.target.value})}/>
                     </div>
                     <div className="flex justify-end">
-                        <button onClick={handleCreate} className="bg-amber-600 text-white px-6 py-2 rounded text-sm hover:bg-amber-700">Confirm Reservation</button>
+                        <button onClick={handleCreate} disabled={actionLoading} className="bg-amber-600 text-white px-6 py-2 rounded text-sm hover:bg-amber-700 disabled:opacity-60">
+                            {actionLoading ? 'Saving...' : 'Confirm Reservation'}
+                        </button>
                     </div>
                 </div>
             )}
+
+            {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 
             <div className="grid gap-4">
                 {loading ? <div className="text-center py-8"><Loader2 className="animate-spin inline"/></div> :

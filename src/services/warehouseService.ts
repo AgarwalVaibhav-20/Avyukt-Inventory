@@ -1,11 +1,27 @@
 import api from './api';
+import { authService } from './authService';
+import { mockDb } from './mockDb';
 import { Warehouse, StockTransfer, Zone, Rack, Bin, WarehouseCapacityStats } from '@/types';
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getOrganisationId = () => authService.getOrganisationId();
 
 export const warehouseService = {
   // --- Warehouse Master ---
   getAllWarehouses: async (): Promise<Warehouse[]> => {
     const response = await api.get('/getall/warehouse');
-    return response.data;
+    return (response.data.warehouses || []).map((warehouse: any) => ({
+      id: warehouse._id,
+      name: warehouse.name,
+      location:
+        typeof warehouse.location === 'object'
+          ? warehouse.location?.name || ''
+          : warehouse.location || '',
+      type: warehouse.type || 'General',
+      capacity: Number(warehouse.capacity || 0),
+      contactPerson: warehouse.contact || warehouse.phone || '',
+    }));
   },
 
   addWarehouse: async (data: Omit<Warehouse, 'id'>): Promise<Warehouse> => {
@@ -19,25 +35,72 @@ export const warehouseService = {
 
   // --- Transfers ---
   getAllTransfers: async (): Promise<StockTransfer[]> => {
-    await delay(300);
-    return mockDb.getTransfers().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const response = await api.get('/stock-transfers');
+    return (response.data.transfers || []).map((transfer: any) => ({
+      id: transfer._id,
+      sourceWarehouseId:
+        typeof transfer.fromWarehouse === 'object'
+          ? transfer.fromWarehouse?._id
+          : transfer.fromWarehouse,
+      destinationWarehouseId:
+        typeof transfer.toWarehouse === 'object'
+          ? transfer.toWarehouse?._id
+          : transfer.toWarehouse,
+      items: [
+        {
+          itemId:
+            typeof transfer.productId === 'object'
+              ? transfer.productId?._id
+              : transfer.productId,
+          itemName: transfer.productName || 'Unknown Item',
+          quantity: Number(transfer.quantity || 0),
+        },
+      ],
+      status:
+        transfer.status === 'delivered'
+          ? 'Completed'
+          : transfer.status === 'in-transit'
+            ? 'In Transit'
+            : 'Pending',
+      date: transfer.transportTime
+        ? new Date(transfer.transportTime).toISOString().split('T')[0]
+        : new Date(transfer.createdAt).toISOString().split('T')[0],
+      referenceNo: `TRF-${String(transfer._id).slice(-6).toUpperCase()}`,
+    }));
   },
 
   createTransfer: async (transfer: Omit<StockTransfer, 'id' | 'referenceNo' | 'date' | 'status'>): Promise<StockTransfer> => {
-    await delay(500);
-    const list = mockDb.getTransfers();
-    
-    // Auto-generate metadata
-    const newTransfer: StockTransfer = {
-      ...transfer,
-      id: Math.random().toString(36).substr(2, 9),
-      date: new Date().toISOString().split('T')[0],
-      status: 'In Transit',
-      referenceNo: `TRF-${new Date().getFullYear()}-${list.length + 1}`
-    };
+    const organisationId = getOrganisationId();
+    const firstItem = transfer.items[0];
 
-    mockDb.saveTransfers([newTransfer, ...list]);
-    return newTransfer;
+    const response = await api.post('/inventory/stock/transfer', {
+      organisationId,
+      productId: firstItem.itemId,
+      fromWarehouse: transfer.sourceWarehouseId,
+      toWarehouse: transfer.destinationWarehouseId,
+      quantity: firstItem.quantity,
+      transportType: 'Truck',
+      notes: '',
+    });
+
+    const created = response.data.transfer;
+    return {
+      id: created._id,
+      sourceWarehouseId: created.fromWarehouse,
+      destinationWarehouseId: created.toWarehouse,
+      items: [
+        {
+          itemId: created.productId,
+          itemName: created.productName || firstItem.itemName,
+          quantity: Number(created.quantity || firstItem.quantity),
+        },
+      ],
+      status: 'Completed',
+      date: created.transportTime
+        ? new Date(created.transportTime).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0],
+      referenceNo: `TRF-${String(created._id).slice(-6).toUpperCase()}`,
+    };
   },
 
   // --- Hierarchy: Zones ---

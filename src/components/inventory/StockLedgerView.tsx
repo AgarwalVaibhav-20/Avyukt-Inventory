@@ -1,27 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { stockControlService } from '@/services/stockControlService';
-import { StockLedgerEntry } from '@/types';
-import { History, Filter, Search, Loader2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchStockControlData } from '@/store/slices/stockControlSlice';
+import { History, Search, Loader2, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 
 const StockLedgerView: React.FC = () => {
-  const [entries, setEntries] = useState<StockLedgerEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { ledger, loading, error } = useAppSelector((state) => state.stockControl);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    dispatch(fetchStockControlData());
+  }, [dispatch]);
 
-  const loadData = async () => {
-    setLoading(true);
-    const data = await stockControlService.getLedger();
-    setEntries(data);
-    setLoading(false);
-  };
-
-  const filtered = entries.filter(e => 
-    e.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    e.reference.toLowerCase().includes(searchTerm.toLowerCase())
+  const filtered = useMemo(
+    () =>
+      ledger.filter(
+        (entry) =>
+          entry.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          entry.reference.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [ledger, searchTerm]
   );
 
   return (
@@ -58,6 +56,8 @@ const StockLedgerView: React.FC = () => {
                     <tbody className="divide-y divide-slate-100">
                         {loading ? (
                              <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline mr-2"/> Loading Ledger...</td></tr>
+                        ) : error ? (
+                             <tr><td colSpan={6} className="py-8 text-center text-red-600">{error}</td></tr>
                         ) : filtered.length === 0 ? (
                              <tr><td colSpan={6} className="py-8 text-center text-slate-500">No transactions found.</td></tr>
                         ) : (

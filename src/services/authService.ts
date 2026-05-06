@@ -39,6 +39,18 @@ export const authService = {
     return user ? JSON.parse(user) : null;
   },
 
+  getOrganisationId: () => {
+    const user = localStorage.getItem('user');
+    if (!user) return null;
+
+    try {
+      const parsedUser = JSON.parse(user);
+      return parsedUser?.organisationId || null;
+    } catch {
+      return null;
+    }
+  },
+
   getToken: () => {
     return localStorage.getItem('token');
   }

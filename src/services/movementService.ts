@@ -1,120 +1,221 @@
-import { mockDb } from './mockDb';
-import { InternalMovement, StockAdjustment, ScrapEntry, ConsignmentEntry, InventoryItem } from '@/types';
+import api from './api';
+import {
+  ConsignmentEntry,
+  InternalMovement,
+  ScrapEntry,
+  StockAdjustment,
+} from '@/types';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const normalizeScrapReason = (reason: string) => {
+  const value = reason.toLowerCase();
+  if (value.includes('expir')) return 'expired';
+  if (value.includes('loss')) return 'lost';
+  if (value.includes('obsolete')) return 'obsolete';
+  return 'damaged';
+};
+
+const mapInternalMovement = (movement: any): InternalMovement => {
+  const [fromWarehouseName = '', fromBin = ''] = String(movement.source || '').split(' - ');
+  const [toWarehouseName = '', toBin = ''] = String(movement.destination || '').split(' - ');
+
+  return {
+    id: movement._id,
+    reference: `IM-${String(movement._id).slice(-6).toUpperCase()}`,
+    date: movement.movementDate
+      ? new Date(movement.movementDate).toISOString().split('T')[0]
+      : '',
+    warehouseId: movement.referenceId || '',
+    itemId:
+      typeof movement.productId === 'object'
+        ? movement.productId?._id
+        : movement.productId,
+    itemName: movement.productId?.name || '',
+    fromBin,
+    toBin,
+    quantity: Number(movement.quantity || 0),
+    performedBy: fromWarehouseName || 'System',
+  };
+};
+
+const mapAdjustment = (adjustment: any): StockAdjustment => {
+  const delta = Number(adjustment.delta || 0);
+  const quantity = Math.abs(delta || adjustment.adjustedQty || 0);
+  const isDeduct = delta < 0;
+
+  return {
+    id: adjustment._id,
+    reference: `ADJ-${String(adjustment._id).slice(-6).toUpperCase()}`,
+    date: adjustment.createdAt
+      ? new Date(adjustment.createdAt).toISOString().split('T')[0]
+      : '',
+    itemId: adjustment.itemId,
+    itemName: adjustment.itemName || 'Inventory Item',
+    warehouseId: adjustment.warehouseId,
+    type:
+      adjustment.type ||
+      (isDeduct ? 'Damage' : 'Correction'),
+    quantity,
+    impact: isDeduct ? 'Deduct' : 'Add',
+    reason: adjustment.reason || adjustment.notes || '',
+    status: adjustment.status || 'Pending',
+  };
+};
+
+const mapScrap = (scrap: any): ScrapEntry => ({
+  id: scrap._id,
+  reference: `SCR-${String(scrap._id).slice(-6).toUpperCase()}`,
+  date: scrap.date || (scrap.createdAt ? new Date(scrap.createdAt).toISOString().split('T')[0] : ''),
+  itemId: typeof scrap.productId === 'object' ? scrap.productId?._id : scrap.productId,
+  itemName: scrap.productId?.name || scrap.itemName || 'Item',
+  quantity: Number(scrap.quantity || 0),
+  reason: scrap.remark || scrap.reason || '',
+  salvageValue: Number(scrap.salvageValue || 0),
+  status:
+    scrap.status === 'approved'
+      ? 'Approved'
+      : scrap.status === 'completed'
+        ? 'Disposed'
+        : 'Pending',
+});
+
+const mapConsignment = (entry: any): ConsignmentEntry => ({
+  id: entry._id,
+  reference: entry.reference,
+  date: entry.date,
+  partyId: entry.partyId || '',
+  partyName: entry.partyName,
+  itemId: typeof entry.itemId === 'object' ? entry.itemId?._id : entry.itemId,
+  itemName: entry.itemName,
+  quantity: Number(entry.quantity || 0),
+  type: entry.type,
+  status: entry.status || 'Active',
+});
 
 export const movementService = {
-  // --- Internal Movement ---
-  getInternalMovements: async () => { await delay(200); return mockDb.getInternalMovements(); },
-
-  createInternalMovement: async (data: Omit<InternalMovement, 'id' | 'reference' | 'date'>) => {
-    await delay(300);
-    const list = mockDb.getInternalMovements();
-    const newRec: InternalMovement = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        date: new Date().toISOString().split('T')[0],
-        reference: `IM-${new Date().getFullYear()}-${String(list.length + 1).padStart(4, '0')}`
-    };
-    mockDb.saveInternalMovements([newRec, ...list]);
-    return newRec;
-  },
-
-  // --- Adjustments (Correction / Damage / Loss) ---
-  getAdjustments: async () => { await delay(200); return mockDb.getAdjustments(); },
-
-  createAdjustment: async (data: Omit<StockAdjustment, 'id' | 'reference' | 'date' | 'impact'>) => {
-    await delay(400);
-    const list = mockDb.getAdjustments();
-    const isNegative = ['Damage', 'Loss', 'Theft'].includes(data.type);
-    const impact = isNegative ? 'Deduct' : 'Add'; // Correction can be add, assumed add for simplicity unless specialized
-    // NOTE: In a real system "Correction" usually asks if it's + or - 
-
-    const newRec: StockAdjustment = {
-        ...data,
-        impact: impact, 
-        id: Math.random().toString(36).substr(2, 9),
-        date: new Date().toISOString().split('T')[0],
-        reference: `ADJ-${new Date().getFullYear()}-${String(list.length + 1).padStart(4, '0')}`
-    };
-    mockDb.saveAdjustments([newRec, ...list]);
-
-    // Update Stock
-    const items = mockDb.getItems();
-    const itemIdx = items.findIndex(i => i.id === data.itemId);
-    if(itemIdx !== -1) {
-        if(impact === 'Deduct') {
-            items[itemIdx].stock -= data.quantity;
-            if(items[itemIdx].stock < 0) items[itemIdx].stock = 0;
-        } else {
-            items[itemIdx].stock += data.quantity;
-        }
-        mockDb.saveItems(items);
+  getInternalMovements: async (): Promise<InternalMovement[]> => {
+    try {
+      // Internal movements are created via /api/internal-movement/bin-transfer
+      // Fetching them requires a dedicated endpoint or querying from StockMovement model
+      // For now, return empty and let the UI show after creation
+      return [];
+    } catch (err) {
+      console.error('Error fetching internal movements:', err);
+      return [];
     }
-
-    return newRec;
   },
 
-  // --- Scrap ---
-  getScrapEntries: async () => { await delay(200); return mockDb.getScrap(); },
-
-  createScrapEntry: async (data: Omit<ScrapEntry, 'id' | 'reference' | 'date' | 'status'>) => {
-    await delay(300);
-    const list = mockDb.getScrap();
-    const newRec: ScrapEntry = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        date: new Date().toISOString().split('T')[0],
-        status: 'Approved', // Auto approve for demo
-        reference: `SCR-${new Date().getFullYear()}-${String(list.length + 1).padStart(4, '0')}`
-    };
-    mockDb.saveScrap([newRec, ...list]);
-
-    // Deduct Stock
-    const items = mockDb.getItems();
-    const itemIdx = items.findIndex(i => i.id === data.itemId);
-    if(itemIdx !== -1) {
-        items[itemIdx].stock -= data.quantity;
-        if(items[itemIdx].stock < 0) items[itemIdx].stock = 0;
-        mockDb.saveItems(items);
-    }
-    return newRec;
-  },
-
-  // --- Consignment ---
-  getConsignmentEntries: async () => { await delay(200); return mockDb.getConsignment(); },
-
-  createConsignment: async (data: Omit<ConsignmentEntry, 'id' | 'reference' | 'date' | 'status'>) => {
-      await delay(400);
-      const list = mockDb.getConsignment();
-      const newRec: ConsignmentEntry = {
-          ...data,
-          id: Math.random().toString(36).substr(2, 9),
-          date: new Date().toISOString().split('T')[0],
-          status: 'Active',
-          reference: `CS-${data.type === 'Outward' ? 'OUT' : 'IN'}-${String(list.length + 1).padStart(3, '0')}`
+  createInternalMovement: async (
+    data: Omit<InternalMovement, 'id' | 'reference' | 'date'>
+  ) => {
+    try {
+      const payload = {
+        warehouseId: data.warehouseId,
+        itemType: 'product',
+        itemId: data.itemId,
+        fromBin: data.fromBin,
+        toBin: data.toBin,
+        quantity: data.quantity,
+        notes: `Moved by ${data.performedBy}`,
       };
-      mockDb.saveConsignment([newRec, ...list]);
 
-      // Move Stock Logic
-      const items = mockDb.getItems();
-      const itemIdx = items.findIndex(i => i.id === data.itemId);
-      if(itemIdx !== -1) {
-          const item = items[itemIdx];
-          if(data.type === 'Outward') {
-              // Move from Main Stock -> Consignment Stock
-              item.stock -= data.quantity;
-              item.consignmentStock = (item.consignmentStock || 0) + data.quantity;
-          } else {
-               // Inward (Return) from Consignment -> Main Stock
-               item.consignmentStock = (item.consignmentStock || 0) - data.quantity;
-               item.stock += data.quantity;
-          }
-          if(item.stock < 0) item.stock = 0;
-          if(item.consignmentStock < 0) item.consignmentStock = 0;
-          
-          mockDb.saveItems(items);
-      }
-      return newRec;
-  }
+      const response = await api.post('/api/internal-movement/bin-transfer', payload);
+      return mapInternalMovement(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error creating internal movement:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create internal movement');
+    }
+  },
+
+  getAdjustments: async (): Promise<StockAdjustment[]> => {
+    try {
+      const response = await api.get('/api/stock-adjustments', {
+        params: { page: 1, limit: 200 },
+      });
+      return (response.data.data || []).map(mapAdjustment);
+    } catch (err) {
+      console.error('Error fetching adjustments:', err);
+      return [];
+    }
+  },
+
+  createAdjustment: async (
+    data: Omit<StockAdjustment, 'id' | 'reference' | 'date' | 'impact'>
+  ) => {
+    try {
+      const isDeduct = ['Damage', 'Loss', 'Theft'].includes(data.type);
+      const quantity = Number(data.quantity || 0);
+      const payload = {
+        itemType: 'product',
+        itemId: data.itemId,
+        itemName: data.itemName,
+        warehouseId: data.warehouseId,
+        currentQty: 0,
+        adjustedQty: quantity,
+        delta: isDeduct ? -quantity : quantity,
+        reason: data.reason,
+        notes: data.type,
+        type: data.type,
+        status: 'Pending',
+      };
+
+      const response = await api.post('/api/stock-adjustments', payload);
+      return mapAdjustment(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error creating adjustment:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create stock adjustment');
+    }
+  },
+
+  getScrapEntries: async (): Promise<ScrapEntry[]> => {
+    try {
+      const response = await api.get('/scrap/get/all');
+      return (response.data.data || []).map(mapScrap);
+    } catch (err) {
+      console.error('Error fetching scrap entries:', err);
+      return [];
+    }
+  },
+
+  createScrapEntry: async (
+    data: Omit<ScrapEntry, 'id' | 'reference' | 'date' | 'status'>
+  ) => {
+    try {
+      const payload = {
+        productId: data.itemId,
+        quantity: data.quantity,
+        reason: normalizeScrapReason(data.reason),
+        scrapLocation: 'Main Scrap Yard',
+        salvageValue: data.salvageValue,
+        remark: data.reason,
+      };
+
+      const response = await api.post('/scrap/create', payload);
+      return mapScrap(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error creating scrap entry:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create scrap entry');
+    }
+  },
+
+  getConsignmentEntries: async (): Promise<ConsignmentEntry[]> => {
+    try {
+      const response = await api.get('/api/consignments');
+      return (response.data.data || []).map(mapConsignment);
+    } catch (err) {
+      console.error('Error fetching consignment entries:', err);
+      return [];
+    }
+  },
+
+  createConsignment: async (
+    data: Omit<ConsignmentEntry, 'id' | 'reference' | 'date' | 'status'>
+  ) => {
+    try {
+      const response = await api.post('/api/consignments', data);
+      return mapConsignment(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error creating consignment:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create consignment entry');
+    }
+  },
 };

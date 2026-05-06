@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { movementService } from '@/services/movementService';
 import { StockAdjustment } from '@/types';
 import { History, Search, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const AdjustmentHistoryView: React.FC = () => {
-  const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useAppDispatch();
+  const { adjustments, loading } = useAppSelector((state) => state.stockMovement);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    dispatch(fetchStockMovementData());
+  }, [dispatch]);
 
-  const loadData = async () => {
-    setLoading(true);
-    const data = await movementService.getAdjustments();
-    // Sort by date descending
-    setAdjustments(data.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    setLoading(false);
-  };
+  const typedAdjustments = [...(adjustments as StockAdjustment[])].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 
-  const filtered = adjustments.filter(a => 
+  const filtered = typedAdjustments.filter(a => 
       a.itemName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       a.reference.toLowerCase().includes(searchTerm.toLowerCase())
   );

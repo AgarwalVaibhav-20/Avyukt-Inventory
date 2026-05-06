@@ -1,6 +1,7 @@
 import { mockDb } from './mockDb';
 import { Customer, SalesOrder, PickList, PackList, DeliveryChallan, DispatchNote, SalesReturn } from '@/types';
 import api from './api';
+import { authService } from './authService';
 
 const unwrapList = <T,>(response: any): T[] => response?.data?.data ?? response?.data ?? [];
 
@@ -199,6 +200,125 @@ export const salesService = {
   },
 
   getDispatchNotes: async () => { await delay(200); return mockDb.getDispatchNotes(); },
+
+  // --- Outward Workflow Methods ---
+  getWorkflowSalesOrders: async () => {
+    try {
+      const response = await api.get('/api/sales-orders');
+      return unwrapList<SalesOrder>(response);
+    } catch (err) {
+      console.error('Error fetching workflow sales orders:', err);
+      return [];
+    }
+  },
+
+  getWorkflowPickLists: async () => {
+    try {
+      const response = await api.get('/api/pick-lists');
+      return unwrapList(response);
+    } catch (err) {
+      console.error('Error fetching pick lists:', err);
+      return [];
+    }
+  },
+
+  getWorkflowPackingOrders: async () => {
+    try {
+      const response = await api.get('/api/packing-lists');
+      return unwrapList(response);
+    } catch (err) {
+      console.error('Error fetching packing orders:', err);
+      return [];
+    }
+  },
+
+  getWorkflowChallans: async () => {
+    try {
+      const response = await api.get('/api/delivery-challans');
+      return unwrapList(response);
+    } catch (err) {
+      console.error('Error fetching challans:', err);
+      return [];
+    }
+  },
+
+  getWorkflowDispatches: async () => {
+    try {
+      const response = await api.get('/api/dispatches');
+      return unwrapList(response);
+    } catch (err) {
+      console.error('Error fetching dispatches:', err);
+      return [];
+    }
+  },
+
+  createWorkflowPickList: async (salesOrder: SalesOrder) => {
+    try {
+      const response = await api.post('/api/pick-lists', {
+        salesOrderId: salesOrder.id,
+        soNumber: salesOrder.soNumber,
+        items: salesOrder.items || [],
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error creating pick list:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create pick list');
+    }
+  },
+
+  completeWorkflowPickList: async (pickList: any) => {
+    try {
+      const response = await api.put(`/api/pick-lists/${pickList.id}`, {
+        status: 'Completed',
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error completing pick list:', err);
+      throw new Error(err.response?.data?.message || 'Failed to complete pick list');
+    }
+  },
+
+  createWorkflowPackingOrder: async (pickList: any, salesOrder: SalesOrder) => {
+    try {
+      const response = await api.post('/api/packing-lists', {
+        pickListId: pickList.id,
+        salesOrderId: salesOrder.id,
+        soNumber: salesOrder.soNumber,
+        items: pickList.items || [],
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error creating packing order:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create packing order');
+    }
+  },
+
+  createWorkflowChallan: async (packingOrder: any) => {
+    try {
+      const response = await api.post('/api/delivery-challans', {
+        packingOrderId: packingOrder.id,
+        items: packingOrder.items || [],
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error creating challan:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create challan');
+    }
+  },
+
+  createWorkflowDispatch: async (challan: any, packingOrder?: any) => {
+    try {
+      const response = await api.post('/api/dispatches', {
+        deliveryChallanId: challan.id,
+        transporter: challan.transporter || '',
+        vehicleNo: challan.vehicleNo || '',
+      });
+      return response.data;
+    } catch (err: any) {
+      console.error('Error creating dispatch:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create dispatch');
+    }
+  },
 
   // --- Returns ---
     getSalesReturns: async () => {

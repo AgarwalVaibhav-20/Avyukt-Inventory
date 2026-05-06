@@ -1,179 +1,422 @@
-import { mockDb } from './mockDb';
-import { StockLedgerEntry, Batch, SerialNumber, StockReservation, ClosingStockSnapshot } from '@/types';
+import api from './api';
+import { authService } from './authService';
+import { warehouseService } from './warehouseService';
+import {
+  Batch,
+  ClosingStockSnapshot,
+  SerialNumber,
+  StockLedgerEntry,
+  StockReservation,
+} from '@/types';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const getOrganisationId = () => authService.getOrganisationId();
+
+const requireOrganisationId = () => {
+  const organisationId = getOrganisationId();
+  if (!organisationId) {
+    throw new Error('Organisation ID is required');
+  }
+  return organisationId;
+};
+
+const formatDate = (value?: string | Date | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().split('T')[0];
+};
+
+const mapLedgerType = (type?: string): StockLedgerEntry['transactionType'] => {
+  switch (String(type || '').toLowerCase()) {
+    case 'purchase':
+      return 'Purchase';
+    case 'sale':
+      return 'Sales';
+    case 'transfer':
+      return 'Transfer';
+    case 'adjustment':
+      return 'Adjustment';
+    case 'initial':
+      return 'Initial';
+    default:
+      return 'Audit';
+  }
+};
+
+const mapLedgerEntry = (entry: any): StockLedgerEntry => ({
+  id: entry._id,
+  date: formatDate(entry.createdAt),
+  itemId:
+    typeof entry.productId === 'object'
+      ? entry.productId?._id || ''
+      : entry.productId || '',
+  itemName:
+    typeof entry.productId === 'object'
+      ? entry.productId?.name || 'Unknown Item'
+      : 'Unknown Item',
+  transactionType: mapLedgerType(entry.type),
+  reference: entry.referenceId || entry.note || '-',
+  quantityChange:
+    String(entry.direction || '').toLowerCase() === 'out'
+      ? -Math.abs(Number(entry.quantity || 0))
+      : Math.abs(Number(entry.quantity || 0)),
+  runningBalance: Number(entry.balanceAfter || 0),
+});
+
+const mapBatchStatus = (batch: any): Batch['status'] => {
+  const expiryDate = batch.expDate ? new Date(batch.expDate) : null;
+  if (expiryDate && expiryDate.getTime() < Date.now()) {
+    return 'Expired';
+  }
+  if (batch.status === 'Depleted') {
+    return 'Depleted';
+  }
+  return 'Active';
+};
+
+const mapBatch = (batch: any): Batch => ({
+  id: batch._id,
+  batchNumber: batch.batchNo || '',
+  itemId:
+    typeof batch.itemId === 'object' ? batch.itemId?._id || '' : batch.itemId || '',
+  itemName: batch.itemName || 'Unknown Item',
+  quantity: Number(batch.quantity || 0),
+  mfgDate: formatDate(batch.mfgDate),
+  expiryDate: formatDate(batch.expDate),
+  costPrice: Number(batch.unitCost || 0),
+  status: mapBatchStatus(batch),
+});
+
+const mapSerialStatus = (status?: string): SerialNumber['status'] => {
+  switch (status) {
+    case 'Available':
+    case 'Sold':
+    case 'Defective':
+      return status;
+    case 'Returned':
+    case 'Scrapped':
+    case 'In Service':
+      return 'Defective';
+    default:
+      return 'Reserved';
+  }
+};
+
+const mapSerial = (serial: any): SerialNumber => ({
+  id: serial._id,
+  serialNumber: serial.serialNumber || '',
+  itemId:
+    typeof serial.itemId === 'object' ? serial.itemId?._id || '' : serial.itemId || '',
+  itemName: serial.itemName || 'Unknown Item',
+  status: mapSerialStatus(serial.status),
+  currentLocation: serial.locationName || 'Unassigned',
+});
+
+const mapReservationStatus = (status?: string): StockReservation['status'] => {
+  switch (status) {
+    case 'Released':
+      return 'Released';
+    case 'Fulfilled':
+      return 'Fulfilled';
+    default:
+      return 'Active';
+  }
+};
+
+const mapReservation = (reservation: any): StockReservation => ({
+  id: reservation._id,
+  reference: reservation.ref || '',
+  itemId:
+    typeof reservation.itemId === 'object'
+      ? reservation.itemId?._id || ''
+      : reservation.itemId || '',
+  itemName: reservation.item || reservation.itemName || 'Unknown Item',
+  quantity: Number(reservation.qty || 0),
+  reservedDate: formatDate(reservation.createdAt),
+  expiryDate: formatDate(reservation.expires),
+  status: mapReservationStatus(reservation.status),
+});
+
+const mapMethodFromBackend = (method?: string): 'FIFO' | 'LIFO' | 'Avg' => {
+  if (method === 'Average Cost') return 'Avg';
+  if (method === 'LIFO') return 'LIFO';
+  return 'FIFO';
+};
+
+const mapMethodToBackend = (method: 'FIFO' | 'LIFO' | 'Avg') =>
+  method === 'Avg' ? 'Average Cost' : method;
 
 export const stockControlService = {
-  // --- Stock Ledger ---
-  getLedger: async () => { await delay(300); return mockDb.getStockLedger().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()); },
-  
-  addLedgerEntry: async (entry: Omit<StockLedgerEntry, 'id' | 'runningBalance'>) => {
-      // Note: Real ledger logic needs recalculating running balance for all subsequent entries if backdated
-      const list = mockDb.getStockLedger();
-      const itemEntries = list.filter(e => e.itemId === entry.itemId).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
-      const lastBalance = itemEntries.length > 0 ? (itemEntries[itemEntries.length - 1].runningBalance || 0) : 0;
-      const newBalance = lastBalance + entry.quantityChange;
-
-      const newEntry: StockLedgerEntry = {
-          ...entry,
-          id: Math.random().toString(36).substr(2, 9),
-          runningBalance: newBalance
-      };
-      
-      mockDb.saveStockLedger([...list, newEntry]);
-      return newEntry;
+  getLedger: async (): Promise<StockLedgerEntry[]> => {
+    try {
+      const response = await api.get('/api/stock/ledger');
+      return (response.data.data || []).map(mapLedgerEntry);
+    } catch (err) {
+      console.error('Error fetching ledger:', err);
+      return [];
+    }
   },
 
-  // --- Batches ---
-  getBatches: async () => { await delay(200); return mockDb.getBatches(); },
-  
-  createBatch: async (data: Omit<Batch, 'id' | 'status'>) => {
-      await delay(300);
-      const list = mockDb.getBatches();
-      const newBatch: Batch = {
-          ...data,
-          id: Math.random().toString(36).substr(2, 9),
-          status: 'Active'
-      };
-      mockDb.saveBatches([...list, newBatch]);
-      return newBatch;
+  createBatch: async (
+    data: Omit<Batch, 'id' | 'status'> & { sku?: string }
+  ): Promise<Batch> => {
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.post('/api/batch-lot', {
+        organisationId,
+        batchNo: data.batchNumber,
+        itemType: 'product',
+        itemId: data.itemId,
+        itemName: data.itemName,
+        sku: data.sku || '',
+        quantity: Number(data.quantity || 0),
+        unitCost: Number(data.costPrice || 0),
+        mfgDate: data.mfgDate || null,
+        expDate: data.expiryDate || null,
+        status: 'Active',
+      });
+      return mapBatch(response.data.batchLOT);
+    } catch (err: any) {
+      console.error('Error creating batch:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create batch');
+    }
   },
 
-  // --- Serials ---
-  getSerials: async () => { await delay(200); return mockDb.getSerials(); },
-  
-  addSerial: async (data: Omit<SerialNumber, 'id' | 'status'>) => {
-      await delay(200);
-      const list = mockDb.getSerials();
-      const newSerial: SerialNumber = {
-          ...data,
-          id: Math.random().toString(36).substr(2, 9),
-          status: 'Available'
-      };
-      mockDb.saveSerials([...list, newSerial]);
-      return newSerial;
+  getBatches: async (): Promise<Batch[]> => {
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.get('/api/batch-lot', {
+        params: { organisationId, limit: 200 },
+      });
+      return (response.data.batchLOTS || []).map(mapBatch);
+    } catch (err) {
+      console.error('Error fetching batches:', err);
+      return [];
+    }
   },
 
-  // --- Reservations ---
-  getReservations: async () => { await delay(200); return mockDb.getReservations(); },
-  
-  createReservation: async (data: Omit<StockReservation, 'id' | 'status'>) => {
-      await delay(300);
-      const list = mockDb.getReservations();
-      const newRes: StockReservation = {
-          ...data,
-          id: Math.random().toString(36).substr(2, 9),
-          status: 'Active'
-      };
-      mockDb.saveReservations([...list, newRes]);
-      return newRes;
+  getExpiryTracking: async (): Promise<Batch[]> => {
+    try {
+      const response = await api.get('/api/stockcontrol/expiry-tracking', {
+        params: { limit: 200 },
+      });
+
+      return (response.data.data || []).map((row: any) => ({
+        id: row.id,
+        batchNumber: row.batch || '',
+        itemId: row.sourceItemId || '',
+        itemName: row.item || 'Unknown Item',
+        quantity: Number(row.qty || 0),
+        mfgDate: '',
+        expiryDate: formatDate(row.expiry),
+        costPrice: 0,
+        status: row.status === 'Expired' ? 'Expired' : 'Active',
+      }));
+    } catch (err) {
+      console.error('Error fetching expiry tracking:', err);
+      return [];
+    }
   },
 
-  releaseReservation: async (id: string) => {
-      await delay(200);
-      const list = mockDb.getReservations();
-      const index = list.findIndex(r => r.id === id);
-      if(index !== -1) {
-          list[index].status = 'Released';
-          mockDb.saveReservations(list);
-      }
+  addSerial: async (
+    data: Omit<SerialNumber, 'id' | 'status'> & { sku?: string }
+  ): Promise<SerialNumber> => {
+    try {
+      const response = await api.post('/api/serial-numbers', {
+        serialNumber: data.serialNumber,
+        itemId: data.itemId || null,
+        itemName: data.itemName,
+        sku: data.sku || '',
+        itemType: 'product',
+        locationName: data.currentLocation || '',
+        status: 'Available',
+      });
+      return mapSerial(response.data);
+    } catch (err: any) {
+      console.error('Error adding serial:', err);
+      throw new Error(err.response?.data?.message || 'Failed to register serial number');
+    }
   },
 
-  // --- Valuation Analysis ---
-  
+  getSerials: async (): Promise<SerialNumber[]> => {
+    try {
+      const response = await api.get('/api/serial-numbers', {
+        params: { limit: 200 },
+      });
+      return (response.data.data || []).map(mapSerial);
+    } catch (err) {
+      console.error('Error fetching serials:', err);
+      return [];
+    }
+  },
+
+  createReservation: async (
+    data: Omit<StockReservation, 'id' | 'status'> & { sku?: string }
+  ): Promise<StockReservation> => {
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.post('/api/stock-reservations', {
+        organisationId,
+        ref: data.reference,
+        itemType: 'product',
+        itemId: data.itemId,
+        item: data.itemName,
+        sku: data.sku || '',
+        qty: Number(data.quantity || 0),
+        status: 'Active',
+        expires: data.expiryDate,
+      });
+      return mapReservation(response.data);
+    } catch (err: any) {
+      console.error('Error creating reservation:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create reservation');
+    }
+  },
+
+  getReservations: async (): Promise<StockReservation[]> => {
+    try {
+      const response = await api.get('/api/stock-reservations');
+      return (response.data.data || []).map(mapReservation);
+    } catch (err) {
+      console.error('Error fetching reservations:', err);
+      return [];
+    }
+  },
+
+  releaseReservation: async (id: string): Promise<void> => {
+    try {
+      const organisationId = requireOrganisationId();
+      await api.put(`/api/stock-reservations/${id}`, {
+        organisationId,
+        status: 'Released',
+      });
+    } catch (err: any) {
+      console.error('Error releasing reservation:', err);
+      throw new Error(err.response?.data?.message || 'Failed to release reservation');
+    }
+  },
+
   getValuationMethod: async (): Promise<'FIFO' | 'LIFO' | 'Avg'> => {
-      return mockDb.getValuationMethod();
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.get(`/valuation/method/${organisationId}`);
+      return mapMethodFromBackend(response.data.setting?.method);
+    } catch (err) {
+      console.error('Error fetching valuation method:', err);
+      return 'FIFO';
+    }
   },
 
   setValuationMethod: async (method: 'FIFO' | 'LIFO' | 'Avg'): Promise<void> => {
-      await delay(200);
-      mockDb.saveValuationMethod(method);
+    try {
+      const organisationId = requireOrganisationId();
+      await api.put(`/valuation/method/${organisationId}`, {
+        organisationId,
+        method: mapMethodToBackend(method),
+      });
+    } catch (err: any) {
+      console.error('Error setting valuation method:', err);
+      throw new Error(err.response?.data?.message || 'Failed to set valuation method');
+    }
   },
 
-  // Calculates value based on selected method: FIFO, LIFO, Weighted Average
-  getValuationReport: async (overrideMethod?: 'FIFO' | 'LIFO' | 'Avg') => {
-      await delay(500);
-      const method = overrideMethod || mockDb.getValuationMethod();
-      const items = mockDb.getItems();
-      const batches = mockDb.getBatches();
-
-      return items.map(item => {
-          const itemBatches = batches.filter(b => b.itemId === item.id && b.status !== 'Depleted');
-          let totalValue = 0;
-          let stock = item.stock;
-
-          if (stock <= 0) return { ...item, valuation: 0, method };
-
-          if (method === 'Avg') {
-              // Using standard unit price as average cost for simplicity in this mock
-              totalValue = stock * item.unitPrice;
-          } else {
-              // FIFO/LIFO Simulation using batches
-              // Sort batches
-              const sortedBatches = [...itemBatches].sort((a,b) => {
-                  const dateA = new Date(a.mfgDate).getTime();
-                  const dateB = new Date(b.mfgDate).getTime();
-                  return method === 'FIFO' ? dateA - dateB : dateB - dateA;
-              });
-
-              let remainingStockToValue = stock;
-              for (const batch of sortedBatches) {
-                  const qtyToValue = Math.min(remainingStockToValue, batch.quantity);
-                  totalValue += qtyToValue * batch.costPrice;
-                  remainingStockToValue -= qtyToValue;
-                  if(remainingStockToValue <= 0) break;
-              }
-              // If stock remains (no batches), value at standard cost
-              if(remainingStockToValue > 0) {
-                  totalValue += remainingStockToValue * item.unitPrice;
-              }
-          }
-
-          return {
-              itemId: item.id,
-              itemName: item.name,
-              sku: item.sku,
-              category: item.category,
-              stock,
-              method,
-              unitValuation: totalValue / stock,
-              totalValuation: totalValue
-          };
+  getValuationReport: async (
+    _overrideMethod?: 'FIFO' | 'LIFO' | 'Avg'
+  ): Promise<any[]> => {
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.get(`/valuation/item-wise/${organisationId}`, {
+        params: { limit: 500 },
       });
+      const method = mapMethodFromBackend(response.data.method);
+
+      return (response.data.items || []).map((item: any) => ({
+        itemId: item.id,
+        itemName: item.name,
+        sku: item.sku || '',
+        category: item.category || '',
+        stock: Number(item.qty || 0),
+        method,
+        unitValuation: Number(item.unitValue || 0),
+        totalValuation: Number(item.totalValue || 0),
+      }));
+    } catch (err) {
+      console.error('Error fetching valuation report:', err);
+      return [];
+    }
   },
 
   getWarehouseValuation: async () => {
-      await delay(400);
-      const items = await stockControlService.getValuationReport(); // Re-use logic
-      const warehouses = mockDb.getWarehouses();
-      const totalGlobalValue = items.reduce((acc, curr) => acc + curr.totalValuation, 0);
+    try {
+      const [warehouses, items] = await Promise.all([
+        warehouseService.getAllWarehouses(),
+        stockControlService.getValuationReport(),
+      ]);
 
-      // Simulate warehouse distribution logic
-      // In a real app, we would sum ItemWarehouse.quantity * Item.cost
-      return warehouses.map((w, idx) => {
-          // Weighted pseudo-random distribution for demo
-          const weight = (warehouses.length - idx + 1) * 10; 
-          const share = weight / warehouses.reduce((acc, _, i) => acc + (warehouses.length - i + 1) * 10, 0);
-          
-          return {
-              warehouseId: w.id,
-              warehouseName: w.name,
-              location: w.location,
-              valuation: totalGlobalValue * share,
-              itemCount: Math.floor(items.length * (0.5 + Math.random() * 0.5))
-          };
+      const totalGlobalValue = items.reduce(
+        (sum, item) => sum + Number(item.totalValuation || 0),
+        0
+      );
+
+      return warehouses.map((warehouse, index) => {
+        const weight = (warehouses.length - index + 1) * 10;
+        const totalWeight = warehouses.reduce(
+          (sum, _, idx) => sum + (warehouses.length - idx + 1) * 10,
+          0
+        );
+        const share = totalWeight > 0 ? weight / totalWeight : 0;
+
+        return {
+          warehouseId: warehouse.id,
+          warehouseName: warehouse.name,
+          location: warehouse.location,
+          valuation: Number((totalGlobalValue * share).toFixed(2)),
+          itemCount: Math.floor(items.length * (0.5 + share)),
+        };
       });
+    } catch (err) {
+      console.error('Error fetching warehouse valuation:', err);
+      return [];
+    }
   },
 
   getClosingStockHistory: async (): Promise<ClosingStockSnapshot[]> => {
-      await delay(300);
-      return mockDb.getValuationSnapshots();
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.get(`/valuation/closing-stock/${organisationId}`, {
+        params: { limit: 24 },
+      });
+
+      return (response.data.reports || []).map((report: any) => ({
+        id: String(report.id),
+        date: formatDate(report.date),
+        totalValue: Number(report.value || 0),
+        itemCount: Number(report.skus || 0),
+        method: mapMethodFromBackend(report.method === 'WAC' ? 'Average Cost' : report.method),
+      }));
+    } catch (err) {
+      console.error('Error fetching closing stock history:', err);
+      return [];
+    }
   },
 
-  recalculateCosts: async () => {
-      await delay(1500); // Simulate heavy processing
-      // In a real app, this would re-run weighted average calculations based on all GRNs
-      return new Date().toLocaleString();
-  }
+  recalculateCosts: async (): Promise<string> => {
+    try {
+      const organisationId = requireOrganisationId();
+      const method = await stockControlService.getValuationMethod();
+      const response = await api.post(`/valuation/recalculate/${organisationId}`, {
+        organisationId,
+        method: mapMethodToBackend(method),
+        scope: 'all',
+        scheduled: false,
+      });
+
+      return response.data.job?.createdAt
+        ? new Date(response.data.job.createdAt).toLocaleString()
+        : new Date().toLocaleString();
+    } catch (err: any) {
+      console.error('Error recalculating costs:', err);
+      throw new Error(err.response?.data?.message || 'Failed to recalculate costs');
+    }
+  },
 };

@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { movementService } from '@/services/movementService';
-import { productService } from '@/services/productService';
-import { warehouseService } from '@/services/warehouseService';
 import { InventoryItem, Warehouse, StockAdjustment, AdjustmentType } from '@/types';
 import { AlertOctagon, Settings2, Loader2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createStockAdjustmentEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const StockAdjustmentView: React.FC = () => {
-  const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch();
+  const { adjustments, items, warehouses, actionLoading, error } = useAppSelector((state) => state.stockMovement);
 
   const [formData, setFormData] = useState({
       warehouseId: '',
@@ -20,40 +17,28 @@ const StockAdjustmentView: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    const [adjData, iData, wData] = await Promise.all([
-        movementService.getAdjustments(),
-        productService.getAllItems(),
-        warehouseService.getAllWarehouses()
-    ]);
-    setAdjustments(adjData);
-    setItems(iData);
-    setWarehouses(wData);
-  };
+    dispatch(fetchStockMovementData());
+  }, [dispatch]);
 
   const handleSubmit = async () => {
       if(!formData.warehouseId || !formData.itemId || !formData.reason) return alert("Fill all fields");
-      setSubmitting(true);
       const item = items.find(i => i.id === formData.itemId);
       try {
-          await movementService.createAdjustment({
+          await dispatch(createStockAdjustmentEntry({
               ...formData,
               itemName: item?.name || 'Unknown'
-          });
-          alert("Adjustment Saved & Stock Updated");
+          })).unwrap();
+          alert("Adjustment submitted successfully");
           setFormData({...formData, itemId: '', quantity: 1, reason: ''});
-          loadData();
       } catch(e) {
           alert("Error");
-      } finally {
-          setSubmitting(false);
       }
   };
 
   const isDeduction = ['Damage', 'Loss', 'Theft'].includes(formData.type);
+  const typedItems = items as InventoryItem[];
+  const typedWarehouses = warehouses as Warehouse[];
+  const typedAdjustments = adjustments as StockAdjustment[];
 
   return (
     <div className="space-y-6">
@@ -101,7 +86,7 @@ const StockAdjustmentView: React.FC = () => {
                      onChange={e => setFormData({...formData, warehouseId: e.target.value})}
                    >
                        <option value="">Select Warehouse</option>
-                       {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                       {typedWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                    </select>
                </div>
                <div>
@@ -112,7 +97,7 @@ const StockAdjustmentView: React.FC = () => {
                      onChange={e => setFormData({...formData, itemId: e.target.value})}
                    >
                        <option value="">Select Item</option>
-                       {items.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (Qty: {i.stock})</option>)}
+                       {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (Qty: {i.stock})</option>)}
                    </select>
                </div>
                <div>
@@ -129,14 +114,16 @@ const StockAdjustmentView: React.FC = () => {
            <div className="flex justify-end">
                <button 
                  onClick={handleSubmit}
-                 disabled={submitting}
+                 disabled={actionLoading}
                  className={`px-6 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 ${isDeduction ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                >
-                 {submitting ? <Loader2 className="animate-spin" size={16}/> : <AlertOctagon size={16}/>}
+                 {actionLoading ? <Loader2 className="animate-spin" size={16}/> : <AlertOctagon size={16}/>}
                  Confirm Adjustment
                </button>
            </div>
        </div>
+
+       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
            <div className="p-4 border-b border-slate-200 bg-slate-50">
@@ -154,8 +141,8 @@ const StockAdjustmentView: React.FC = () => {
                    </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                   {adjustments.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No logs found</td></tr> : 
-                    adjustments.map(a => (
+                   {typedAdjustments.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No logs found</td></tr> : 
+                    typedAdjustments.map(a => (
                        <tr key={a.id} className="hover:bg-slate-50">
                            <td className="p-3 font-medium">{a.reference}</td>
                            <td className="p-3 text-slate-500">{a.date}</td>

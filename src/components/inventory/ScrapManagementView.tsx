@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { movementService } from '@/services/movementService';
-import { productService } from '@/services/productService';
 import { InventoryItem, ScrapEntry } from '@/types';
 import { Trash2, DollarSign, Loader2 } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createScrapMovementEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const ScrapManagementView: React.FC = () => {
-  const [scrapList, setScrapList] = useState<ScrapEntry[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch();
+  const { scrapEntries, items, actionLoading, error } = useAppSelector((state) => state.stockMovement);
 
   const [formData, setFormData] = useState({
       itemId: '',
@@ -17,32 +16,24 @@ const ScrapManagementView: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-      const [sData, iData] = await Promise.all([
-          movementService.getScrapEntries(),
-          productService.getAllItems()
-      ]);
-      setScrapList(sData);
-      setItems(iData);
-  };
+    dispatch(fetchStockMovementData());
+  }, [dispatch]);
 
   const handleSubmit = async () => {
       if(!formData.itemId || !formData.reason) return alert("Fill all fields");
-      setSubmitting(true);
       const item = items.find(i => i.id === formData.itemId);
       try {
-          await movementService.createScrapEntry({
+          await dispatch(createScrapMovementEntry({
               ...formData,
               itemName: item?.name || 'Unknown'
-          });
-          alert("Scrap Entry Recorded. Stock Deducted.");
+          })).unwrap();
+          alert("Scrap entry recorded");
           setFormData({...formData, itemId: '', quantity: 1, salvageValue: 0, reason: ''});
-          loadData();
-      } catch(e) { alert("Error"); } finally { setSubmitting(false); }
+      } catch(e) { alert("Error"); }
   };
+
+  const typedItems = items as InventoryItem[];
+  const typedScrapEntries = scrapEntries as ScrapEntry[];
 
   return (
     <div className="space-y-6">
@@ -59,7 +50,7 @@ const ScrapManagementView: React.FC = () => {
                      onChange={e => setFormData({...formData, itemId: e.target.value})}
                    >
                        <option value="">Select Item</option>
-                       {items.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (${i.unitPrice})</option>)}
+                       {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (${i.unitPrice})</option>)}
                    </select>
                </div>
                <div>
@@ -76,16 +67,18 @@ const ScrapManagementView: React.FC = () => {
                <input type="text" className="w-full border rounded-lg p-2 text-sm" placeholder="e.g. Obsolete / Expired" value={formData.reason} onChange={e => setFormData({...formData, reason: e.target.value})}/>
            </div>
            <div className="flex justify-end">
-               <button onClick={handleSubmit} disabled={submitting} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex items-center gap-2">
-                   {submitting ? <Loader2 className="animate-spin" size={16}/> : <Trash2 size={16}/>} Scrap Item
+               <button onClick={handleSubmit} disabled={actionLoading} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex items-center gap-2">
+                   {actionLoading ? <Loader2 className="animate-spin" size={16}/> : <Trash2 size={16}/>} Scrap Item
                </button>
            </div>
        </div>
 
+       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
            <div className="p-4 border-b bg-slate-50 flex justify-between">
                <h3 className="font-semibold text-slate-800">Scrap Register</h3>
-               <span className="text-xs text-slate-500">Total Salvage Value: ${scrapList.reduce((acc, curr) => acc + curr.salvageValue, 0).toFixed(2)}</span>
+               <span className="text-xs text-slate-500">Total Salvage Value: ${typedScrapEntries.reduce((acc, curr) => acc + curr.salvageValue, 0).toFixed(2)}</span>
            </div>
            <table className="w-full text-sm text-left">
                <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
@@ -99,7 +92,7 @@ const ScrapManagementView: React.FC = () => {
                    </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                   {scrapList.map(s => (
+                   {typedScrapEntries.map(s => (
                        <tr key={s.id}>
                            <td className="p-3 font-medium">{s.reference}</td>
                            <td className="p-3 text-slate-500">{s.date}</td>

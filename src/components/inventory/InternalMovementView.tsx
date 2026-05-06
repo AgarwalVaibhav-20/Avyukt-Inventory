@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { movementService } from '@/services/movementService';
-import { productService } from '@/services/productService';
-import { warehouseService } from '@/services/warehouseService';
 import { InventoryItem, Warehouse, InternalMovement } from '@/types';
-import { ArrowRightLeft, MapPin, Loader2, ArrowRight } from 'lucide-react';
+import { ArrowRightLeft, Loader2 } from 'lucide-react';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { createInternalMovementEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const InternalMovementView: React.FC = () => {
-  const [movements, setMovements] = useState<InternalMovement[]>([]);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const dispatch = useAppDispatch();
+  const { internalMovements, items, warehouses, loading, actionLoading, error } = useAppSelector((state) => state.stockMovement);
 
   const [formData, setFormData] = useState({
       warehouseId: '',
@@ -22,42 +18,29 @@ const InternalMovementView: React.FC = () => {
   });
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    setLoading(true);
-    const [mvData, iData, wData] = await Promise.all([
-        movementService.getInternalMovements(),
-        productService.getAllItems(),
-        warehouseService.getAllWarehouses()
-    ]);
-    setMovements(mvData);
-    setItems(iData);
-    setWarehouses(wData);
-    setLoading(false);
-  };
+    dispatch(fetchStockMovementData());
+  }, [dispatch]);
 
   const handleSubmit = async () => {
       if(!formData.warehouseId || !formData.itemId || !formData.fromBin || !formData.toBin) {
           return alert("Please fill all fields");
       }
-      setSubmitting(true);
       const selectedItem = items.find(i => i.id === formData.itemId);
       try {
-          await movementService.createInternalMovement({
+          await dispatch(createInternalMovementEntry({
               ...formData,
               itemName: selectedItem?.name || 'Unknown'
-          });
+          })).unwrap();
           alert("Movement Recorded!");
           setFormData({...formData, itemId: '', fromBin: '', toBin: '', quantity: 1});
-          loadData();
       } catch(e) {
           alert("Failed");
-      } finally {
-          setSubmitting(false);
       }
   };
+
+  const typedMovements = internalMovements as InternalMovement[];
+  const typedItems = items as InventoryItem[];
+  const typedWarehouses = warehouses as Warehouse[];
 
   return (
     <div className="space-y-6">
@@ -75,7 +58,7 @@ const InternalMovementView: React.FC = () => {
                      onChange={e => setFormData({...formData, warehouseId: e.target.value})}
                    >
                        <option value="">Select Warehouse</option>
-                       {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                       {typedWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                    </select>
                </div>
                <div>
@@ -86,7 +69,7 @@ const InternalMovementView: React.FC = () => {
                      onChange={e => setFormData({...formData, itemId: e.target.value})}
                    >
                        <option value="">Select Item</option>
-                       {items.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name}</option>)}
+                       {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name}</option>)}
                    </select>
                </div>
            </div>
@@ -124,14 +107,16 @@ const InternalMovementView: React.FC = () => {
            <div className="flex justify-end">
                <button 
                  onClick={handleSubmit}
-                 disabled={submitting}
+                 disabled={actionLoading}
                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-2"
                >
-                 {submitting ? <Loader2 className="animate-spin" size={16}/> : <ArrowRightLeft size={16}/>}
+                 {actionLoading ? <Loader2 className="animate-spin" size={16}/> : <ArrowRightLeft size={16}/>}
                  Record Movement
                </button>
            </div>
        </div>
+
+       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
            <div className="p-4 border-b border-slate-200 bg-slate-50">
@@ -149,8 +134,8 @@ const InternalMovementView: React.FC = () => {
                    </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                   {movements.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No movements recorded</td></tr> : 
-                    movements.map(m => (
+                   {typedMovements.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No movements recorded</td></tr> : 
+                    typedMovements.map(m => (
                        <tr key={m.id} className="hover:bg-slate-50">
                            <td className="p-3 font-medium">{m.reference}</td>
                            <td className="p-3 text-slate-500">{m.date}</td>
