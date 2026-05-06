@@ -1,5 +1,5 @@
 import React from 'react';
-import ValuationAnalysisView from '@/components/finance/ValuationAnalysisView'; // Reusing component
+import ValuationAnalysisView from '@/components/valuation/ValuationAnalysisView'; // Reusing component
 
 const ValuationReportDocView: React.FC = () => {
   return (

@@ -25,6 +25,17 @@ export const fetchItems = createAsyncThunk(
   }
 );
 
+export const updateInventoryItem = createAsyncThunk(
+  'inventory/updateItem',
+  async ({ id, updates }: { id: string; updates: any }, { rejectWithValue }) => {
+    try {
+      return await productService.updateItem(id, updates);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update item');
+    }
+  }
+);
+
 const inventorySlice = createSlice({
   name: 'inventory',
   initialState,
@@ -41,6 +52,12 @@ const inventorySlice = createSlice({
       .addCase(fetchItems.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(updateInventoryItem.fulfilled, (state, action) => {
+        const index = state.items.findIndex(i => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = { ...state.items[index], ...action.payload };
+        }
       });
   },
 });

@@ -27,7 +27,7 @@ export interface InventoryItem {
   salePrice: number;
   hsnCode: string;
   barcode: string;
-  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  status: 'In Stock' | 'Low Stock' | 'Out of Stock' | 'in-stock' | 'low-stock' | 'out-of-stock';
   lastUpdated: string;
   attributes?: Record<string, string>;
 }
@@ -209,6 +209,7 @@ export interface POItem {
   quantity: number;
   unitPrice: number;
   receivedQty: number;
+  hsnCode: string;
 }
 
 export interface GRN {

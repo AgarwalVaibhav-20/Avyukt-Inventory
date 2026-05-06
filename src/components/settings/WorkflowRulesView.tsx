@@ -1,5 +1,5 @@
 import React from 'react';
-import MasterCrud from './MasterCrud';
+import MasterCrud from '@/components/admin/MasterCrud';
 import { settingsService } from '@/services/settingsService';
 
 const WorkflowRulesView: React.FC = () => {

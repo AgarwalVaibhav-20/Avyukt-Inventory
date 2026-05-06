@@ -6,6 +6,9 @@ export const authService = {
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (response.data.user.organisationId) {
+        localStorage.setItem('organisationId', response.data.user.organisationId);
+      }
     }
     return response.data;
   },
@@ -20,6 +23,9 @@ export const authService = {
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (response.data.user.organisationId) {
+        localStorage.setItem('organisationId', response.data.user.organisationId);
+      }
     }
     return response.data;
   },
@@ -32,6 +38,7 @@ export const authService = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('organisationId');
   },
 
   getCurrentUser: () => {

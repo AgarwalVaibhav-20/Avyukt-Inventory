@@ -45,7 +45,7 @@ const ZoneStructureView: React.FC = () => {
   };
 
   const loadRacks = async (zId: string) => {
-    const data = await warehouseService.getRacks(zId);
+    const data = await warehouseService.getRacks(selectedWh, zId);
     setRacks(data);
   };
 
@@ -59,7 +59,7 @@ const ZoneStructureView: React.FC = () => {
 
   const handleAddRack = async () => {
     if (!newRack.name || !newRack.code) return;
-    await warehouseService.saveRack({ ...newRack, zoneId: selectedZone });
+    await warehouseService.saveRack({ ...newRack, zoneId: selectedZone, warehouseId: selectedWh });
     setShowRackForm(false);
     setNewRack({ name: '', code: '', levels: 4 });
     loadRacks(selectedZone);
@@ -112,7 +112,8 @@ const ZoneStructureView: React.FC = () => {
                             <select className="w-1/2 border rounded p-2 text-sm" value={newZone.type} onChange={e => setNewZone({...newZone, type: e.target.value})}>
                                 <option value="General">General</option>
                                 <option value="Cold">Cold</option>
-                                <option value="Hazardous">Hazardous</option>
+                                <option value="Hazmat">Hazmat</option>
+                                <option value="Bulk">Bulk</option>
                             </select>
                         </div>
                         <div className="flex justify-end gap-2">

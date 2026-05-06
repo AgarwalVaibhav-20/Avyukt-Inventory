@@ -1,7 +1,12 @@
 import api from './api';
+import { authService } from './authService';
 import { Vendor, PurchaseOrder, GRN, POItem, GRNItem, PutAwayTask, PurchaseReturn } from '@/types';
 
-const unwrapList = <T,>(response: any): T[] => response?.data?.data ?? response?.data?.vendors ?? response?.data ?? [];
+const unwrapList = <T,>(response: any): T[] => 
+  response?.data?.data ?? 
+  response?.data?.vendors ?? 
+  response?.data?.purchaseOrders ?? 
+  response?.data ?? [];
 
 const toFrontendGRNStatus = (status?: string): GRN['status'] => {
   switch (status) {
@@ -65,29 +70,96 @@ const toFrontendQCInspection = (inspection: any): GRN & { inspectionId?: string 
   };
 };
 
+const toFrontendPO = (po: any): PurchaseOrder => ({
+  id: String(po._id || po.id || ''),
+  poNumber: po.poNo || '',
+  vendorId: String(po.vendorId?._id || po.vendorId || ''),
+  vendorName: po.vendor || '',
+  date: (po.orderDate || po.createdAt || new Date().toISOString()).toString().slice(0, 10),
+  totalAmount: Number(po.totalAmount || 0),
+  status: po.status ? po.status.charAt(0).toUpperCase() + po.status.slice(1) : 'Open',
+  items: (po.productLines || []).map((line: any) => ({
+    itemId: String(line.materialId || line.productId || line._id || ''),
+    itemName: line.product || '',
+    quantity: Number(line.quantity || 0),
+    unitPrice: Number(line.unitPrice || 0),
+    receivedQty: Number(line.receivedQuantity || 0),
+  })),
+});
+
 export const procurementService = {
   // --- Vendors ---
   getVendors: async () => {
     const response = await api.get('/purchase/vendors');
-    return response.data;
+    const list = unwrapList<any>(response);
+    return list.map((v: any) => ({
+      id: v.id || v._id,
+      name: v.name || v.vendorName || '',
+      code: v.code || v.vendorCode || '',
+      contactPerson: v.contactPerson || '',
+      email: v.email || '',
+      phone: v.phone || '',
+      status: v.status || (v.isActive ? 'Active' : 'Inactive'),
+      rating: v.rating || v.vendorRating || 0,
+    }));
   },
   addVendor: async (data: Omit<Vendor, 'id'>) => {
-    const response = await api.post('/purchase/vendors', data);
-    return response.data;
+    const response = await api.post('/purchase/vendors', {
+      vendorName: data.name,
+      vendorCode: data.code,
+      contactPerson: data.contactPerson,
+      email: data.email,
+      phone: data.phone,
+      status: data.status,
+    });
+    const v = response.data.vendor ?? response.data.data ?? response.data;
+    return {
+      id: v.id || v._id,
+      name: v.name || v.vendorName || '',
+      code: v.code || v.vendorCode || '',
+      contactPerson: v.contactPerson || '',
+      email: v.email || '',
+      phone: v.phone || '',
+      status: v.status || (v.isActive ? 'Active' : 'Inactive'),
+      rating: v.rating || v.vendorRating || 0,
+    };
+  },
+  updateVendor: async (id: string, updates: Partial<Vendor>) => {
+    await api.put(`/purchase/vendors/${id}`, {
+      vendorName: updates.name,
+      contactPerson: updates.contactPerson,
+      email: updates.email,
+      phone: updates.phone,
+      status: updates.status,
+    });
   },
   deleteVendor: async (id: string) => {
     await api.delete(`/purchase/vendors/${id}`);
   },
 
   // --- Purchase Orders ---
-  getAllPOs: async () => {
+  getAllPOs: async (): Promise<PurchaseOrder[]> => {
     const response = await api.get('/purchase/orders');
-    return response.data;
+    return unwrapList<any>(response).map(toFrontendPO);
   },
   
   createPO: async (po: Omit<PurchaseOrder, 'id' | 'poNumber' | 'status'>): Promise<PurchaseOrder> => {
-    const response = await api.post('/purchase/orders', po);
-    return response.data;
+    const user = authService.getCurrentUser();
+    const organisationId = user?.organisationId || localStorage.getItem('organisationId');
+    const response = await api.post('/purchase/orders', {
+      ...po,
+      organisationId,
+      vendor: po.vendorName,
+      orderDate: po.date,
+      productLines: po.items.map(item => ({
+        product: item.itemName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        materialId: item.itemId,
+        hsnCode: item.hsnCode,
+      }))
+    });
+    return toFrontendPO(response.data.purchaseOrder || response.data);
   },
 
   // --- GRN (Goods Receipt Note) ---
@@ -101,12 +173,13 @@ export const procurementService = {
     return unwrapList<any>(response).map(toFrontendQCInspection);
   },
 
-  createGRN: async (poId: string, challanNo: string, items: GRNItem[]): Promise<GRN> => {
+  createGRN: async (poId: string, challanNo: string, items: GRNItem[], location?: string): Promise<GRN> => {
     const po = (await procurementService.getAllPOs()).find((order: PurchaseOrder) => order.id === poId);
     const response = await api.post('/api/inward/grn', {
       purchaseOrderId: poId,
       supplierId: po?.vendorId,
       challanNumber: challanNo,
+      location: location || '',
       items: items.map((item: any) => ({
         productId: item.productId || item.itemId,
         materialId: item.materialId,

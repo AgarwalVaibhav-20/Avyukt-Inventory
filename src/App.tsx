@@ -1,50 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import ItemVariantPage from '@/components/product-master/ItemVariantPage';
 import Sidebar from '@/components/admin/Sidebar';
 import Dashboard from '@/components/dashboard/Dashboard';
-import ItemMaster from '@/components/inventory/ItemMaster';
+import ItemMaster from '@/components/product-master/ItemMaster';
 import MasterCrud from '@/components/admin/MasterCrud';
 import GenericView from '@/components/admin/GenericView';
-import StockTransfer from '@/components/inventory/StockTransfer';
-import PurchaseOrderView from '@/components/procurement/PurchaseOrderView';
-import GRNView from '@/components/procurement/GRNView';
-import QualityCheckView from '@/components/quality/QualityCheckView';
-import PutAwayView from '@/components/inventory/PutAwayView';
-import InwardReturnView from '@/components/procurement/InwardReturnView';
-import SupplierChallanView from '@/components/procurement/SupplierChallanView';
-import SalesOrderView from '@/components/sales/SalesOrderView';
-import OutwardOpsView from '@/components/sales/OutwardOpsView';
-import SalesReturnView from '@/components/sales/SalesReturnView';
-import CustomerInvoiceView from '@/components/sales/CustomerInvoiceView';
-import InternalMovementView from '@/components/inventory/InternalMovementView';
-import StockAdjustmentView from '@/components/inventory/StockAdjustmentView';
-import ScrapManagementView from '@/components/inventory/ScrapManagementView';
-import ConsignmentStockView from '@/components/inventory/ConsignmentStockView';
-import ItemPricingView from '@/components/inventory/ItemPricingView';
-import ReorderLevelView from '@/components/inventory/ReorderLevelView';
-import BarcodeMappingView from '@/components/automation/BarcodeMappingView';
-import StockLedgerView from '@/components/inventory/StockLedgerView';
-import BatchTrackingView from '@/components/inventory/BatchTrackingView';
-import SerialTrackingView from '@/components/inventory/SerialTrackingView';
-import ExpiryTrackingView from '@/components/inventory/ExpiryTrackingView';
-import StockReservationView from '@/components/inventory/StockReservationView';
-import ValuationMethodsView from '@/components/finance/ValuationMethodsView';
-import ItemWiseValuationView from '@/components/finance/ItemWiseValuationView';
-import WarehouseValuationView from '@/components/finance/WarehouseValuationView';
-import RealTimeValuationView from '@/components/finance/RealTimeValuationView';
-import ClosingStockReportView from '@/components/reports/ClosingStockReportView';
-import CostRecalculationView from '@/components/finance/CostRecalculationView';
+import StockTransfer from '@/components/movement/StockTransfer';
+import PurchaseOrderView from '@/components/inward/PurchaseOrderView';
+import GRNView from '@/components/inward/GRNView';
+import QualityCheckView from '@/components/inward/QualityCheckView';
+import PutAwayView from '@/components/inward/PutAwayView';
+import InwardReturnView from '@/components/inward/InwardReturnView';
+import SupplierChallanView from '@/components/inward/SupplierChallanView';
+import SalesOrderView from '@/components/outward/SalesOrderView';
+import OutwardOpsView from '@/components/outward/OutwardOpsView';
+import SalesReturnView from '@/components/outward/SalesReturnView';
+import CustomerInvoiceView from '@/components/outward/CustomerInvoiceView';
+import InternalMovementView from '@/components/movement/InternalMovementView';
+import StockAdjustmentView from '@/components/movement/StockAdjustmentView';
+import ScrapManagementView from '@/components/movement/ScrapManagementView';
+import ConsignmentStockView from '@/components/movement/ConsignmentStockView';
+import ItemPricingView from '@/components/product-master/ItemPricingView';
+import ReorderLevelView from '@/components/product-master/ReorderLevelView';
+import BarcodeMappingView from '@/components/barcode/BarcodeMappingView';
+import StockLedgerView from '@/components/control/StockLedgerView';
+import BatchTrackingView from '@/components/control/BatchTrackingView';
+import SerialTrackingView from '@/components/control/SerialTrackingView';
+import ExpiryTrackingView from '@/components/control/ExpiryTrackingView';
+import StockReservationView from '@/components/control/StockReservationView';
+import ValuationMethodsView from '@/components/valuation/ValuationMethodsView';
+import ItemWiseValuationView from '@/components/valuation/ItemWiseValuationView';
+import WarehouseValuationView from '@/components/valuation/WarehouseValuationView';
+import RealTimeValuationView from '@/components/valuation/RealTimeValuationView';
+import ClosingStockReportView from '@/components/valuation/ClosingStockReportView';
+import CostRecalculationView from '@/components/valuation/CostRecalculationView';
 import QualityParametersView from '@/components/quality/QualityParametersView';
 import InspectionPlansView from '@/components/quality/InspectionPlansView';
 import QualityChecklistsView from '@/components/quality/QualityChecklistsView';
 import AcceptedRejectedStockView from '@/components/quality/AcceptedRejectedStockView';
 import ReworkManagementView from '@/components/quality/ReworkManagementView';
 import NCRView from '@/components/quality/NCRView';
-import InvoicesView from '@/components/logistics/InvoicesView';
-import ChallansDocView from '@/components/logistics/ChallansDocView';
-import EWayBillsView from '@/components/logistics/EWayBillsView';
-import PackingListsDocView from '@/components/logistics/PackingListsDocView';
-import InspectionReportsDocView from '@/components/logistics/InspectionReportsDocView';
-import DocumentVersionsView from '@/components/admin/DocumentVersionsView';
+import InvoicesView from '@/components/documents/InvoicesView';
+import ChallansDocView from '@/components/documents/ChallansDocView';
+import EWayBillsView from '@/components/documents/EWayBillsView';
+import PackingListsDocView from '@/components/documents/PackingListsDocView';
+import InspectionReportsDocView from '@/components/documents/InspectionReportsDocView';
+import DocumentVersionsView from '@/components/documents/DocumentVersionsView';
 import StockSummaryReportView from '@/components/reports/StockSummaryReportView';
 import ItemStockReportView from '@/components/reports/ItemStockReportView';
 import WarehouseReportView from '@/components/reports/WarehouseReportView';
@@ -54,43 +55,43 @@ import MovementAnalysisReportView from '@/components/reports/MovementAnalysisRep
 import ValuationReportDocView from '@/components/reports/ValuationReportDocView';
 import GstTaxReportView from '@/components/reports/GstTaxReportView';
 import AuditReportView from '@/components/reports/AuditReportView';
-import PurchaseReturnMgmtView from '@/components/procurement/PurchaseReturnMgmtView';
-import SalesReturnMgmtView from '@/components/sales/SalesReturnMgmtView';
-import ReplacementHandlingView from '@/components/sales/ReplacementHandlingView';
-import DebitCreditNotesView from '@/components/finance/DebitCreditNotesView';
-import VendorMasterView from '@/components/procurement/VendorMasterView';
-import VendorPriceListView from '@/components/procurement/VendorPriceListView';
-import LeadTimeManagementView from '@/components/procurement/LeadTimeManagementView';
-import VendorPerformanceView from '@/components/procurement/VendorPerformanceView';
-import ApprovedVendorListView from '@/components/procurement/ApprovedVendorListView';
-import PurchaseApprovalView from '@/components/procurement/PurchaseApprovalView';
-import GRNApprovalView from '@/components/procurement/GRNApprovalView';
-import StockAdjustmentApprovalView from '@/components/inventory/StockAdjustmentApprovalView';
-import TransferApprovalView from '@/components/inventory/TransferApprovalView';
-import ReturnApprovalView from '@/components/procurement/ReturnApprovalView';
-import InventorySettingsView from '@/components/admin/InventorySettingsView';
-import AutoReorderRulesView from '@/components/admin/AutoReorderRulesView';
-import TaxConfigurationView from '@/components/finance/TaxConfigurationView';
-import NumberSeriesView from '@/components/admin/NumberSeriesView';
-import CustomFieldsView from '@/components/admin/CustomFieldsView';
-import WorkflowRulesView from '@/components/admin/WorkflowRulesView';
-import StockAuditView from '@/components/inventory/StockAuditView';
-import CycleCountView from '@/components/inventory/CycleCountView';
-import PhysicalVerificationView from '@/components/inventory/PhysicalVerificationView';
-import AdjustmentHistoryView from '@/components/inventory/AdjustmentHistoryView';
-import UserActivityLogView from '@/components/admin/UserActivityLogView';
-import ZoneStructureView from '@/components/inventory/ZoneStructureView';
-import BinManagementView from '@/components/inventory/BinManagementView';
-import WarehouseCapacityView from '@/components/inventory/WarehouseCapacityView';
+import PurchaseReturnMgmtView from '@/components/returns/PurchaseReturnMgmtView';
+import SalesReturnMgmtView from '@/components/returns/SalesReturnMgmtView';
+import ReplacementHandlingView from '@/components/returns/ReplacementHandlingView';
+import DebitCreditNotesView from '@/components/returns/DebitCreditNotesView';
+import VendorMasterView from '@/components/vendor/VendorMasterView';
+import VendorPriceListView from '@/components/vendor/VendorPriceListView';
+import LeadTimeManagementView from '@/components/vendor/LeadTimeManagementView';
+import VendorPerformanceView from '@/components/vendor/VendorPerformanceView';
+import ApprovedVendorListView from '@/components/vendor/ApprovedVendorListView';
+import PurchaseApprovalView from '@/components/approvals/PurchaseApprovalView';
+import GRNApprovalView from '@/components/approvals/GRNApprovalView';
+import StockAdjustmentApprovalView from '@/components/approvals/StockAdjustmentApprovalView';
+import TransferApprovalView from '@/components/approvals/TransferApprovalView';
+import ReturnApprovalView from '@/components/approvals/ReturnApprovalView';
+import InventorySettingsView from '@/components/settings/InventorySettingsView';
+import AutoReorderRulesView from '@/components/settings/AutoReorderRulesView';
+import TaxConfigurationView from '@/components/settings/TaxConfigurationView';
+import NumberSeriesView from '@/components/settings/NumberSeriesView';
+import CustomFieldsView from '@/components/settings/CustomFieldsView';
+import WorkflowRulesView from '@/components/settings/WorkflowRulesView';
+import StockAuditView from '@/components/audit/StockAuditView';
+import CycleCountView from '@/components/audit/CycleCountView';
+import PhysicalVerificationView from '@/components/audit/PhysicalVerificationView';
+import AdjustmentHistoryView from '@/components/audit/AdjustmentHistoryView';
+import UserActivityLogView from '@/components/audit/UserActivityLogView';
+import ZoneStructureView from '@/components/warehouse/ZoneStructureView';
+import BinManagementView from '@/components/warehouse/BinManagementView';
+import WarehouseCapacityView from '@/components/warehouse/WarehouseCapacityView';
 import DashboardApprovals from '@/components/dashboard/DashboardApprovals';
 import DashboardExpiry from '@/components/dashboard/DashboardExpiry';
 import DashboardMovement from '@/components/dashboard/DashboardMovement';
 import DashboardWarehouse from '@/components/dashboard/DashboardWarehouse';
 import DashboardInOut from '@/components/dashboard/DashboardInOut';
-import BarcodeGeneratorView from '@/components/automation/BarcodeGeneratorView';
-import BarcodeScannerView from '@/components/automation/BarcodeScannerView';
-import LabelPrintingView from '@/components/automation/LabelPrintingView';
-import RfidIntegrationView from '@/components/automation/RfidIntegrationView';
+import BarcodeGeneratorView from '@/components/barcode/BarcodeGeneratorView';
+import BarcodeScannerView from '@/components/barcode/BarcodeScannerView';
+import LabelPrintingView from '@/components/barcode/LabelPrintingView';
+import RfidIntegrationView from '@/components/barcode/RfidIntegrationView';
 import AiAssistantModal from '@/components/common/AiAssistantModal';
 import { productService } from '@/services/productService';
 import { warehouseService } from '@/services/warehouseService';
@@ -99,9 +100,13 @@ import { Bell, Menu, User, Rocket } from 'lucide-react';
 import Login from '@/components/common/Login';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { logout } from '@/store/slices/authSlice';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { MENU_ITEMS } from '@/constants';
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated } = useAppSelector((state) => state.auth);
   
   const [activeMenuId, setActiveMenuId] = useState('dash-overview');
@@ -110,14 +115,41 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
 
-  // Special State for Physical Verification navigation
-  const [activeAuditSessionId, setActiveAuditSessionId] = useState<string | null>(null);
+  // Sync labels with current path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/') {
+      navigate('/dashboard/dash-overview', { replace: true });
+      return;
+    }
+
+    let found = false;
+    MENU_ITEMS.forEach(item => {
+      item.subMenus?.forEach(sub => {
+        const expectedPath = `/${item.id}/${sub.id}`;
+        if (path === expectedPath) {
+          setActiveMenuId(sub.id);
+          setParentLabel(item.label);
+          setActiveLabel(sub.label);
+          found = true;
+        }
+      });
+    });
+    
+    // Support parent paths if needed
+    if (!found) {
+        MENU_ITEMS.forEach(item => {
+            if (path === `/${item.id}`) {
+                if (item.subMenus && item.subMenus.length > 0) {
+                    navigate(`/${item.id}/${item.subMenus[0].id}`, { replace: true });
+                }
+            }
+        });
+    }
+  }, [location.pathname, navigate]);
 
   const handleMenuSelect = (id: string, pLabel = '', cLabel = '') => {
-    setActiveMenuId(id);
-    setParentLabel(pLabel);
-    setActiveLabel(cLabel);
-    setActiveAuditSessionId(null); // Reset special states
+    // Labels are now synced via useEffect and URL
   };
 
   const handleLogout = () => {
@@ -153,18 +185,19 @@ const App: React.FC = () => {
       case 'pm-master':
         return <ItemMaster />;
       
+      case 'pm-variants':
+        return <ItemVariantPage />;
+      
       case 'pm-categories':
         return (
           <MasterCrud 
             title="Item Categories" 
             description="Manage product classifications and groups."
+            type="category"
             columns={[
               { key: 'name', label: 'Category Name' },
               { key: 'description', label: 'Description' }
             ]}
-            fetchData={productService.getCategories}
-            addData={productService.addCategory}
-            deleteData={productService.deleteCategory}
           />
         );
 
@@ -173,13 +206,11 @@ const App: React.FC = () => {
            <MasterCrud 
             title="Brand Master" 
             description="Manage manufacturers and brands."
+            type="brand"
             columns={[
               { key: 'name', label: 'Brand Name' },
               { key: 'manufacturer', label: 'Manufacturer' }
             ]}
-            fetchData={productService.getBrands}
-            addData={productService.addBrand}
-            deleteData={productService.deleteBrand}
           />
         );
       
@@ -188,13 +219,11 @@ const App: React.FC = () => {
            <MasterCrud 
             title="Unit of Measure (UoM)" 
             description="Manage standard units for stock keeping."
+            type="uom"
             columns={[
               { key: 'name', label: 'Unit Name' },
               { key: 'code', label: 'Unit Code' }
             ]}
-            fetchData={productService.getUOMs}
-            addData={productService.addUOM}
-            deleteData={productService.deleteUOM}
           />
         );
 
@@ -203,14 +232,12 @@ const App: React.FC = () => {
            <MasterCrud 
             title="HSN / SAC Master" 
             description="Harmonized System of Nomenclature for Taxation."
+            type="hsn"
             columns={[
-              { key: 'code', label: 'HSN Code' },
+              { key: 'hsnCode', label: 'HSN Code' },
               { key: 'description', label: 'Description' },
-              { key: 'taxRate', label: 'Tax Rate (%)', type: 'number' }
+              { key: 'taxPercentage', label: 'Tax Rate (%)', type: 'number' }
             ]}
-            fetchData={productService.getHSN}
-            addData={productService.addHSN}
-            deleteData={productService.deleteHSN}
           />
         );
 
@@ -219,13 +246,11 @@ const App: React.FC = () => {
            <MasterCrud 
             title="Item Attributes" 
             description="Global attributes for item variants (Color, Size, Material)."
+            type="attribute"
             columns={[
               { key: 'name', label: 'Attribute Name' },
-              { key: 'values', label: 'Options', type: 'array' }
+              { key: 'options', label: 'Options', type: 'array' }
             ]}
-            fetchData={productService.getAttributes}
-            addData={productService.addAttribute}
-            deleteData={productService.deleteAttribute}
           />
         );
       
@@ -527,7 +552,237 @@ const App: React.FC = () => {
         {/* Main Content Scrollable Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
            <div className="max-w-7xl mx-auto">
-             {renderContent()}
+             <Routes>
+               {/* Dashboard */}
+               <Route path="/dashboard/dash-overview" element={<Dashboard />} />
+               <Route path="/dashboard/dash-approvals" element={<DashboardApprovals />} />
+               <Route path="/dashboard/dash-expiry" element={<DashboardExpiry />} />
+               <Route path="/dashboard/dash-movement" element={<DashboardMovement />} />
+               <Route path="/dashboard/dash-warehouse" element={<DashboardWarehouse />} />
+               <Route path="/dashboard/dash-in-out" element={<DashboardInOut />} />
+               <Route path="/dashboard/dash-valuation" element={<RealTimeValuationView />} />
+               <Route path="/dashboard/dash-low-stock" element={<GenericView title="Low Stock Alerts" parent="Dashboard" />} />
+               <Route path="/dashboard/dash-overstock" element={<GenericView title="Overstock Alerts" parent="Dashboard" />} />
+
+               {/* Product Master */}
+               <Route path="/product-master/pm-master" element={<ItemMaster />} />
+               <Route path="/product-master/pm-variants" element={<ItemVariantPage />} />
+               <Route path="/product-master/pm-categories" element={
+                 <MasterCrud 
+                   title="Item Categories" 
+                   description="Manage product classifications and groups."
+                   type="category"
+                   columns={[
+                     { key: 'name', label: 'Category Name' },
+                     { key: 'description', label: 'Description' }
+                   ]}
+                 />
+               } />
+               <Route path="/product-master/pm-brand" element={
+                 <MasterCrud 
+                   title="Brand Master" 
+                   description="Manage manufacturers and brands."
+                   type="brand"
+                   columns={[
+                     { key: 'name', label: 'Brand Name' },
+                     { key: 'manufacturer', label: 'Manufacturer' }
+                   ]}
+                 />
+               } />
+               <Route path="/product-master/pm-uom" element={
+                 <MasterCrud 
+                   title="Unit of Measure (UoM)" 
+                   description="Manage standard units for stock keeping."
+                   type="uom"
+                   columns={[
+                     { key: 'name', label: 'Unit Name' },
+                     { key: 'code', label: 'Unit Code' }
+                   ]}
+                 />
+               } />
+               <Route path="/product-master/pm-hsn" element={
+                 <MasterCrud 
+                   title="HSN / SAC Master" 
+                   description="Harmonized System of Nomenclature for Taxation."
+                   type="hsn"
+                   columns={[
+                     { key: 'hsnCode', label: 'HSN Code' },
+                     { key: 'description', label: 'Description' },
+                     { key: 'taxPercentage', label: 'Tax Rate (%)', type: 'number' }
+                   ]}
+                 />
+               } />
+               <Route path="/product-master/pm-attributes" element={
+                 <MasterCrud 
+                   title="Item Attributes" 
+                   description="Global attributes for item variants (Color, Size, Material)."
+                   type="attribute"
+                   columns={[
+                     { key: 'name', label: 'Attribute Name' },
+                     { key: 'options', label: 'Options', type: 'array' }
+                   ]}
+                 />
+               } />
+               <Route path="/product-master/pm-pricing" element={<ItemPricingView />} />
+               <Route path="/product-master/pm-reorder" element={<ReorderLevelView />} />
+               <Route path="/product-master/pm-barcode" element={<BarcodeMappingView />} />
+
+               {/* Warehouse Management */}
+               <Route path="/warehouse/wm-master" element={
+                 <MasterCrud
+                   title="Warehouse Master"
+                   description="Manage warehouse locations and capacities."
+                   type="warehouse"
+                   columns={[
+                     { key: 'name', label: 'Warehouse Name' },
+                     { key: 'location', label: 'Location' },
+                     { key: 'type', label: 'Type' },
+                     { key: 'capacity', label: 'Capacity', type: 'number' },
+                     { key: 'contactPerson', label: 'Contact Person' }
+                   ]}
+                   fetchData={warehouseService.getAllWarehouses}
+                   addData={warehouseService.addWarehouse}
+                   deleteData={warehouseService.deleteWarehouse}
+                 />
+               } />
+               <Route path="/warehouse/wm-location" element={<BinManagementView />} />
+               <Route path="/warehouse/wm-zone" element={<ZoneStructureView />} />
+               <Route path="/warehouse/wm-multi" element={
+                 <MasterCrud
+                   title="Multi-Warehouse Configuration"
+                   description="Configure and synchronize across multiple warehouse locations."
+                   type="warehouse"
+                   columns={[
+                     { key: 'name', label: 'Warehouse Name' },
+                     { key: 'location', label: 'Location' },
+                     { key: 'type', label: 'Type' },
+                     { key: 'capacity', label: 'Capacity', type: 'number' },
+                     { key: 'contactPerson', label: 'Contact Person' }
+                   ]}
+                   fetchData={warehouseService.getAllWarehouses}
+                   addData={warehouseService.addWarehouse}
+                   deleteData={warehouseService.deleteWarehouse}
+                 />
+               } />
+               <Route path="/warehouse/wm-inter" element={<StockTransfer />} />
+               <Route path="/warehouse/wm-capacity" element={<WarehouseCapacityView />} />
+
+               {/* Inward / Procurement */}
+               <Route path="/inward/in-req" element={<PurchaseOrderView />} />
+               <Route path="/inward/in-po" element={<PurchaseOrderView />} />
+               <Route path="/inward/in-grn" element={<GRNView />} />
+               <Route path="/inward/in-qc" element={<QualityCheckView />} />
+               <Route path="/inward/in-putaway" element={<PutAwayView />} />
+               <Route path="/inward/in-return" element={<InwardReturnView />} />
+               <Route path="/inward/in-invoice" element={<SupplierChallanView />} />
+
+               {/* Outward / Dispatch */}
+               <Route path="/outward/out-so" element={<SalesOrderView />} />
+               <Route path="/outward/out-pick" element={<OutwardOpsView stage="pick" />} />
+               <Route path="/outward/out-pack" element={<OutwardOpsView stage="pack" />} />
+               <Route path="/outward/out-challan" element={<OutwardOpsView stage="challan" />} />
+               <Route path="/outward/out-dispatch" element={<OutwardOpsView stage="dispatch" />} />
+               <Route path="/outward/out-return" element={<SalesReturnView />} />
+               <Route path="/outward/out-invoice" element={<CustomerInvoiceView />} />
+
+               {/* Stock Movement */}
+               <Route path="/movement/mv-transfer" element={<StockTransfer />} />
+               <Route path="/movement/mv-internal" element={<InternalMovementView />} />
+               <Route path="/movement/mv-adj" element={<StockAdjustmentView />} />
+               <Route path="/movement/mv-damage" element={<StockAdjustmentView />} />
+               <Route path="/movement/mv-scrap" element={<ScrapManagementView />} />
+               <Route path="/movement/mv-consign" element={<ConsignmentStockView />} />
+
+               {/* Stock Control */}
+               <Route path="/control/ctrl-ledger" element={<StockLedgerView />} />
+               <Route path="/control/ctrl-batch" element={<BatchTrackingView />} />
+               <Route path="/control/ctrl-serial" element={<SerialTrackingView />} />
+               <Route path="/control/ctrl-expiry" element={<ExpiryTrackingView />} />
+               <Route path="/control/ctrl-reserve" element={<StockReservationView />} />
+               <Route path="/control/ctrl-safety" element={<ReorderLevelView />} />
+               <Route path="/control/ctrl-valuation" element={<ValuationMethodsView />} />
+
+               {/* Inventory Valuation */}
+               <Route path="/valuation/val-method" element={<ValuationMethodsView />} />
+               <Route path="/valuation/val-item" element={<ItemWiseValuationView />} />
+               <Route path="/valuation/val-wh" element={<WarehouseValuationView />} />
+               <Route path="/valuation/val-realtime" element={<RealTimeValuationView />} />
+               <Route path="/valuation/val-closing" element={<ClosingStockReportView />} />
+               <Route path="/valuation/val-recalc" element={<CostRecalculationView />} />
+
+               {/* Barcode & Automation */}
+               <Route path="/barcode/bc-gen" element={<BarcodeGeneratorView />} />
+               <Route path="/barcode/bc-qr" element={<BarcodeGeneratorView />} />
+               <Route path="/barcode/bc-scan" element={<BarcodeScannerView />} />
+               <Route path="/barcode/bc-mobile" element={<BarcodeScannerView isMobileMode={true} />} />
+               <Route path="/barcode/bc-label" element={<LabelPrintingView />} />
+               <Route path="/barcode/bc-rfid" element={<RfidIntegrationView />} />
+
+               {/* Quality Management */}
+               <Route path="/quality/qm-param" element={<QualityParametersView />} />
+               <Route path="/quality/qm-plan" element={<InspectionPlansView />} />
+               <Route path="/quality/qm-check" element={<QualityChecklistsView />} />
+               <Route path="/quality/qm-stock" element={<AcceptedRejectedStockView />} />
+               <Route path="/quality/qm-rework" element={<ReworkManagementView />} />
+               <Route path="/quality/qm-ncr" element={<NCRView />} />
+
+               {/* Documents */}
+               <Route path="/documents/doc-inv" element={<InvoicesView />} />
+               <Route path="/documents/doc-chal" element={<ChallansDocView />} />
+               <Route path="/documents/doc-eway" element={<EWayBillsView />} />
+               <Route path="/documents/doc-pack" element={<PackingListsDocView />} />
+               <Route path="/documents/doc-insp" element={<InspectionReportsDocView />} />
+               <Route path="/documents/doc-ver" element={<DocumentVersionsView />} />
+
+               {/* Returns */}
+               <Route path="/returns/ret-purchase" element={<PurchaseReturnMgmtView />} />
+               <Route path="/returns/ret-sales" element={<SalesReturnMgmtView />} />
+               <Route path="/returns/ret-replace" element={<ReplacementHandlingView />} />
+               <Route path="/returns/ret-notes" element={<DebitCreditNotesView />} />
+
+               {/* Vendor Management */}
+               <Route path="/vendor/vm-master" element={<VendorMasterView />} />
+               <Route path="/vendor/vm-price" element={<VendorPriceListView />} />
+               <Route path="/vendor/vm-lead" element={<LeadTimeManagementView />} />
+               <Route path="/vendor/vm-perf" element={<VendorPerformanceView />} />
+               <Route path="/vendor/vm-approved" element={<ApprovedVendorListView />} />
+
+               {/* Approvals */}
+               <Route path="/approvals/app-pur" element={<PurchaseApprovalView />} />
+               <Route path="/approvals/app-grn" element={<GRNApprovalView />} />
+               <Route path="/approvals/app-adj" element={<StockAdjustmentApprovalView />} />
+               <Route path="/approvals/app-trans" element={<TransferApprovalView />} />
+               <Route path="/approvals/app-ret" element={<ReturnApprovalView />} />
+
+               {/* Settings */}
+               <Route path="/settings/set-inv" element={<InventorySettingsView />} />
+               <Route path="/settings/set-rule" element={<AutoReorderRulesView />} />
+               <Route path="/settings/set-tax" element={<TaxConfigurationView />} />
+               <Route path="/settings/set-num" element={<NumberSeriesView />} />
+               <Route path="/settings/set-field" element={<CustomFieldsView />} />
+               <Route path="/settings/set-flow" element={<WorkflowRulesView />} />
+
+               {/* Audit */}
+               <Route path="/audit/aud-stock" element={<StockAuditView />} />
+               <Route path="/audit/aud-cycle" element={<CycleCountView />} />
+               <Route path="/audit/aud-phy" element={<PhysicalVerificationView sessionId="" onBack={() => navigate('/dashboard/dash-overview')} />} />
+               <Route path="/audit/aud-hist" element={<AdjustmentHistoryView />} />
+               <Route path="/audit/aud-log" element={<UserActivityLogView />} />
+
+               {/* Reports */}
+               <Route path="/reports/rep-summ" element={<StockSummaryReportView />} />
+               <Route path="/reports/rep-item" element={<ItemStockReportView />} />
+               <Route path="/reports/rep-wh" element={<WarehouseReportView />} />
+               <Route path="/reports/rep-aging" element={<AgingAnalysisView />} />
+               <Route path="/reports/rep-exp" element={<ExpiryAnalysisReportView />} />
+               <Route path="/reports/rep-move" element={<MovementAnalysisReportView />} />
+               <Route path="/reports/rep-val" element={<ValuationReportDocView />} />
+               <Route path="/reports/rep-gst" element={<GstTaxReportView />} />
+               <Route path="/reports/rep-audit" element={<AuditReportView />} />
+
+               {/* Fallback */}
+               <Route path="*" element={<GenericView title={activeLabel} parent={parentLabel} />} />
+             </Routes>
            </div>
         </main>
       </div>

@@ -1,7 +1,7 @@
-import api from './api';
-import { authService } from './authService';
-import { mockDb } from './mockDb';
-import { InventoryItem, Category, Brand, UOM, HSN, Attribute } from '@/types';
+import api from "./api";
+import { authService } from "./authService";
+import { mockDb } from "./mockDb";
+import { InventoryItem, Category, Brand, UOM, HSN, Attribute } from "@/types";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -17,86 +17,93 @@ export const productService = {
     if (!orgId) return [];
     const response = await api.get(`/inventory/product/all/${orgId}`);
     const products = response.data.products || [];
-    return products.map((item: any) => ({
-      id: item._id,
-      name: item.name,
-      sku: item.sku,
-      category: item.category || '',
-      brand: item.brand || '',
-      uom: item.unitOfMeasure || 'PCS',
-      stock: (item.stocks || []).reduce((sum: number, stock: any) => sum + Number(stock.quantity || 0), 0),
-      consignmentStock: 0,
-      reorderLevel: Number(item.minStock || 0),
-      unitPrice: Number(item.purchasePrice || 0),
-      mrp: Number(item.mrp || item.salesPrice || 0),
-      salePrice: Number(item.salesPrice || 0),
-      hsnCode: item.hsnCode || '',
-      barcode: item.barcode || '',
-      status:
-        item.status === 'out-of-stock'
-          ? 'Out of Stock'
-          : item.status === 'low-stock'
-            ? 'Low Stock'
-            : 'In Stock',
-      lastUpdated: item.updatedAt
-        ? new Date(item.updatedAt).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0],
-      attributes: item.attributes || {},
-    }));
-  },
-
-  createItem: async (item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> => {
-    const response = await api.post('/inventory/product/create', item);
-    return response.data;
-  },
-
-  updateItem: async (id: string, updates: Partial<InventoryItem>): Promise<InventoryItem> => {
-    const response = await api.put(`/product/update/${id}`, updates);
-    return response.data;
-  },
-
-  // Specific Updates for Sub-modules
-  updateItemPricing: async (id: string, pricing: { unitPrice: number; mrp: number; salePrice: number }): Promise<void> => {
-    await delay(200);
-    const items = mockDb.getItems();
-    const index = items.findIndex(i => i.id === id);
-    if (index !== -1) {
-      items[index] = { ...items[index], ...pricing };
-      mockDb.saveItems(items);
-    }
-  },
-
-  updateReorderLevel: async (id: string, reorderLevel: number): Promise<void> => {
-    const item = (await productService.getAllItems()).find((record) => record.id === id);
-    if (!item) {
-      throw new Error('Item not found');
-    }
-
-    await api.post('/api/stockcontrol/monitoring/config', {
-      organisationId: getOrgId(),
-      itemType: 'product',
-      itemId: id,
-      item: item.name,
-      sku: item.sku,
-      unit: item.uom || 'pcs',
-      category: item.category,
-      cost: Number(item.unitPrice || 0),
-      stock: Number(item.stock || 0),
-      reorder: Number(reorderLevel || 0),
-      safety: Math.max(0, Math.floor(Number(reorderLevel || 0) / 2)),
-      maxStock: Math.max(Number(item.stock || 0) * 2, Number(reorderLevel || 0) * 4, 1),
-      leadDays: 7,
+    // Map _id to id for frontend compatibility and calculate total stock
+    return products.map((item: any) => {
+      const totalStock = (item.stocks || []).reduce(
+        (acc: number, s: any) => acc + (s.quantity || 0),
+        0,
+      );
+      return {
+        ...item,
+        id: item._id,
+        reorderLevel: item.minStock || 0,
+        stock: totalStock,
+        salePrice: item.salesPrice || 0,
+        mrp: item.mrp || 0,
+        unitPrice: item.purchasePrice || 0,
+        status:
+          totalStock === 0
+            ? "Out of Stock"
+            : totalStock <= (item.minStock || 0)
+              ? "Low Stock"
+              : "In Stock",
+      };
     });
   },
 
-  updateBarcode: async (id: string, barcode: string): Promise<void> => {
+  createItem: async (
+    item: Omit<InventoryItem, "id">,
+  ): Promise<InventoryItem> => {
+    const payload = {
+      ...item,
+      salesPrice: item.salePrice,
+      purchasePrice: item.unitPrice,
+      minStock: item.reorderLevel,
+    };
+    const response = await api.post("/inventory/product/create", payload);
+    return response.data.product;
+  },
+
+  updateItem: async (
+    id: string,
+    updates: Partial<InventoryItem>,
+  ): Promise<InventoryItem> => {
+    const payload = {
+      ...updates,
+      ...(updates.salePrice !== undefined && { salesPrice: updates.salePrice }),
+      ...(updates.unitPrice !== undefined && {
+        purchasePrice: updates.unitPrice,
+      }),
+      ...(updates.reorderLevel !== undefined && {
+        minStock: updates.reorderLevel,
+      }),
+    };
+    const response = await api.put(`/inventory/product/update/${id}`, payload);
+    return response.data.product;
+  },
+
+  // Specific Updates for Sub-modules
+  updateItemPricing: async (
+    id: string,
+    pricing: { unitPrice: number; mrp: number; salePrice: number },
+  ): Promise<void> => {
+    // Backend uses salesPrice and others. Mapping unitPrice to costPrice if exists, but Product model seems to have salesPrice.
+    // Let's use the generic updateItem
+    await productService.updateItem(id, { ...pricing } as any);
+  },
+
+  updateReorderLevel: async (
+    id: string,
+    reorderLevel: number,
+  ): Promise<void> => {
     await delay(200);
     const items = mockDb.getItems();
-    const index = items.findIndex(i => i.id === id);
+    const index = items.findIndex((i) => i.id === id);
     if (index !== -1) {
-      items[index].barcode = barcode;
+      items[index].reorderLevel = reorderLevel;
+      // Auto update status based on new level
+      if (items[index].stock <= reorderLevel) {
+        items[index].status =
+          items[index].stock === 0 ? "Out of Stock" : "Low Stock";
+      } else {
+        items[index].status = "In Stock";
+      }
       mockDb.saveItems(items);
     }
+  },
+
+  updateBarcode: async (id: string, barcode: string): Promise<void> => {
+    await productService.updateItem(id, { barcode } as any);
   },
 
   deleteItem: async (id: string): Promise<void> => {
@@ -104,60 +111,78 @@ export const productService = {
   },
 
   // --- Category Operations ---
-  getCategories: async () => { 
-    const response = await api.get('/inventory/category');
+  getCategories: async (orgId?: string) => {
+    const response = await api.get("/inventory/category", {
+      params: { organisationId: orgId },
+    });
     return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
-  addCategory: async (data: Omit<Category, 'id'>) => {
-    const response = await api.post('/inventory', { ...data, type: 'category' });
+  addCategory: async (data: any) => {
+    const response = await api.post("/inventory", {
+      ...data,
+      type: "category",
+    });
     return response.data;
   },
   deleteCategory: async (id: string) => {
-    await api.delete(`/inventory/${id}`);
+    const orgId = getOrgId();
+    await api.delete(`/inventory/${id}`, { params: { organisationId: orgId } });
   },
 
   // --- Brand Operations ---
-  getBrands: async () => {
-    const response = await api.get('/inventory/brand');
+  getBrands: async (orgId?: string) => {
+    const response = await api.get("/inventory/brand", {
+      params: { organisationId: orgId },
+    });
     return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
-  addBrand: async (data: Omit<Brand, 'id'>) => {
-    const response = await api.post('/inventory', { ...data, type: 'brand' });
+  addBrand: async (data: any) => {
+    const response = await api.post("/inventory", { ...data, type: "brand" });
     return response.data;
   },
   deleteBrand: async (id: string) => {
-    await api.delete(`/inventory/${id}`);
+    const orgId = getOrgId();
+    await api.delete(`/inventory/${id}`, { params: { organisationId: orgId } });
   },
 
   // --- UOM Operations ---
-  getUOMs: async () => {
-    const response = await api.get('/inventory/uom');
+  getUOMs: async (orgId?: string) => {
+    const response = await api.get("/inventory/uom", {
+      params: { organisationId: orgId },
+    });
     return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
-  addUOM: async (data: Omit<UOM, 'id'>) => {
-    const response = await api.post('/inventory', { ...data, type: 'uom' });
+  addUOM: async (data: any) => {
+    const response = await api.post("/inventory", { ...data, type: "uom" });
     return response.data;
   },
   deleteUOM: async (id: string) => {
-    await api.delete(`/inventory/${id}`);
+    const orgId = getOrgId();
+    await api.delete(`/inventory/${id}`, { params: { organisationId: orgId } });
   },
 
   // --- HSN Operations ---
-  getHSN: async () => {
-    const response = await api.get('/inventory/hsn');
+  getHSN: async (orgId?: string) => {
+    const response = await api.get("/inventory/hsn", {
+      params: { organisationId: orgId },
+    });
     return (response.data.items || []).map((i: any) => ({ ...i, id: i._id }));
   },
-  addHSN: async (data: Omit<HSN, 'id'>) => {
-    const response = await api.post('/inventory', { ...data, type: 'hsn' });
+  addHSN: async (data: any) => {
+    const response = await api.post("/inventory", { ...data, type: "hsn" });
     return response.data;
   },
   deleteHSN: async (id: string) => {
-    await api.delete(`/inventory/${id}`);
+    const orgId = getOrgId();
+    await api.delete(`/inventory/${id}`, { params: { organisationId: orgId } });
   },
 
   // --- Attributes Operations ---
-  getAttributes: async () => { await delay(200); return mockDb.getAttributes(); },
-  addAttribute: async (data: Omit<Attribute, 'id'>) => {
+  getAttributes: async () => {
+    await delay(200);
+    return mockDb.getAttributes();
+  },
+  addAttribute: async (data: Omit<Attribute, "id">) => {
     await delay(200);
     const list = mockDb.getAttributes();
     const newRec = { ...data, id: Math.random().toString(36).substr(2, 9) };
@@ -166,6 +191,6 @@ export const productService = {
   },
   deleteAttribute: async (id: string) => {
     await delay(200);
-    mockDb.saveAttributes(mockDb.getAttributes().filter(i => i.id !== id));
-  }
+    mockDb.saveAttributes(mockDb.getAttributes().filter((i) => i.id !== id));
+  },
 };

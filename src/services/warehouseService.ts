@@ -1,7 +1,19 @@
-import api from './api';
-import { authService } from './authService';
-import { mockDb } from './mockDb';
-import { Warehouse, StockTransfer, Zone, Rack, Bin, WarehouseCapacityStats } from '@/types';
+import api from "./api";
+import { authService } from "./authService";
+import { mockDb } from "./mockDb";
+import {
+  Warehouse,
+  StockTransfer,
+  Zone,
+  Rack,
+  Bin,
+  WarehouseCapacityStats,
+} from "@/types";
+
+const getOrgId = () => {
+  const user = authService.getCurrentUser();
+  return user?.organisationId;
+};
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -10,23 +22,20 @@ const getOrganisationId = () => authService.getOrganisationId();
 export const warehouseService = {
   // --- Warehouse Master ---
   getAllWarehouses: async (): Promise<Warehouse[]> => {
-    const response = await api.get('/getall/warehouse');
-    return (response.data.warehouses || []).map((warehouse: any) => ({
-      id: warehouse._id,
-      name: warehouse.name,
-      location:
-        typeof warehouse.location === 'object'
-          ? warehouse.location?.name || ''
-          : warehouse.location || '',
-      type: warehouse.type || 'General',
-      capacity: Number(warehouse.capacity || 0),
-      contactPerson: warehouse.contact || warehouse.phone || '',
-    }));
+    const response = await api.get("/getall/warehouse");
+    const data = response.data;
+    const warehouses = Array.isArray(data)
+      ? data
+      : data.warehouses || data.items || data.data || [];
+    return warehouses.map((w: any) => ({ ...w, id: w._id || w.id }));
   },
 
-  addWarehouse: async (data: Omit<Warehouse, 'id'>): Promise<Warehouse> => {
-    const response = await api.post('/warehouse/create', data);
-    return response.data;
+  addWarehouse: async (data: Omit<Warehouse, "id">): Promise<Warehouse> => {
+    const orgId = getOrgId();
+    const payload = { ...data, organisationId: orgId };
+    const response = await api.post("/warehouse/create", payload);
+    const w = response.data.warehouse || response.data;
+    return { ...w, id: w._id };
   },
 
   deleteWarehouse: async (id: string): Promise<void> => {
@@ -35,170 +44,162 @@ export const warehouseService = {
 
   // --- Transfers ---
   getAllTransfers: async (): Promise<StockTransfer[]> => {
-    const response = await api.get('/stock-transfers');
+    const response = await api.get("/stock-transfers");
     return (response.data.transfers || []).map((transfer: any) => ({
       id: transfer._id,
       sourceWarehouseId:
-        typeof transfer.fromWarehouse === 'object'
+        typeof transfer.fromWarehouse === "object"
           ? transfer.fromWarehouse?._id
           : transfer.fromWarehouse,
       destinationWarehouseId:
-        typeof transfer.toWarehouse === 'object'
+        typeof transfer.toWarehouse === "object"
           ? transfer.toWarehouse?._id
           : transfer.toWarehouse,
       items: [
         {
           itemId:
-            typeof transfer.productId === 'object'
+            typeof transfer.productId === "object"
               ? transfer.productId?._id
               : transfer.productId,
-          itemName: transfer.productName || 'Unknown Item',
+          itemName: transfer.productName || "Unknown Item",
           quantity: Number(transfer.quantity || 0),
         },
       ],
       status:
-        transfer.status === 'delivered'
-          ? 'Completed'
-          : transfer.status === 'in-transit'
-            ? 'In Transit'
-            : 'Pending',
+        transfer.status === "delivered"
+          ? "Completed"
+          : transfer.status === "in-transit"
+            ? "In Transit"
+            : "Pending",
       date: transfer.transportTime
-        ? new Date(transfer.transportTime).toISOString().split('T')[0]
-        : new Date(transfer.createdAt).toISOString().split('T')[0],
+        ? new Date(transfer.transportTime).toISOString().split("T")[0]
+        : new Date(transfer.createdAt).toISOString().split("T")[0],
       referenceNo: `TRF-${String(transfer._id).slice(-6).toUpperCase()}`,
     }));
   },
 
-  createTransfer: async (transfer: Omit<StockTransfer, 'id' | 'referenceNo' | 'date' | 'status'>): Promise<StockTransfer> => {
+  createTransfer: async (
+    transfer: Omit<StockTransfer, "id" | "referenceNo" | "date" | "status">,
+  ): Promise<StockTransfer> => {
     const organisationId = getOrganisationId();
-    const firstItem = transfer.items[0];
 
-    const response = await api.post('/inventory/stock/transfer', {
+    const response = await api.post("/api/transfer/create", {
       organisationId,
-      productId: firstItem.itemId,
-      fromWarehouse: transfer.sourceWarehouseId,
-      toWarehouse: transfer.destinationWarehouseId,
-      quantity: firstItem.quantity,
-      transportType: 'Truck',
-      notes: '',
+      sourceWarehouse: transfer.sourceWarehouseId,
+      destinationWarehouse: transfer.destinationWarehouseId,
+      items: transfer.items, // Already mapped in component
+      notes: "",
     });
 
     const created = response.data.transfer;
     return {
       id: created._id,
-      sourceWarehouseId: created.fromWarehouse,
-      destinationWarehouseId: created.toWarehouse,
-      items: [
-        {
-          itemId: created.productId,
-          itemName: created.productName || firstItem.itemName,
-          quantity: Number(created.quantity || firstItem.quantity),
-        },
-      ],
-      status: 'Completed',
-      date: created.transportTime
-        ? new Date(created.transportTime).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0],
-      referenceNo: `TRF-${String(created._id).slice(-6).toUpperCase()}`,
+      sourceWarehouseId: created.sourceWarehouse,
+      destinationWarehouseId: created.destinationWarehouse,
+      items: created.items.map((item: any) => ({
+        itemId: item.itemId,
+        itemName: item.itemName || "Item",
+        quantity: item.quantity,
+      })),
+      status: created.status || "Completed",
+      date: new Date(created.createdAt).toISOString().split("T")[0],
+      referenceNo:
+        created.ref || `TRF-${String(created._id).slice(-6).toUpperCase()}`,
     };
   },
 
   // --- Hierarchy: Zones ---
   getZones: async (warehouseId: string): Promise<Zone[]> => {
-    await delay(200);
-    return mockDb.getZones().filter(z => z.warehouseId === warehouseId);
+    const response = await api.get("/api/zones", { params: { warehouseId } });
+    const data = response.data.data || [];
+    return data.map((z: any) => ({
+      ...z,
+      id: z._id,
+      warehouseId: z.warehouseId || z.warehouse,
+    }));
   },
 
-  saveZone: async (zone: Omit<Zone, 'id'>): Promise<Zone> => {
-    await delay(200);
-    const list = mockDb.getZones();
-    const newRec = { ...zone, id: Math.random().toString(36).substr(2, 9) };
-    mockDb.saveZones([...list, newRec]);
-    return newRec;
+  saveZone: async (zone: Omit<Zone, "id">): Promise<Zone> => {
+    const response = await api.post("/api/zones", zone);
+    const z = response.data.data;
+    return { ...z, id: z._id };
   },
 
   deleteZone: async (id: string): Promise<void> => {
-    await delay(200);
-    mockDb.saveZones(mockDb.getZones().filter(z => z.id !== id));
+    await api.delete(`/api/zones/${id}`);
   },
 
   // --- Hierarchy: Racks ---
-  getRacks: async (zoneId: string): Promise<Rack[]> => {
-    await delay(200);
-    return mockDb.getRacks().filter(r => r.zoneId === zoneId);
+  getRacks: async (warehouseId: string, zoneId?: string): Promise<Rack[]> => {
+    const response = await api.get(`/api/racks/get/${warehouseId}`, {
+      params: { zoneId },
+    });
+    const data = response.data.racks || [];
+    return data.map((r: any) => ({
+      ...r,
+      id: r._id,
+      name: r.rackName,
+      levels: r.shelvesCount,
+      warehouseId: r.warehouseId || r.warehouse, // Handle both field names
+    }));
   },
 
-  saveRack: async (rack: Omit<Rack, 'id'>): Promise<Rack> => {
-    await delay(200);
-    const list = mockDb.getRacks();
-    const newRec = { ...rack, id: Math.random().toString(36).substr(2, 9) };
-    mockDb.saveRacks([...list, newRec]);
-    return newRec;
+  saveRack: async (rack: Omit<Rack, "id">): Promise<Rack> => {
+    const payload = {
+      ...rack,
+      rackName: rack.name,
+      shelvesCount: rack.levels,
+      warehouseId: rack.warehouseId,
+    };
+    const response = await api.post("/api/racks", payload);
+    const r = response.data.data;
+    return {
+      ...r,
+      id: r._id,
+      name: r.rackName,
+      levels: r.shelvesCount,
+      warehouseId: r.warehouseId,
+    };
   },
 
   deleteRack: async (id: string): Promise<void> => {
-    await delay(200);
-    mockDb.saveRacks(mockDb.getRacks().filter(r => r.id !== id));
+    await api.delete(`/api/racks/${id}`);
   },
 
   // --- Hierarchy: Bins ---
-  getAllBins: async (): Promise<Bin[]> => {
-    await delay(200);
-    return mockDb.getBins();
+  getAllBins: async (filters?: {
+    warehouseId?: string;
+    zoneId?: string;
+    rackId?: string;
+  }): Promise<Bin[]> => {
+    const response = await api.get("/api/bins", { params: filters });
+    const data = response.data.items || [];
+    return data.map((b: any) => ({ ...b, id: b._id }));
   },
 
   getBinsByRack: async (rackId: string): Promise<Bin[]> => {
     await delay(200);
-    return mockDb.getBins().filter(b => b.rackId === rackId);
+    return mockDb.getBins().filter((b) => b.rackId === rackId);
   },
 
-  saveBin: async (bin: Omit<Bin, 'id'>): Promise<Bin> => {
-    await delay(200);
-    const list = mockDb.getBins();
-    const newRec = { ...bin, id: Math.random().toString(36).substr(2, 9) };
-    mockDb.saveBins([...list, newRec]);
-    return newRec;
+  saveBin: async (bin: Omit<Bin, "id">): Promise<Bin> => {
+    const response = await api.post("/api/bins", bin);
+    const b = response.data;
+    return { ...b, id: b._id };
   },
 
   deleteBin: async (id: string): Promise<void> => {
-    await delay(200);
-    mockDb.saveBins(mockDb.getBins().filter(b => b.id !== id));
+    await api.delete(`/api/bins/${id}`);
   },
 
   // --- Capacity Stats ---
   getWarehouseCapacityStats: async (): Promise<WarehouseCapacityStats[]> => {
-    await delay(400);
-    const warehouses = mockDb.getWarehouses();
-    const zones = mockDb.getZones();
-    const racks = mockDb.getRacks();
-    const bins = mockDb.getBins();
-
-    return warehouses.map(wh => {
-      const whZones = zones.filter(z => z.warehouseId === wh.id);
-      const whRacks = racks.filter(r => whZones.some(z => z.id === r.zoneId));
-      const whBins = bins.filter(b => whRacks.some(r => r.id === b.rackId));
-
-      // Calculate stats per zone
-      const zoneStats = whZones.map(z => {
-        const zRacks = whRacks.filter(r => r.zoneId === z.id);
-        const zBins = bins.filter(b => zRacks.some(r => r.id === b.rackId));
-        const capacity = zBins.reduce((sum, b) => sum + b.maxCapacity, 0);
-        const used = zBins.reduce((sum, b) => sum + b.currentOccupancy, 0);
-        return { zoneName: z.name, capacity, used };
-      });
-
-      const totalBins = whBins.length;
-      const occupiedBins = whBins.filter(b => b.status !== 'Empty').length;
-      const utilizationRate = totalBins > 0 ? Math.round((occupiedBins / totalBins) * 100) : 0;
-
-      return {
-        warehouseId: wh.id,
-        warehouseName: wh.name,
-        totalBins,
-        occupiedBins,
-        utilizationRate,
-        zoneStats
-      };
-    });
-  }
+    try {
+      const response = await api.get("/api/warehouse/capacity-stats");
+      return response.data.data || [];
+    } catch (error) {
+      console.error("Failed to fetch warehouse capacity stats", error);
+      return [];
+    }
+  },
 };

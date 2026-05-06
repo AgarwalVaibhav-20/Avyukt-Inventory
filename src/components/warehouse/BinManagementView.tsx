@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { warehouseService } from '@/services/warehouseService';
-import { mockDb } from '@/services/mockDb';
 import { Bin, Rack, Zone } from '@/types';
 import { LayoutGrid, Plus, Trash2, Box, QrCode, Search, Loader2 } from 'lucide-react';
 import { automationService } from '@/services/automationService';
@@ -22,15 +21,29 @@ const BinManagementView: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    // Simplified: Load all for demo. In real app, paginate or filter by warehouse.
-    const [bData, zData, rData] = await Promise.all([
-        warehouseService.getAllBins(),
-        mockDb.getZones(), // Helper direct access for filter context
-        mockDb.getRacks()
-    ]);
-    setBins(bData);
-    setZones(zData);
-    setRacks(rData);
+    try {
+        const [bData, wData] = await Promise.all([
+            warehouseService.getAllBins(),
+            warehouseService.getAllWarehouses()
+        ]);
+        
+        // Fetch all zones and racks for all warehouses to provide context
+        // In a large app, we'd filter this, but for now we'll load them to resolve IDs
+        const zonesPromises = wData.map(w => warehouseService.getZones(w.id));
+        const zonesResults = await Promise.all(zonesPromises);
+        const allZones = zonesResults.flat();
+
+        // Fetch racks for each zone individually
+        const racksPromises = allZones.map(z => warehouseService.getRacks(z.warehouseId as string, z.id));
+        const racksResults = await Promise.all(racksPromises);
+        const allRacks = racksResults.flat();
+
+        setBins(bData);
+        setZones(allZones);
+        setRacks(allRacks);
+    } catch (error) {
+        console.error("Failed to load bin management data", error);
+    }
     setLoading(false);
   };
 
@@ -43,14 +56,19 @@ const BinManagementView: React.FC = () => {
       const binCode = `W1-${zone?.code}-${rack?.code}-L${newBin.shelfLevel}-${newBin.name}`;
 
       await warehouseService.saveBin({
+          warehouseId: rack?.warehouseId as string,
+          zoneId: rack?.zoneId as string,
+          zone: zone?.code || 'A',
           rackId: newBin.rackId,
-          shelfLevel: newBin.shelfLevel,
+          shelfId: undefined, 
           name: newBin.name,
-          binCode: binCode,
-          maxCapacity: newBin.maxCapacity,
-          currentOccupancy: 0,
+          row: 1, 
+          level: newBin.shelfLevel,
+          number: 1, 
+          capacity: newBin.maxCapacity,
+          current: 0,
           status: 'Empty'
-      });
+      } as any);
       setIsAdding(false);
       setNewBin({ rackId: '', shelfLevel: 1, name: '', maxCapacity: 100 });
       loadData();
@@ -66,8 +84,8 @@ const BinManagementView: React.FC = () => {
   const getQrUrl = (code: string) => automationService.getQrCodeImageUrl(code);
 
   const filteredBins = bins.filter(b => 
-      b.binCode.toLowerCase().includes(search.toLowerCase()) || 
-      b.name.toLowerCase().includes(search.toLowerCase())
+      (b.binCode?.toLowerCase() || b.code?.toLowerCase() || "").includes(search.toLowerCase()) || 
+      (b.name?.toLowerCase() || "").includes(search.toLowerCase())
   );
 
   return (
@@ -124,21 +142,23 @@ const BinManagementView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loading ? <div className="col-span-3 text-center py-8"><Loader2 className="animate-spin inline"/></div> :
                  filteredBins.length === 0 ? <div className="col-span-3 text-center text-slate-500 py-8">No bins found.</div> :
-                 filteredBins.map(bin => {
-                     const utilization = (bin.currentOccupancy / bin.maxCapacity) * 100;
+                  filteredBins.map(bin => {
+                     const current = bin.currentOccupancy !== undefined ? bin.currentOccupancy : (bin.current || 0);
+                     const capacity = bin.maxCapacity !== undefined ? bin.maxCapacity : (bin.capacity || 0);
+                     const utilization = capacity > 0 ? (current / capacity) * 100 : 0;
                      return (
                         <div key={bin.id} className="border border-slate-200 rounded-lg p-4 bg-white hover:shadow-md transition-shadow relative group">
                             <div className="flex justify-between items-start mb-2">
                                 <div>
                                     <h4 className="font-bold text-slate-800">{bin.name}</h4>
-                                    <p className="text-xs font-mono text-slate-500 bg-slate-100 px-1 rounded inline-block mt-1">{bin.binCode}</p>
+                                    <p className="text-xs font-mono text-slate-500 bg-slate-100 px-1 rounded inline-block mt-1">{bin.binCode || bin.code || 'N/A'}</p>
                                 </div>
-                                <img src={getQrUrl(bin.binCode)} alt="QR" className="w-10 h-10 opacity-50"/>
+                                <img src={getQrUrl(bin.binCode || bin.code || '')} alt="QR" className="w-10 h-10 opacity-50"/>
                             </div>
                             
                             <div className="mt-3">
                                 <div className="flex justify-between text-xs mb-1">
-                                    <span className="text-slate-500 flex items-center gap-1"><Box size={10}/> {bin.currentOccupancy} / {bin.maxCapacity}</span>
+                                    <span className="text-slate-500 flex items-center gap-1"><Box size={10}/> {current} / {capacity}</span>
                                     <span className={`font-bold ${utilization > 90 ? 'text-red-600' : 'text-green-600'}`}>{utilization.toFixed(0)}% Full</span>
                                 </div>
                                 <div className="w-full bg-slate-100 rounded-full h-1.5">
