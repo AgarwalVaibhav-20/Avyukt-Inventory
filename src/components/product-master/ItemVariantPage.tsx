@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Plus, 
   Search, 
@@ -27,6 +28,7 @@ import { InventoryItem } from '@/types';
 
 const ItemVariantPage: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
   const { variants, loading } = useAppSelector((state) => state.itemVariants);
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +50,19 @@ const ItemVariantPage: React.FC = () => {
     };
     loadProducts();
   }, [dispatch]);
+
+  useEffect(() => {
+    const sku = searchParams.get('sku');
+    const itemId = searchParams.get('item');
+    if (sku && !itemId) {
+      setSearchTerm(sku);
+    } else if (itemId) {
+      setSearchTerm('');
+    }
+    if (itemId) {
+      setNewVariant((current) => ({ ...current, productId: itemId }));
+    }
+  }, [searchParams]);
 
   const handleAddAttribute = () => {
     setNewVariant({
@@ -79,10 +94,14 @@ const ItemVariantPage: React.FC = () => {
     });
   };
 
-  const filteredVariants = variants.filter(v => 
-    v.variantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    v.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const linkedItemId = searchParams.get('item');
+  const filteredVariants = variants.filter(v => {
+    const matchesLinkedItem = linkedItemId ? v.productId?._id === linkedItemId || v.productId === linkedItemId : true;
+    const matchesSearch = linkedItemId ? true :
+      v.variantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesLinkedItem && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 space-y-8">

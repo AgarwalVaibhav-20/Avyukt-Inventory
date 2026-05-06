@@ -30,52 +30,148 @@ const ZoneStructureView: React.FC = () => {
   }, [selectedZone]);
 
   const loadWarehouses = async () => {
-    setLoading(true);
-    const data = await warehouseService.getAllWarehouses();
-    setWarehouses(data);
-    if(data.length > 0) setSelectedWh(data[0].id);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const data = await warehouseService.getAllWarehouses();
+      console.log("Loaded warehouses:", data);
+      setWarehouses(data);
+      if(data.length > 0) {
+        setSelectedWh(data[0].id);
+        // Don't call loadZones here - useEffect will handle it
+      }
+    } catch (error) {
+      console.error("Failed to load warehouses:", error);
+      alert(`Error loading warehouses: ${(error as any)?.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadZones = async (whId: string) => {
-    const data = await warehouseService.getZones(whId);
-    setZones(data);
-    setRacks([]);
-    setSelectedZone('');
+    try {
+      const data = await warehouseService.getZones(whId);
+      setZones(data);
+      setRacks([]);
+      setSelectedZone('');
+    } catch (error) {
+      console.error("Failed to load zones:", error);
+      alert(`Error loading zones: ${(error as any)?.message}`);
+    }
   };
 
   const loadRacks = async (zId: string) => {
-    const data = await warehouseService.getRacks(selectedWh, zId);
-    setRacks(data);
+    try {
+      console.log("Loading racks for zone:", zId, "warehouse:", selectedWh);
+      const data = await warehouseService.getRacks(selectedWh, zId);
+      console.log("Loaded racks:", data);
+      setRacks(data);
+    } catch (error) {
+      console.error("Failed to load racks:", error);
+      alert(`Error loading racks: ${(error as any)?.message}`);
+    }
   };
 
   const handleAddZone = async () => {
-    if (!newZone.name || !newZone.code) return;
-    await warehouseService.saveZone({ ...newZone, warehouseId: selectedWh, type: newZone.type as any });
-    setShowZoneForm(false);
-    setNewZone({ name: '', code: '', type: 'General' });
-    loadZones(selectedWh);
+    if (!newZone.name || !newZone.code) {
+      alert("Zone name and code are required");
+      return;
+    }
+    try {
+      console.log("Creating zone:", newZone);
+      await warehouseService.saveZone({ ...newZone, warehouseId: selectedWh, type: newZone.type as any });
+      setShowZoneForm(false);
+      setNewZone({ name: '', code: '', type: 'General' });
+      loadZones(selectedWh);
+      alert("Zone created successfully!");
+    } catch (error) {
+      console.error("Failed to create zone:", error);
+      alert(`Error creating zone: ${(error as any)?.message}`);
+    }
   };
 
   const handleAddRack = async () => {
-    if (!newRack.name || !newRack.code) return;
-    await warehouseService.saveRack({ ...newRack, zoneId: selectedZone, warehouseId: selectedWh });
-    setShowRackForm(false);
-    setNewRack({ name: '', code: '', levels: 4 });
-    loadRacks(selectedZone);
+    if (!newRack.name || !newRack.code) {
+      alert("Rack name and code are required");
+      return;
+    }
+    
+    if (!selectedWh) {
+      alert("Please select a warehouse first");
+      return;
+    }
+    
+    if (!selectedZone) {
+      alert("Please select a zone first");
+      return;
+    }
+
+    if (newRack.levels < 1) {
+      alert("Rack must have at least 1 level");
+      return;
+    }
+
+    try {
+      console.log("Creating rack with data:", { ...newRack, zoneId: selectedZone, warehouseId: selectedWh });
+      
+      const rack = await warehouseService.saveRack({ 
+        ...newRack, 
+        zoneId: selectedZone, 
+        warehouseId: selectedWh 
+      });
+      
+      console.log("Rack created successfully:", rack);
+      
+      // Create shelves for this rack
+      console.log(`Creating ${newRack.levels} shelves for rack ${rack.id}`);
+      await Promise.all(
+        Array.from({ length: newRack.levels }).map((_, index) =>
+          warehouseService.saveShelf({
+            rackId: rack.id,
+            warehouseId: selectedWh,
+            zoneId: selectedZone,
+            name: `${newRack.code}-S${index + 1}`,
+            level: index + 1,
+          }),
+        ),
+      );
+      
+      setShowRackForm(false);
+      setNewRack({ name: '', code: '', levels: 4 });
+      loadRacks(selectedZone);
+      alert("Rack and shelves created successfully!");
+    } catch (error) {
+      console.error("Failed to create rack:", error);
+      alert(`Error creating rack: ${(error as any)?.message || (error as any)?.response?.data?.message || "Unknown error"}`);
+    }
   };
 
   const deleteZone = async (id: string) => {
-    if(confirm('Delete zone?')) {
+    if(confirm('Delete zone? This will also delete all racks and bins in this zone.')) {
+      try {
+        console.log("Deleting zone:", id);
         await warehouseService.deleteZone(id);
+        console.log("Zone deleted successfully");
         loadZones(selectedWh);
+        alert("Zone deleted successfully!");
+      } catch (error) {
+        console.error("Failed to delete zone:", error);
+        alert(`Error deleting zone: ${(error as any)?.message}`);
+      }
     }
   };
 
   const deleteRack = async (id: string) => {
-    if(confirm('Delete rack?')) {
+    if(confirm('Delete rack? This will also delete all bins in this rack.')) {
+      try {
+        console.log("Deleting rack:", id);
         await warehouseService.deleteRack(id);
+        console.log("Rack deleted successfully");
         loadRacks(selectedZone);
+        alert("Rack deleted successfully!");
+      } catch (error) {
+        console.error("Failed to delete rack:", error);
+        alert(`Error deleting rack: ${(error as any)?.message}`);
+      }
     }
   };
 

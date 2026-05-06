@@ -26,11 +26,28 @@ export const productService = {
       return {
         ...item,
         id: item._id,
+        itemCode: item.itemCode || item.sku,
+        itemType: item.itemType || item.inventoryItemType || "Trading",
+        uom: item.uom || item.stockUom || item.unitOfMeasure || "",
+        stockUom: item.stockUom || item.uom || item.unitOfMeasure || "",
+        purchaseUom: item.purchaseUom || item.uom || item.unitOfMeasure || "",
+        salesUom: item.salesUom || item.uom || item.unitOfMeasure || "",
         reorderLevel: item.minStock || 0,
+        minimumStockLevel: item.minimumStockLevel ?? item.minStock ?? 0,
+        maximumStockLevel: item.maximumStockLevel ?? 0,
+        reorderQuantity: item.reorderQuantity ?? 0,
         stock: totalStock,
+        stocks: item.stocks || [],
+        warehouseId: item.warehouseId || item.stocks?.[0]?.warehouseId || "",
+        quantity: item.quantity ?? item.stocks?.[0]?.quantity ?? 0,
+        unitCost: item.unitCost ?? item.stocks?.[0]?.unitCost ?? 0,
+        binCode: item.binCode || item.bins?.[0] || "",
         salePrice: item.salesPrice || 0,
         mrp: item.mrp || 0,
         unitPrice: item.purchasePrice || 0,
+        taxRate: item.taxRate ?? item.salesTax ?? 0,
+        barcodes: item.barcodes || (item.barcode ? [item.barcode] : []),
+        images: item.images || [],
         status:
           totalStock === 0
             ? "Out of Stock"
@@ -46,9 +63,18 @@ export const productService = {
   ): Promise<InventoryItem> => {
     const payload = {
       ...item,
+      type: item.itemType === "Service" ? "services" : "goods",
+      itemCode: item.itemCode || item.sku,
+      unitOfMeasure: item.stockUom || item.uom,
+      quantity: item.quantity || 0,
+      unitCost: item.unitCost || item.unitPrice || 0,
+      barcode: item.barcode || item.barcodes?.[0] || "",
+      barcodes: item.barcodes || (item.barcode ? [item.barcode] : []),
       salesPrice: item.salePrice,
       purchasePrice: item.unitPrice,
       minStock: item.reorderLevel,
+      salesTax: item.taxRate,
+      purchaseTax: item.taxRate,
     };
     const response = await api.post("/inventory/product/create", payload);
     return response.data.product;
@@ -67,8 +93,28 @@ export const productService = {
       ...(updates.reorderLevel !== undefined && {
         minStock: updates.reorderLevel,
       }),
+      ...(updates.quantity !== undefined &&
+        updates.warehouseId && {
+          stocks: [
+            {
+              warehouseId: updates.warehouseId,
+              quantity: updates.quantity,
+              unitCost: updates.unitCost || updates.unitPrice || 0,
+            },
+          ],
+        }),
+      ...(updates.taxRate !== undefined && {
+        salesTax: updates.taxRate,
+        purchaseTax: updates.taxRate,
+      }),
+      ...(updates.barcodes !== undefined && {
+        barcode: updates.barcode || updates.barcodes[0] || "",
+      }),
+      ...((updates.stockUom || updates.uom) && {
+        unitOfMeasure: updates.stockUom || updates.uom,
+      }),
     };
-    const response = await api.put(`/inventory/product/update/${id}`, payload);
+    const response = await api.put(`/product/update/${id}`, payload);
     return response.data.product;
   },
 

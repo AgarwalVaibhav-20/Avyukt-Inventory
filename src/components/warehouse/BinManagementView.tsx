@@ -27,22 +27,33 @@ const BinManagementView: React.FC = () => {
             warehouseService.getAllWarehouses()
         ]);
         
+        console.log("Loaded bins:", bData);
+        console.log("Loaded warehouses:", wData);
+        
         // Fetch all zones and racks for all warehouses to provide context
         // In a large app, we'd filter this, but for now we'll load them to resolve IDs
         const zonesPromises = wData.map(w => warehouseService.getZones(w.id));
         const zonesResults = await Promise.all(zonesPromises);
         const allZones = zonesResults.flat();
 
+        console.log("Loaded zones:", allZones);
+
         // Fetch racks for each zone individually
-        const racksPromises = allZones.map(z => warehouseService.getRacks(z.warehouseId as string, z.id));
+        const racksPromises = allZones.map(z => {
+            console.log("Fetching racks for warehouse:", z.warehouseId, "zone:", z.id);
+            return warehouseService.getRacks(z.warehouseId as string, z.id);
+        });
         const racksResults = await Promise.all(racksPromises);
         const allRacks = racksResults.flat();
+
+        console.log("Loaded racks:", allRacks);
 
         setBins(bData);
         setZones(allZones);
         setRacks(allRacks);
     } catch (error) {
         console.error("Failed to load bin management data", error);
+        alert(`Error loading bin management: ${(error as any)?.message}`);
     }
     setLoading(false);
   };
@@ -51,27 +62,36 @@ const BinManagementView: React.FC = () => {
       if(!newBin.rackId || !newBin.name) return alert("Select Rack and Name");
       const rack = racks.find(r => r.id === newBin.rackId);
       const zone = zones.find(z => z.id === rack?.zoneId);
+      if (!rack || !zone) {
+          console.error("Rack not found:", newBin.rackId, "Available racks:", racks);
+          return alert("Rack or zone data is missing. Please refresh and try again.");
+      }
       
-      // Auto-gen code: W1-ZA-R01-L1-B01
-      const binCode = `W1-${zone?.code}-${rack?.code}-L${newBin.shelfLevel}-${newBin.name}`;
+      const binNumber = Number(String(newBin.name).match(/\d+/)?.[0] || 1);
 
-      await warehouseService.saveBin({
-          warehouseId: rack?.warehouseId as string,
-          zoneId: rack?.zoneId as string,
-          zone: zone?.code || 'A',
-          rackId: newBin.rackId,
-          shelfId: undefined, 
-          name: newBin.name,
-          row: 1, 
-          level: newBin.shelfLevel,
-          number: 1, 
-          capacity: newBin.maxCapacity,
-          current: 0,
-          status: 'Empty'
-      } as any);
-      setIsAdding(false);
-      setNewBin({ rackId: '', shelfLevel: 1, name: '', maxCapacity: 100 });
-      loadData();
+      try {
+          const result = await warehouseService.saveBin({
+              warehouseId: rack.warehouseId as string,
+              zoneId: rack.zoneId as string,
+              zone: (zone.code || 'A').replace(/^Z/i, ''),
+              rackId: newBin.rackId,
+              shelfId: undefined, 
+              name: newBin.name,
+              row: 1, 
+              level: newBin.shelfLevel,
+              number: binNumber, 
+              capacity: newBin.maxCapacity,
+              current: 0,
+              status: 'Empty'
+          } as any);
+          console.log("Bin created successfully:", result);
+          setIsAdding(false);
+          setNewBin({ rackId: '', shelfLevel: 1, name: '', maxCapacity: 100 });
+          loadData();
+      } catch (error) {
+          console.error("Failed to create bin:", error);
+          alert(`Error creating bin: ${(error as any)?.message}`);
+      }
   };
 
   const handleDelete = async (id: string) => {
@@ -112,16 +132,36 @@ const BinManagementView: React.FC = () => {
                 </div>
             </div>
 
+            {/* Setup Guide */}
+            {zones.length === 0 || racks.length === 0 ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <p className="text-sm text-amber-800 font-medium mb-2">⚠️ Setup Required</p>
+                    <p className="text-xs text-amber-700">To create bins, you need to set up the warehouse hierarchy first:</p>
+                    <ol className="text-xs text-amber-700 ml-4 mt-2 space-y-1">
+                        <li>1. Create a Warehouse (Warehouse Master)</li>
+                        <li>2. Create Zones within the Warehouse (Zone Structure)</li>
+                        <li>3. Create Racks within Zones (Zone Structure)</li>
+                        <li>4. Then create Bins here</li>
+                    </ol>
+                </div>
+            ) : null}
+
             {isAdding && (
                 <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-200 mb-6 animate-fade-in">
                     <h3 className="font-bold text-indigo-900 mb-4">New Storage Bin</h3>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                         <div className="md:col-span-2">
                             <label className="block text-xs font-bold text-indigo-800 mb-1">Parent Rack</label>
-                            <select className="w-full border rounded p-2 text-sm" value={newBin.rackId} onChange={e => setNewBin({...newBin, rackId: e.target.value})}>
-                                <option value="">Select Rack</option>
-                                {racks.map(r => <option key={r.id} value={r.id}>{r.name} ({r.code})</option>)}
-                            </select>
+                            {racks.length === 0 ? (
+                                <div className="w-full border rounded p-2 text-sm text-slate-500 bg-slate-50">
+                                    No racks available. Create a warehouse, zone, and rack first.
+                                </div>
+                            ) : (
+                                <select className="w-full border rounded p-2 text-sm" value={newBin.rackId} onChange={e => setNewBin({...newBin, rackId: e.target.value})}>
+                                    <option value="">Select Rack</option>
+                                    {racks.map(r => <option key={r.id} value={r.id}>{r.name} ({r.code})</option>)}
+                                </select>
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-indigo-800 mb-1">Shelf Level</label>
@@ -134,7 +174,7 @@ const BinManagementView: React.FC = () => {
                     </div>
                     <div className="flex justify-end gap-2">
                         <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-500 hover:bg-white rounded text-sm">Cancel</button>
-                        <button onClick={handleAdd} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm hover:bg-indigo-700">Create Bin</button>
+                        <button onClick={handleAdd} disabled={racks.length === 0} className="bg-indigo-600 text-white px-6 py-2 rounded text-sm hover:bg-indigo-700 disabled:opacity-50">Create Bin</button>
                     </div>
                 </div>
             )}

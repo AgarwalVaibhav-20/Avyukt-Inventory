@@ -1,16 +1,37 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchCapacityStats } from '@/store/slices/warehouseSlice';
-import { BarChart3, Info, Loader2, AlertCircle } from 'lucide-react';
+import { productService } from '@/services/productService';
+import { InventoryItem } from '@/types';
+import { BarChart3, Info, Loader2, AlertCircle, Package } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const WarehouseCapacityView: React.FC = () => {
   const dispatch = useAppDispatch();
+  const [searchParams] = useSearchParams();
   const { capacityStats: stats, loading, error } = useAppSelector((state) => state.warehouse);
+  const [linkedItem, setLinkedItem] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     dispatch(fetchCapacityStats());
   }, [dispatch]);
+
+  useEffect(() => {
+    const sku = searchParams.get('sku');
+    const itemId = searchParams.get('item');
+    if (!sku && !itemId) {
+      setLinkedItem(null);
+      return;
+    }
+
+    const loadLinkedItem = async () => {
+      const items = await productService.getAllItems();
+      setLinkedItem(items.find((item) => item.id === itemId || item.sku === sku) || null);
+    };
+
+    loadLinkedItem();
+  }, [searchParams]);
 
   return (
     <div className="space-y-6">
@@ -30,6 +51,33 @@ const WarehouseCapacityView: React.FC = () => {
                     Refresh Stats
                 </button>
             </div>
+
+            {linkedItem && (
+                <div className="mb-6 rounded-xl border border-blue-100 bg-blue-50 p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-white p-2 text-blue-600 shadow-sm">
+                            <Package size={20}/>
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-blue-950">{linkedItem.name}</h3>
+                            <p className="text-xs text-blue-700 mt-1">
+                                SKU {linkedItem.sku} is linked from Item Master with {linkedItem.stock} {linkedItem.stockUom || linkedItem.uom || 'units'} total stock.
+                            </p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {(linkedItem.stocks || []).length === 0 ? (
+                                    <span className="rounded-md bg-white px-2 py-1 text-xs text-blue-700">No warehouse stock rows yet</span>
+                                ) : (
+                                    (linkedItem.stocks || []).map((stock, index) => (
+                                        <span key={`${stock.warehouseId}-${index}`} className="rounded-md bg-white px-2 py-1 text-xs font-medium text-blue-800">
+                                            Warehouse {String(stock.warehouseId).slice(-6)}: {stock.quantity}
+                                        </span>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {loading ? (
                 <div className="py-24 text-center">

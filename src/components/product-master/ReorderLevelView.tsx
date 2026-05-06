@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   fetchStockControlData,
   updateReorderLevelRecord,
@@ -18,9 +19,9 @@ import { fetchItems, updateInventoryItem } from "@/store/slices/inventorySlice";
 
 const ReorderLevelView: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { items, loading, actionLoading, error } = useAppSelector(
-    (state) => state.stockControl,
-  );
+  const [searchParams] = useSearchParams();
+  const { items, loading, error } = useAppSelector((state) => state.inventory);
+  const { actionLoading } = useAppSelector((state) => state.stockControl);
   const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLevel, setEditLevel] = useState<number>(0);
@@ -29,6 +30,11 @@ const ReorderLevelView: React.FC = () => {
     dispatch(fetchItems());
   }, [dispatch]);
 
+  useEffect(() => {
+    const sku = searchParams.get("sku");
+    if (sku) setSearch(sku);
+  }, [searchParams]);
+
   const handleEdit = (item: InventoryItem) => {
     setEditingId(item.id);
     setEditLevel(item.reorderLevel);
@@ -36,7 +42,7 @@ const ReorderLevelView: React.FC = () => {
 
   const handleSave = async (id: string) => {
     await dispatch(
-      updateInventoryItem({ id, updates: { minStock: editLevel } }),
+      updateInventoryItem({ id, updates: { reorderLevel: editLevel, minimumStockLevel: editLevel } }),
     );
     setEditingId(null);
   };

@@ -6,6 +6,7 @@ import {
   StockTransfer,
   Zone,
   Rack,
+  Shelf,
   Bin,
   WarehouseCapacityStats,
 } from "@/types";
@@ -139,6 +140,7 @@ export const warehouseService = {
       ...r,
       id: r._id,
       name: r.rackName,
+      code: r.code || r.rackCode || String(r._id).slice(-4).toUpperCase(),
       levels: r.shelvesCount,
       warehouseId: r.warehouseId || r.warehouse, // Handle both field names
     }));
@@ -148,6 +150,7 @@ export const warehouseService = {
     const payload = {
       ...rack,
       rackName: rack.name,
+      code: rack.code,
       shelvesCount: rack.levels,
       warehouseId: rack.warehouseId,
     };
@@ -157,13 +160,44 @@ export const warehouseService = {
       ...r,
       id: r._id,
       name: r.rackName,
+      code: r.code || rack.code,
       levels: r.shelvesCount,
       warehouseId: r.warehouseId,
+      zoneId: r.zoneId,
     };
   },
 
   deleteRack: async (id: string): Promise<void> => {
     await api.delete(`/api/racks/${id}`);
+  },
+
+  // --- Hierarchy: Shelves ---
+  getShelves: async (rackId: string): Promise<Shelf[]> => {
+    const response = await api.get(`/api/shelves/shelf/get/${rackId}`);
+    const data = response.data.shelves || [];
+    return data.map((s: any) => ({
+      ...s,
+      id: s._id,
+      name: s.shelfName,
+      level: s.level || Number(String(s.shelfName || "").match(/\d+/)?.[0] || 1),
+    }));
+  },
+
+  saveShelf: async (shelf: Omit<Shelf, "id">): Promise<Shelf> => {
+    const response = await api.post("/api/shelves/shelf/create", {
+      shelfName: shelf.name,
+      rackId: shelf.rackId,
+      warehouseId: shelf.warehouseId,
+      zoneId: shelf.zoneId,
+      level: shelf.level,
+    });
+    const s = response.data.shelf;
+    return {
+      ...s,
+      id: s._id,
+      name: s.shelfName,
+      level: s.level,
+    };
   },
 
   // --- Hierarchy: Bins ---

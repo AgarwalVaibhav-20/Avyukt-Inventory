@@ -16,20 +16,53 @@ export interface InventoryItem {
   id: string;
   name: string;
   sku: string;
+  itemCode?: string;
+  description?: string;
+  itemType?: 'Raw Material' | 'Finished Goods' | 'Semi-Finished' | 'Consumable' | 'Trading' | 'Service';
   category: string; // Stored as ID or Name
   brand: string;
   uom: string;
+  purchaseUom?: string;
+  stockUom?: string;
+  salesUom?: string;
+  uomConversions?: string;
   stock: number;
+  stocks?: {
+    warehouseId: string;
+    quantity: number;
+    unitCost?: number;
+    binCode?: string;
+  }[];
+  warehouseId?: string;
+  quantity?: number;
+  unitCost?: number;
+  binCode?: string;
   consignmentStock: number; // Stock held by customers
   reorderLevel: number;
+  minimumStockLevel?: number;
+  maximumStockLevel?: number;
+  reorderQuantity?: number;
+  leadTimeDays?: number;
+  shelfLifeDays?: number;
   unitPrice: number; // Cost Price
   mrp: number;
   salePrice: number;
+  customerPrice?: number;
+  quantityBreakPrice?: number;
+  currency?: string;
+  priceEffectiveFrom?: string;
+  priceEffectiveTo?: string;
   hsnCode: string;
+  taxRate?: number;
   barcode: string;
+  barcodes?: string[];
+  qrCode?: string;
+  barcodeFormat?: 'Code128' | 'EAN-13' | 'QR';
+  images?: string[];
   status: 'In Stock' | 'Low Stock' | 'Out of Stock' | 'in-stock' | 'low-stock' | 'out-of-stock';
   lastUpdated: string;
   attributes?: Record<string, string>;
+  valuationMethod?: 'FIFO' | 'LIFO' | 'Weighted Average' | 'Standard Cost';
 }
 
 export interface DashboardStats {
@@ -101,9 +134,19 @@ export interface Zone {
 export interface Rack {
   id: string;
   zoneId: string;
+  warehouseId?: string;
   name: string; // e.g., "Rack 01"
   code: string; // e.g., "R01"
   levels: number; // Number of shelves/levels
+}
+
+export interface Shelf {
+  id: string;
+  rackId: string;
+  warehouseId: string;
+  zoneId: string;
+  name: string;
+  level: number;
 }
 
 export interface Bin {

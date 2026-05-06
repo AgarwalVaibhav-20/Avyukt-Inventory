@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { productService } from '@/services/productService';
 import { InventoryItem } from '@/types';
 import { DollarSign, Save, Search, Loader2 } from 'lucide-react';
 
 const ItemPricingView: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -15,6 +17,11 @@ const ItemPricingView: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    const sku = searchParams.get('sku');
+    if (sku) setSearch(sku);
+  }, [searchParams]);
 
   const loadData = async () => {
     setLoading(true);
