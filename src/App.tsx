@@ -109,6 +109,7 @@ import { warehouseService } from "@/services/warehouseService";
 import { procurementService } from "@/services/procurementService";
 import { Bell, Menu, User, Rocket, Settings, LogOut, ChevronDown, Camera, ChevronRight } from 'lucide-react';
 import ProfileView from '@/components/common/ProfileView';
+import { notificationService } from '@/services/notificationService';
 import { Toaster } from 'react-hot-toast';
 import { fetchProfile } from '@/store/slices/authSlice';
 import Login from "@/components/common/Login";
@@ -135,6 +136,12 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
   const [showAiModal, setShowAiModal] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+
+  // Socket ref
+  const socketRef = React.useRef<any>(null);
 
   const { user } = useAppSelector((state) => state.auth);
 
@@ -142,7 +149,91 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       dispatch(fetchProfile());
     }
+
+    // Setup Socket.IO client for real-time notifications
+    // Dynamically import socket.io-client to avoid Vite import-resolution issues
+    import('socket.io-client')
+      .then(({ io }) => {
+        try {
+          const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:4000', { transports: ['websocket', 'polling'] });
+          socketRef.current = socket;
+
+          socket.on('connect', () => {
+            console.log('Socket connected', socket.id);
+          });
+
+          socket.on('notification', (payload: any) => {
+            setNotifications((prev) => [payload, ...prev]);
+          });
+
+          socket.on('notification:updated', (payload: any) => {
+            // payload: { id, status }
+            setNotifications((prev) => prev.map((n) => (n._id === payload.id || n.id === payload.id ? { ...n, status: payload.status, read: payload.status === 'read' } : n)));
+          });
+
+          socket.on('notifications:markedAll', (payload: any) => {
+            // Mark all matching notifications as read locally
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+          });
+
+          socket.on('inventory:update', () => {
+            notificationService.getNotifications().then((data) => {
+              setNotifications(Array.isArray(data) ? data : data.notifications || []);
+            }).catch(() => {});
+          });
+
+          socket.on('disconnect', () => {
+            console.log('Socket disconnected');
+          });
+        } catch (err) {
+          console.warn('Socket initialization failed', err);
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed dynamic import of socket.io-client', err);
+      });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
   }, [dispatch, isAuthenticated]);
+
+  // Lazy polling: refresh notifications every 60s and when tab becomes visible
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let mounted = true;
+    const fetchList = async () => {
+      setNotificationsLoading(true);
+      try {
+        const data = await notificationService.getNotifications();
+        if (!mounted) return;
+        setNotifications(Array.isArray(data) ? data : data.notifications || []);
+      } catch (err) {
+        console.error('Failed to poll notifications', err);
+      } finally {
+        setNotificationsLoading(false);
+      }
+    };
+
+    fetchList();
+    const interval = setInterval(fetchList, 60000);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') fetchList();
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isAuthenticated]);
 
   // Sync labels with current path
   useEffect(() => {
@@ -512,10 +603,116 @@ const App: React.FC = () => {
               <Rocket size={14} /> AI Analyst
             </button>
 
-            <button className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors">
+            <button
+              onClick={async () => {
+                const next = !showNotifications;
+                setShowNotifications(next);
+                if (next && notifications.length === 0) {
+                  setNotificationsLoading(true);
+                  try {
+                    const data = await notificationService.getNotifications();
+                    setNotifications(Array.isArray(data) ? data : data.notifications || []);
+                  } catch (err) {
+                    console.error("Failed to load notifications", err);
+                  } finally {
+                    setNotificationsLoading(false);
+                  }
+                }
+              }}
+              className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors"
+            >
               <Bell size={20} />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             </button>
+
+            {showNotifications && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)}></div>
+                <div className="fixed top-20 right-8 w-96 max-h-96 bg-white rounded-xl shadow-2xl border border-slate-100 z-20 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="px-4 py-3 flex items-center justify-between border-b border-slate-50 bg-white rounded-t-xl sticky top-0">
+                    <p className="text-sm font-semibold">Notifications</p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await notificationService.markAllAsRead();
+                          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }}
+                      className="text-xs text-slate-500 hover:text-slate-700"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    {notificationsLoading && <p className="p-3 text-sm text-slate-500">Loading...</p>}
+                    {!notificationsLoading && notifications.length === 0 && (
+                      <p className="p-3 text-sm text-slate-500">No notifications</p>
+                    )}
+                    {!notificationsLoading && notifications.map((n) => (
+                      <div
+                        key={n._id || n.id}
+                        onClick={() => {
+                          // if notification contains a route, navigate
+                          const route = n.route || n.link || n.url;
+                          if (route) {
+                            navigate(route);
+                            setShowNotifications(false);
+                          }
+                        }}
+                        className={`px-4 py-3 border-b border-slate-50 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors ${n.read ? 'bg-white' : 'bg-indigo-50'}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-700 break-words">{n.title || n.subject}</p>
+                          <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap break-words line-clamp-3">{n.body || n.message || n.remark || (n.materialData && JSON.stringify(n.materialData, null, 2))}</p>
+                          <div className="text-[11px] text-slate-400 mt-2">{new Date(n.createdAt || n.created).toLocaleString()}</div>
+                        </div>
+                        {!n.read && (
+                          <div className="flex flex-col items-end gap-2">
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await notificationService.markAsRead(n._id || n.id);
+                                setNotifications((prev) => prev.map((x) => ((x._id === n._id || x.id === n.id) ? { ...x, read: true } : x)));
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="text-xs text-blue-600"
+                          >
+                            Mark
+                          </button>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                const detail = await notificationService.getNotificationById(n._id || n.id);
+                                // Show full details in a new tab or route - for now navigate if route present else alert
+                                if (detail && (detail.route || detail.url || detail.link)) {
+                                  navigate(detail.route || detail.url || detail.link);
+                                  setShowNotifications(false);
+                                } else {
+                                  // simple modal fallback
+                                  alert(JSON.stringify(detail, null, 2));
+                                }
+                              } catch (err) {
+                                console.error(err);
+                              }
+                            }}
+                            className="text-xs text-slate-600"
+                          >
+                            Details
+                          </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
              {/* Profile Dropdown */}
              <div className="relative">
