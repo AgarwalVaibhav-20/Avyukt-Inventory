@@ -1,21 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { warehouseService } from '@/services/warehouseService';
-import { Warehouse, Zone, Rack } from '@/types';
-import { Layers, Plus, ChevronRight, Trash2, MapPin, Grid, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { warehouseService } from "@/services/warehouseService";
+import { Warehouse, Zone, Rack } from "@/types";
+import {
+  Layers,
+  Plus,
+  ChevronRight,
+  Trash2,
+  MapPin,
+  Grid,
+  Loader2,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const ZoneStructureView: React.FC = () => {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [selectedWh, setSelectedWh] = useState<string>('');
+  const [selectedWh, setSelectedWh] = useState<string>("");
   const [zones, setZones] = useState<Zone[]>([]);
-  const [selectedZone, setSelectedZone] = useState<string>('');
+  const [selectedZone, setSelectedZone] = useState<string>("");
   const [racks, setRacks] = useState<Rack[]>([]);
   const [loading, setLoading] = useState(true);
+  const [whPopoverOpen, setWhPopoverOpen] = useState(false);
 
   // Forms
   const [showZoneForm, setShowZoneForm] = useState(false);
-  const [newZone, setNewZone] = useState({ name: '', code: '', type: 'General' });
+  const [newZone, setNewZone] = useState({
+    name: "",
+    code: "",
+    type: "General",
+  });
   const [showRackForm, setShowRackForm] = useState(false);
-  const [newRack, setNewRack] = useState({ name: '', code: '', levels: 4 });
+  const [newRack, setNewRack] = useState({ name: "", code: "", levels: 4 });
 
   useEffect(() => {
     loadWarehouses();
@@ -35,7 +64,7 @@ const ZoneStructureView: React.FC = () => {
       const data = await warehouseService.getAllWarehouses();
       console.log("Loaded warehouses:", data);
       setWarehouses(data);
-      if(data.length > 0) {
+      if (data.length > 0) {
         setSelectedWh(data[0].id);
         // Don't call loadZones here - useEffect will handle it
       }
@@ -52,7 +81,7 @@ const ZoneStructureView: React.FC = () => {
       const data = await warehouseService.getZones(whId);
       setZones(data);
       setRacks([]);
-      setSelectedZone('');
+      setSelectedZone("");
     } catch (error) {
       console.error("Failed to load zones:", error);
       alert(`Error loading zones: ${(error as any)?.message}`);
@@ -78,9 +107,13 @@ const ZoneStructureView: React.FC = () => {
     }
     try {
       console.log("Creating zone:", newZone);
-      await warehouseService.saveZone({ ...newZone, warehouseId: selectedWh, type: newZone.type as any });
+      await warehouseService.saveZone({
+        ...newZone,
+        warehouseId: selectedWh,
+        type: newZone.type as any,
+      });
       setShowZoneForm(false);
-      setNewZone({ name: '', code: '', type: 'General' });
+      setNewZone({ name: "", code: "", type: "General" });
       loadZones(selectedWh);
       alert("Zone created successfully!");
     } catch (error) {
@@ -94,12 +127,12 @@ const ZoneStructureView: React.FC = () => {
       alert("Rack name and code are required");
       return;
     }
-    
+
     if (!selectedWh) {
       alert("Please select a warehouse first");
       return;
     }
-    
+
     if (!selectedZone) {
       alert("Please select a zone first");
       return;
@@ -111,16 +144,20 @@ const ZoneStructureView: React.FC = () => {
     }
 
     try {
-      console.log("Creating rack with data:", { ...newRack, zoneId: selectedZone, warehouseId: selectedWh });
-      
-      const rack = await warehouseService.saveRack({ 
-        ...newRack, 
-        zoneId: selectedZone, 
-        warehouseId: selectedWh 
+      console.log("Creating rack with data:", {
+        ...newRack,
+        zoneId: selectedZone,
+        warehouseId: selectedWh,
       });
-      
+
+      const rack = await warehouseService.saveRack({
+        ...newRack,
+        zoneId: selectedZone,
+        warehouseId: selectedWh,
+      });
+
       console.log("Rack created successfully:", rack);
-      
+
       // Create shelves for this rack
       console.log(`Creating ${newRack.levels} shelves for rack ${rack.id}`);
       await Promise.all(
@@ -134,19 +171,25 @@ const ZoneStructureView: React.FC = () => {
           }),
         ),
       );
-      
+
       setShowRackForm(false);
-      setNewRack({ name: '', code: '', levels: 4 });
+      setNewRack({ name: "", code: "", levels: 4 });
       loadRacks(selectedZone);
       alert("Rack and shelves created successfully!");
     } catch (error) {
       console.error("Failed to create rack:", error);
-      alert(`Error creating rack: ${(error as any)?.message || (error as any)?.response?.data?.message || "Unknown error"}`);
+      alert(
+        `Error creating rack: ${(error as any)?.message || (error as any)?.response?.data?.message || "Unknown error"}`,
+      );
     }
   };
 
   const deleteZone = async (id: string) => {
-    if(confirm('Delete zone? This will also delete all racks and bins in this zone.')) {
+    if (
+      confirm(
+        "Delete zone? This will also delete all racks and bins in this zone.",
+      )
+    ) {
       try {
         console.log("Deleting zone:", id);
         await warehouseService.deleteZone(id);
@@ -161,7 +204,7 @@ const ZoneStructureView: React.FC = () => {
   };
 
   const deleteRack = async (id: string) => {
-    if(confirm('Delete rack? This will also delete all bins in this rack.')) {
+    if (confirm("Delete rack? This will also delete all bins in this rack.")) {
       try {
         console.log("Deleting rack:", id);
         await warehouseService.deleteRack(id);
@@ -175,128 +218,282 @@ const ZoneStructureView: React.FC = () => {
     }
   };
 
-  if(loading) return <div className="text-center py-8"><Loader2 className="animate-spin inline"/></div>;
+  if (loading)
+    return (
+      <div className="text-center py-8">
+        <Loader2 className="animate-spin inline" />
+      </div>
+    );
 
   return (
     <div className="space-y-6">
-        <div className="flex gap-4 items-center">
-            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <Layers className="text-blue-600" size={20}/> Storage Hierarchy
-            </h2>
-            <select 
-                className="border rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 bg-white shadow-sm"
-                value={selectedWh}
-                onChange={e => setSelectedWh(e.target.value)}
+      <div className="flex gap-4 items-center">
+        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <Layers className="text-blue-600" size={20} /> Storage Hierarchy
+        </h2>
+
+        <Popover open={whPopoverOpen} onOpenChange={setWhPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={whPopoverOpen}
+              className="w-[250px] justify-between bg-white"
             >
-                {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-            </select>
+              {selectedWh
+                ? warehouses.find((w) => w.id === selectedWh)?.name
+                : "Select warehouse..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[250px] bg-white border border-slate-200 p-0">
+            <Command>
+              <CommandInput
+                className="border border-slate-200 rounded-md  outline-none"
+                placeholder="Search warehouse..."
+              />
+              <CommandEmpty>No warehouse found.</CommandEmpty>
+              <CommandGroup>
+                {warehouses.map((w) => (
+                  <CommandItem
+                    key={w.id}
+                    className="cursor-pointer hover:bg-slate-100"
+                    value={w.name}
+                    onSelect={() => {
+                      setSelectedWh(w.id);
+                      setWhPopoverOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        selectedWh === w.id ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    {w.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[600px]">
+        {/* Zones Column */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+          <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+            <h3 className="font-semibold text-slate-800">Zones</h3>
+            <button
+              onClick={() => setShowZoneForm(true)}
+              className="text-blue-600 hover:bg-blue-100 p-1 rounded"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          {showZoneForm && (
+            <div className="p-4 bg-blue-50 border-b space-y-3 animate-fade-in">
+              <input
+                className="w-full border rounded p-2 text-sm"
+                placeholder="Zone Name"
+                value={newZone.name}
+                onChange={(e) =>
+                  setNewZone({ ...newZone, name: e.target.value })
+                }
+              />
+              <div className="flex gap-2">
+                <input
+                  className="w-1/2 border rounded p-2 text-sm"
+                  placeholder="Code (e.g. ZA)"
+                  value={newZone.code}
+                  onChange={(e) =>
+                    setNewZone({ ...newZone, code: e.target.value })
+                  }
+                />
+                <select
+                  className="w-1/2 border rounded p-2 text-sm"
+                  value={newZone.type}
+                  onChange={(e) =>
+                    setNewZone({ ...newZone, type: e.target.value })
+                  }
+                >
+                  <option value="General">General</option>
+                  <option value="Cold">Cold</option>
+                  <option value="Hazmat">Hazmat</option>
+                  <option value="Bulk">Bulk</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowZoneForm(false)}
+                  className="text-slate-500 text-xs hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddZone}
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            {zones.length === 0 && (
+              <p className="text-center text-slate-400 py-4 text-sm">
+                No zones defined.
+              </p>
+            )}
+            {zones.map((z) => (
+              <div
+                key={z.id}
+                onClick={() => setSelectedZone(z.id)}
+                className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group transition-colors ${selectedZone === z.id ? "bg-blue-50 border-blue-500 ring-1 ring-blue-200" : "hover:bg-slate-50 border-slate-200"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin size={16} className="text-slate-400" />
+                  <div>
+                    <p className="font-medium text-sm text-slate-800">
+                      {z.name}
+                    </p>
+                    <p className="text-xs text-slate-500 font-mono">
+                      {z.code} • {z.type}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteZone(z.id);
+                    }}
+                    className="text-red-400 hover:text-red-600"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                  <ChevronRight size={16} className="text-slate-400" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-[600px]">
-            {/* Zones Column */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-                <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-                    <h3 className="font-semibold text-slate-800">Zones</h3>
-                    <button onClick={() => setShowZoneForm(true)} className="text-blue-600 hover:bg-blue-100 p-1 rounded"><Plus size={18}/></button>
-                </div>
-                
-                {showZoneForm && (
-                    <div className="p-4 bg-blue-50 border-b space-y-3 animate-fade-in">
-                        <input className="w-full border rounded p-2 text-sm" placeholder="Zone Name" value={newZone.name} onChange={e => setNewZone({...newZone, name: e.target.value})}/>
-                        <div className="flex gap-2">
-                            <input className="w-1/2 border rounded p-2 text-sm" placeholder="Code (e.g. ZA)" value={newZone.code} onChange={e => setNewZone({...newZone, code: e.target.value})}/>
-                            <select className="w-1/2 border rounded p-2 text-sm" value={newZone.type} onChange={e => setNewZone({...newZone, type: e.target.value})}>
-                                <option value="General">General</option>
-                                <option value="Cold">Cold</option>
-                                <option value="Hazmat">Hazmat</option>
-                                <option value="Bulk">Bulk</option>
-                            </select>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowZoneForm(false)} className="text-slate-500 text-xs hover:text-slate-700">Cancel</button>
-                            <button onClick={handleAddZone} className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">Save</button>
-                        </div>
-                    </div>
-                )}
+        {/* Racks Column */}
+        <div
+          className={`bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden ${!selectedZone ? "opacity-50 pointer-events-none" : ""}`}
+        >
+          <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
+            <h3 className="font-semibold text-slate-800">Racks & Shelves</h3>
+            <button
+              onClick={() => setShowRackForm(true)}
+              className="text-purple-600 hover:bg-purple-100 p-1 rounded"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
 
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {zones.length === 0 && <p className="text-center text-slate-400 py-4 text-sm">No zones defined.</p>}
-                    {zones.map(z => (
-                        <div 
-                            key={z.id}
-                            onClick={() => setSelectedZone(z.id)}
-                            className={`p-3 rounded-lg border cursor-pointer flex justify-between items-center group transition-colors ${selectedZone === z.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-200' : 'hover:bg-slate-50 border-slate-200'}`}
-                        >
-                            <div className="flex items-center gap-3">
-                                <MapPin size={16} className="text-slate-400"/>
-                                <div>
-                                    <p className="font-medium text-sm text-slate-800">{z.name}</p>
-                                    <p className="text-xs text-slate-500 font-mono">{z.code} • {z.type}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={(e) => {e.stopPropagation(); deleteZone(z.id);}} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
-                                <ChevronRight size={16} className="text-slate-400"/>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+          {showRackForm && (
+            <div className="p-4 bg-purple-50 border-b space-y-3 animate-fade-in">
+              <input
+                className="w-full border rounded p-2 text-sm"
+                placeholder="Rack Name"
+                value={newRack.name}
+                onChange={(e) =>
+                  setNewRack({ ...newRack, name: e.target.value })
+                }
+              />
+              <div className="flex gap-2">
+                <input
+                  className="w-1/2 border rounded p-2 text-sm"
+                  placeholder="Code (e.g. R01)"
+                  value={newRack.code}
+                  onChange={(e) =>
+                    setNewRack({ ...newRack, code: e.target.value })
+                  }
+                />
+                <input
+                  className="w-1/2 border rounded p-2 text-sm"
+                  type="number"
+                  placeholder="Levels"
+                  value={newRack.levels}
+                  onChange={(e) =>
+                    setNewRack({ ...newRack, levels: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowRackForm(false)}
+                  className="text-slate-500 text-xs hover:text-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddRack}
+                  className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700"
+                >
+                  Save
+                </button>
+              </div>
             </div>
+          )}
 
-            {/* Racks Column */}
-            <div className={`bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden ${!selectedZone ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="p-4 border-b bg-slate-50 flex justify-between items-center">
-                    <h3 className="font-semibold text-slate-800">Racks & Shelves</h3>
-                    <button onClick={() => setShowRackForm(true)} className="text-purple-600 hover:bg-purple-100 p-1 rounded"><Plus size={18}/></button>
+          <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start">
+            {selectedZone && racks.length === 0 && (
+              <p className="col-span-2 text-center text-slate-400 py-4 text-sm">
+                No racks in this zone.
+              </p>
+            )}
+            {!selectedZone && (
+              <p className="col-span-2 text-center text-slate-400 py-4 text-sm">
+                Select a zone to manage racks.
+              </p>
+            )}
+
+            {racks.map((r) => (
+              <div
+                key={r.id}
+                className="border border-slate-200 rounded-lg p-3 hover:shadow-sm bg-slate-50 relative group"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    <Grid size={16} className="text-slate-400" />
+                    <span className="font-bold text-slate-700 text-sm">
+                      {r.name}
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-white border px-1.5 rounded font-mono text-slate-500">
+                    {r.code}
+                  </span>
                 </div>
 
-                {showRackForm && (
-                    <div className="p-4 bg-purple-50 border-b space-y-3 animate-fade-in">
-                        <input className="w-full border rounded p-2 text-sm" placeholder="Rack Name" value={newRack.name} onChange={e => setNewRack({...newRack, name: e.target.value})}/>
-                        <div className="flex gap-2">
-                            <input className="w-1/2 border rounded p-2 text-sm" placeholder="Code (e.g. R01)" value={newRack.code} onChange={e => setNewRack({...newRack, code: e.target.value})}/>
-                            <input className="w-1/2 border rounded p-2 text-sm" type="number" placeholder="Levels" value={newRack.levels} onChange={e => setNewRack({...newRack, levels: Number(e.target.value)})}/>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowRackForm(false)} className="text-slate-500 text-xs hover:text-slate-700">Cancel</button>
-                            <button onClick={handleAddRack} className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700">Save</button>
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 content-start">
-                    {selectedZone && racks.length === 0 && <p className="col-span-2 text-center text-slate-400 py-4 text-sm">No racks in this zone.</p>}
-                    {!selectedZone && <p className="col-span-2 text-center text-slate-400 py-4 text-sm">Select a zone to manage racks.</p>}
-                    
-                    {racks.map(r => (
-                        <div key={r.id} className="border border-slate-200 rounded-lg p-3 hover:shadow-sm bg-slate-50 relative group">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Grid size={16} className="text-slate-400"/>
-                                    <span className="font-bold text-slate-700 text-sm">{r.name}</span>
-                                </div>
-                                <span className="text-[10px] bg-white border px-1.5 rounded font-mono text-slate-500">{r.code}</span>
-                            </div>
-                            
-                            {/* Visual Shelves */}
-                            <div className="space-y-1">
-                                {Array.from({length: r.levels}).map((_, i) => (
-                                    <div key={i} className="h-2 bg-slate-300 rounded-full w-full"></div>
-                                ))}
-                            </div>
-                            <p className="text-xs text-center text-slate-400 mt-2">{r.levels} Shelves</p>
-
-                            <button 
-                                onClick={() => deleteRack(r.id)} 
-                                className="absolute top-2 right-2 p-1 bg-white rounded shadow-sm text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <Trash2 size={12}/>
-                            </button>
-                        </div>
-                    ))}
+                {/* Visual Shelves */}
+                <div className="space-y-1">
+                  {Array.from({ length: r.levels }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-2 bg-slate-300 rounded-full w-full"
+                    ></div>
+                  ))}
                 </div>
-            </div>
+                <p className="text-xs text-center text-slate-400 mt-2">
+                  {r.levels} Shelves
+                </p>
+
+                <button
+                  onClick={() => deleteRack(r.id)}
+                  className="absolute top-2 right-2 p-1 bg-white rounded shadow-sm text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
     </div>
   );
 };

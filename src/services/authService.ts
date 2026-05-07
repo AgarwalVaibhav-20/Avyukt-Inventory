@@ -60,5 +60,21 @@ export const authService = {
 
   getToken: () => {
     return localStorage.getItem('token');
+  },
+  
+  getProfile: async () => {
+    const response = await api.get('/auth/profile');
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
+  },
+
+  updateProfile: async (profileData: any) => {
+    const response = await api.put('/auth/profile', profileData);
+    if (response.data.user) {
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+    }
+    return response.data;
   }
 };

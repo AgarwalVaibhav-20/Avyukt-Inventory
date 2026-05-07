@@ -64,6 +64,17 @@ export const removeWarehouse = createAsyncThunk(
   }
 );
 
+export const updateWarehouse = createAsyncThunk(
+  'warehouse/update',
+  async ({ id, data }: { id: string; data: Partial<Warehouse> }, { rejectWithValue }) => {
+    try {
+      return await warehouseService.updateWarehouse(id, data);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update warehouse');
+    }
+  }
+);
+
 const warehouseSlice = createSlice({
   name: 'warehouse',
   initialState,
@@ -97,6 +108,12 @@ const warehouseSlice = createSlice({
       })
       .addCase(removeWarehouse.fulfilled, (state, action) => {
         state.warehouses = state.warehouses.filter(w => w.id !== action.payload);
+      })
+      .addCase(updateWarehouse.fulfilled, (state, action) => {
+        const index = state.warehouses.findIndex(w => w.id === action.payload.id);
+        if (index !== -1) {
+          state.warehouses[index] = action.payload;
+        }
       });
   },
 });

@@ -58,7 +58,7 @@ const QualityCheckView: React.FC = () => {
         setActiveGRN(null);
         dispatch(fetchQCQueue());
         dispatch(fetchGRNs());
-        alert("Quality Check successful. Items are now pending put-away.");
+        alert("Quality Check successful. GRN moved to the approval queue.");
     } catch (e) {
         console.error(e);
         alert("Failed to submit QC. Check connection to backend.");

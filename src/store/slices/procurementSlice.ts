@@ -1,10 +1,12 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { procurementService } from '@/services/procurementService';
-import { PurchaseOrder, GRN, Vendor, PutAwayTask, PurchaseReturn } from '@/types';
+import { PurchaseOrder, GRN, Vendor, PutAwayTask, PurchaseReturn, PurchaseRequisition, PurchaseInvoice } from '@/types';
 
 interface ProcurementState {
+  prs: PurchaseRequisition[];
   pos: PurchaseOrder[];
   grns: GRN[];
+  invoices: PurchaseInvoice[];
   vendors: Vendor[];
   qcQueue: GRN[];
   putAwayTasks: PutAwayTask[];
@@ -14,8 +16,10 @@ interface ProcurementState {
 }
 
 const initialState: ProcurementState = {
+  prs: [],
   pos: [],
   grns: [],
+  invoices: [],
   vendors: [],
   qcQueue: [],
   putAwayTasks: [],
@@ -24,12 +28,20 @@ const initialState: ProcurementState = {
   error: null,
 };
 
+export const fetchPRs = createAsyncThunk('procurement/fetchPRs', async () => {
+  return await procurementService.getAllPRs();
+});
+
 export const fetchPOs = createAsyncThunk('procurement/fetchPOs', async () => {
   return await procurementService.getAllPOs();
 });
 
 export const fetchGRNs = createAsyncThunk('procurement/fetchGRNs', async () => {
   return await procurementService.getAllGRNs();
+});
+
+export const fetchInvoices = createAsyncThunk('procurement/fetchInvoices', async () => {
+  return await procurementService.getAllPurchaseInvoices();
 });
 
 export const fetchVendors = createAsyncThunk('procurement/fetchVendors', async () => {
@@ -53,8 +65,6 @@ export const createVendor = createAsyncThunk('procurement/createVendor', async (
 });
 
 export const updateVendor = createAsyncThunk('procurement/updateVendor', async ({ id, updates }: { id: string, updates: Partial<Vendor> }) => {
-  // Since we don't have a specific updateVendor in procurementService yet, we'll assume it exists or use a generic one.
-  // Actually, let's add it to procurementService if not present.
   await procurementService.updateVendor(id, updates);
   return { id, updates };
 });
@@ -70,6 +80,15 @@ const procurementSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      .addCase(fetchPRs.pending, (state) => { state.loading = true; })
+      .addCase(fetchPRs.fulfilled, (state, action) => {
+        state.loading = false;
+        state.prs = action.payload;
+      })
+      .addCase(fetchPRs.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to fetch PRs';
+      })
       .addCase(fetchPOs.pending, (state) => { state.loading = true; })
       .addCase(fetchPOs.fulfilled, (state, action) => {
         state.loading = false;
@@ -81,6 +100,9 @@ const procurementSlice = createSlice({
       })
       .addCase(fetchGRNs.fulfilled, (state, action) => {
         state.grns = action.payload;
+      })
+      .addCase(fetchInvoices.fulfilled, (state, action) => {
+        state.invoices = action.payload;
       })
       .addCase(fetchVendors.fulfilled, (state, action) => {
         state.vendors = action.payload;

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { MenuItem } from "@/types";
 import { Link } from "react-router-dom";
+import { useAppSelector } from "@/store/hooks";
+import { User as UserIcon } from "lucide-react";
 
 interface SidebarProps {
   activeMenuId: string;
@@ -24,6 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen,
 }) => {
+  const { user } = useAppSelector((state) => state.auth);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(
     new Set(["dashboard"]),
   );
@@ -73,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         className={`
         fixed top-0 left-0 z-30 h-screen w-72 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
-        md:translate-x-0 md:static flex flex-col border-r border-slate-800
+        flex flex-col border-r border-slate-800 shadow-xl
       `}
       >
         {/* Header */}
@@ -92,9 +95,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="md:hidden text-slate-400"
+            className="text-slate-400 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-800"
+            title="Hide Sidebar"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
@@ -192,14 +196,24 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* User Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-950">
           <div className="flex items-center gap-3">
-            <img
-              src="https://picsum.photos/40/40"
-              alt="User"
-              className="w-9 h-9 rounded-full"
-            />
-            <div>
-              <p className="text-sm font-medium text-white">Admin User</p>
-              <p className="text-xs text-slate-500">Warehouse Mgr</p>
+            <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 overflow-hidden border border-slate-700">
+              {user?.profileImage ? (
+                <img
+                  src={user.profileImage}
+                  alt="User"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <UserIcon size={18} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">
+                {user?.fullname || "Admin User"}
+              </p>
+              <p className="text-xs text-slate-500 truncate capitalize">
+                {user?.role || "Warehouse Mgr"}
+              </p>
             </div>
           </div>
         </div>

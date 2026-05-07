@@ -1,153 +1,301 @@
-import React, { useState, useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchGRNs } from '@/store/slices/procurementSlice';
-import { Search, FileText, Paperclip, ExternalLink, Loader2, Download, AlertCircle, Filter } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { fetchGRNs } from "@/store/slices/procurementSlice";
+import {
+  Search,
+  FileText,
+  Paperclip,
+  Loader2,
+  Download,
+  AlertCircle,
+  Filter,
+  CheckCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 const SupplierChallanView: React.FC = () => {
   const dispatch = useAppDispatch();
   const { grns, loading, error } = useAppSelector((state) => state.procurement);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     dispatch(fetchGRNs());
   }, [dispatch]);
 
-  const filteredGRNs = grns.filter(g => 
-    g.challanNumber.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    g.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    g.grnNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredGRNs = grns.filter(
+    (g) =>
+      g.challanNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.vendorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.grnNumber.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-        <div className="flex justify-between items-center">
+    <div className="space-y-6 bg-white min-h-screen p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-slate-700 rounded-lg text-white">
+            <Paperclip size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">
+              Challan / Invoice Repository
+            </h1>
+            <p className="text-sm text-slate-500">
+              Centralized documentation for all supplier shipments.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border border-slate-200 shadow-sm">
+          <CardContent className="p-5 flex items-center justify-between">
             <div>
-                <h1 className="text-2xl font-bold text-slate-800">Challan / Invoice Repository</h1>
-                <p className="text-sm text-slate-500">Centralized documentation for all supplier shipments and inward logistics.</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                Total Documents
+              </p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">
+                {grns.length}
+              </p>
             </div>
-        </div>
+            <div className="p-2.5 bg-slate-100 rounded-lg">
+              <FileText size={22} className="text-slate-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border border-slate-200 shadow-sm">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                Verified Challans
+              </p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1">
+                {grns.filter((g) => g.challanNumber).length}
+              </p>
+            </div>
+            <div className="p-2.5 bg-emerald-50 rounded-lg">
+              <CheckCircle size={22} className="text-emerald-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border border-slate-200 shadow-sm">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                Filtered Results
+              </p>
+              <p className="text-2xl font-bold text-slate-900 mt-1">
+                {filteredGRNs.length}
+              </p>
+            </div>
+            <div className="p-2.5 bg-blue-50 rounded-lg">
+              <Search size={22} className="text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
-                    <input 
-                        type="text" 
-                        placeholder="Search by Challan, GRN, or Vendor Name..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-11 pr-4 py-2.5 border-2 border-slate-50 bg-slate-50/50 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all text-sm font-medium"
+      {/* Main Table */}
+      <Card className="border border-slate-200 shadow-sm">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            <CardTitle className="text-base font-semibold text-slate-800">
+              Document Register
+            </CardTitle>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-80">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-2.5 text-slate-400"
+                />
+                <Input
+                  placeholder="Search by challan, GRN, or vendor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 bg-slate-50 border-slate-200 text-sm"
+                />
+              </div>
+              <Button variant="outline" size="sm" className="gap-2 shrink-0">
+                <Filter size={14} />
+                Filter
+              </Button>
+              <Button
+                size="sm"
+                className="gap-2 bg-slate-800 hover:bg-slate-900 text-white shrink-0"
+              >
+                <Download size={14} />
+                Export
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {error && (
+            <div className="p-4">
+              <Alert variant="destructive">
+                <AlertCircle size={16} />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50 hover:bg-slate-50">
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Document Info
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  GRN Mapping
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Vendor
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Receipt Date
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Status
+                </TableHead>
+                <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-16 text-center">
+                    <Loader2
+                      className="animate-spin text-slate-600 mx-auto mb-2"
+                      size={28}
                     />
-                </div>
-                <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-100 transition-colors border border-slate-100">
-                        <Filter size={16}/> Filter Range
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-                        <Download size={16}/> Export Logs
-                    </button>
-                </div>
-            </div>
+                    <p className="text-slate-400 text-sm">
+                      Scanning document repository...
+                    </p>
+                  </TableCell>
+                </TableRow>
+              ) : filteredGRNs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-16 text-center">
+                    <FileText
+                      className="mx-auto mb-2 text-slate-200"
+                      size={40}
+                    />
+                    <p className="text-slate-400 text-sm">
+                      No matching challans or invoices found.
+                    </p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredGRNs.map((grn) => (
+                  <TableRow
+                    key={grn.id}
+                    className="hover:bg-slate-50 transition-colors group"
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-slate-100 group-hover:bg-blue-50 flex items-center justify-center transition-colors">
+                          <FileText
+                            size={16}
+                            className="text-slate-400 group-hover:text-blue-500 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">
+                            {grn.challanNumber || "N/A"}
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Supplier Document
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span className="font-semibold text-blue-600 font-mono text-xs">
+                          {grn.grnNumber}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm font-medium text-slate-700">
+                        {grn.vendorName}
+                      </p>
+                      <p className="text-xs text-slate-400">Active Partner</p>
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-500">
+                      {grn.date}
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle size={11} />
+                        System Mapped
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 gap-1.5 text-xs h-7"
+                      >
+                        <Paperclip size={12} />
+                        View Invoice
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50/50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
-                        <tr>
-                            <th className="px-6 py-5">Documentation Info</th>
-                            <th className="px-6 py-5">GRN Mapping</th>
-                            <th className="px-6 py-5">Vendor Details</th>
-                            <th className="px-6 py-5">Receipt Date</th>
-                            <th className="px-6 py-5">Sync Status</th>
-                            <th className="px-6 py-5 text-right">Records</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                        {loading ? (
-                             <tr><td colSpan={6} className="py-20 text-center"><Loader2 className="animate-spin text-blue-600 mx-auto mb-2" size={32}/><p className="text-slate-400 font-bold">Scanning document repository...</p></td></tr>
-                        ) : error ? (
-                             <tr>
-                                <td colSpan={6} className="py-20 text-center text-red-500">
-                                    <AlertCircle className="mx-auto mb-2" size={32}/>
-                                    <p className="font-bold tracking-tight">Sync Failure</p>
-                                    <p className="text-[10px] uppercase font-bold">{error}</p>
-                                </td>
-                             </tr>
-                        ) : filteredGRNs.length === 0 ? (
-                             <tr><td colSpan={6} className="py-20 text-center text-slate-400 italic font-medium">No matching challans or invoices found.</td></tr>
-                        ) : (
-                            filteredGRNs.map(grn => (
-                                <tr key={grn.id} className="hover:bg-slate-50/50 transition-colors group">
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
-                                                <FileText size={20}/>
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-slate-800 text-sm">{grn.challanNumber || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Supplier Document</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                                            <span className="font-bold text-blue-600 font-mono text-xs">{grn.grnNumber}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-5">
-                                        <div className="font-bold text-slate-700">{grn.vendorName}</div>
-                                        <div className="text-[10px] text-slate-400 font-medium">Active Partner</div>
-                                    </td>
-                                    <td className="px-6 py-5 text-slate-500 font-medium text-xs">{grn.date}</td>
-                                    <td className="px-6 py-5">
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                            <CheckCircle className="w-3 h-3" /> System Mapped
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-5 text-right">
-                                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-black transition-all active:scale-95">
-                                            <Paperclip size={14}/> View Invoice
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        {/* Verification Summary */}
-        {!loading && filteredGRNs.length > 0 && (
-            <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row justify-between items-center gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                        <Paperclip size={24} className="text-blue-400" />
-                    </div>
-                    <div>
-                        <p className="text-2xl font-black">{filteredGRNs.length}</p>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Documents Verified</p>
-                    </div>
+      {/* Summary Footer */}
+      {!loading && filteredGRNs.length > 0 && (
+        <Card className="border border-slate-200 shadow-sm bg-slate-900 text-white">
+          <CardContent className="p-5">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                  <Paperclip size={20} className="text-blue-400" />
                 </div>
-                <div className="flex items-center gap-8">
-                    <div className="text-right">
-                        <p className="text-sm font-bold text-emerald-400">100% Accuracy</p>
-                        <p className="text-[10px] text-slate-500 uppercase font-bold">Audit Rating</p>
-                    </div>
-                    <button className="px-6 py-3 bg-white text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all">
-                        Run Batch Audit
-                    </button>
+                <div>
+                  <p className="text-xl font-bold text-white">
+                    {filteredGRNs.length} Documents Verified
+                  </p>
+                  <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">
+                    100% Audit Accuracy
+                  </p>
                 </div>
+              </div>
+              <Button className="bg-white text-slate-900 hover:bg-blue-500 hover:text-white transition-all text-sm font-semibold gap-2">
+                <CheckCircle size={15} />
+                Run Batch Audit
+              </Button>
             </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
-
-const CheckCircle = ({ className }: { className?: string }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-    </svg>
-);
 
 export default SupplierChallanView;

@@ -1,30 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchPOs, fetchVendors } from '@/store/slices/procurementSlice';
+import { fetchPOs, fetchVendors, fetchPRs } from '@/store/slices/procurementSlice';
 import { procurementService } from '@/services/procurementService';
 import { productService } from '@/services/productService';
-import { PurchaseOrder, Vendor, InventoryItem, POItem, HSN } from '@/types';
-import { Plus, FileText, Calendar, User, Loader2, Check, AlertCircle, ShoppingCart, Tag, Package, Hash } from 'lucide-react';
+import { PurchaseOrder, Vendor, InventoryItem, POItem, PurchaseRequisition } from '@/types';
+import { Plus, FileText, Calendar, User, Loader2, Check, AlertCircle, ShoppingCart, Tag, Package, Hash, ClipboardList } from 'lucide-react';
 
 const PurchaseOrderView: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { pos, vendors, loading, error } = useAppSelector((state) => state.procurement);
+  const { pos, vendors, prs, loading, error } = useAppSelector((state) => state.procurement);
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [hsns, setHsns] = useState<HSN[]>([]);
   const [localLoading, setLocalLoading] = useState(false);
   
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedPRId, setSelectedPRId] = useState<string>('');
   const [newPO, setNewPO] = useState<{vendorId: string, date: string, items: POItem[]}>({
     vendorId: '',
     date: new Date().toISOString().split('T')[0],
     items: []
   });
 
+  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [updatingVendorId, setUpdatingVendorId] = useState('');
+
   useEffect(() => {
     dispatch(fetchPOs());
     dispatch(fetchVendors());
+    dispatch(fetchPRs());
     loadItems();
-    loadHSNs();
   }, [dispatch]);
 
   const loadItems = async () => {
@@ -36,19 +40,36 @@ const PurchaseOrderView: React.FC = () => {
     }
   };
 
-  const loadHSNs = async () => {
-    try {
-      const data = await productService.getHSN();
-      setHsns(data);
-    } catch (e) {
-      console.error("Failed to load HSNs", e);
-    }
-  };
-
   const handleAddItem = () => {
     setNewPO({
         ...newPO,
         items: [...newPO.items, { itemId: '', itemName: '', hsnCode: '', quantity: 1, unitPrice: 0, receivedQty: 0 }]
+    });
+  };
+
+  const handlePRSelect = (prId: string) => {
+    setSelectedPRId(prId);
+    if (!prId) return;
+
+    const pr = prs.find(p => p.id === prId);
+    if (!pr) return;
+
+    // Map PR items to PO items
+    const poItems: POItem[] = pr.items.map(item => {
+        const product = items.find(i => i.id === item.itemId);
+        return {
+            itemId: item.itemId,
+            itemName: item.itemName,
+            hsnCode: product?.hsnCode || '',
+            quantity: item.quantity,
+            unitPrice: item.estimatedPrice || product?.unitPrice || 0,
+            receivedQty: 0
+        };
+    });
+
+    setNewPO({
+        ...newPO,
+        items: poItems
     });
   };
 
@@ -85,11 +106,13 @@ const PurchaseOrderView: React.FC = () => {
           date: newPO.date,
           expectedDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
           totalAmount,
-          items: newPO.items
+          items: newPO.items,
+          prId: selectedPRId || undefined
       });
       
       setIsCreating(false);
       setNewPO({ vendorId: '', date: new Date().toISOString().split('T')[0], items: [] });
+      setSelectedPRId('');
       dispatch(fetchPOs());
     } catch (e) {
       console.error(e);
@@ -97,6 +120,34 @@ const PurchaseOrderView: React.FC = () => {
     } finally {
       setLocalLoading(false);
     }
+  };
+
+  const handleOpenDetail = (po: PurchaseOrder) => {
+      setSelectedPO(po);
+      setUpdatingVendorId(po.vendorId || '');
+      setIsDetailModalOpen(true);
+  };
+
+  const handleUpdatePO = async () => {
+      if (!selectedPO || !updatingVendorId) return alert("Please select a vendor");
+      
+      const vendor = vendors.find(v => v.id === updatingVendorId);
+      setLocalLoading(true);
+      try {
+          await procurementService.updatePO(selectedPO.id, {
+              vendorId: updatingVendorId,
+              vendor: vendor?.name || '',
+              status: 'Pending' // Submit for approval using backend-supported status
+          });
+          setIsDetailModalOpen(false);
+          dispatch(fetchPOs());
+          alert("Purchase Order updated and submitted for approval.");
+      } catch (e) {
+          console.error(e);
+          alert("Failed to update PO");
+      } finally {
+          setLocalLoading(false);
+      }
   };
 
   return (
@@ -129,7 +180,7 @@ const PurchaseOrderView: React.FC = () => {
                         <FileText size={28}/>
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-slate-800">Purchase Requisition</h2>
+                        <h2 className="text-2xl font-black text-slate-800">New Purchase Order</h2>
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Inward Procurement Flow</p>
                     </div>
                  </div>
@@ -138,7 +189,7 @@ const PurchaseOrderView: React.FC = () => {
                  </button>
              </div>
              
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
                  <div className="space-y-3">
                      <label className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
                          <User size={14} className="text-blue-500"/> Select Vendor / Supplier *
@@ -150,6 +201,21 @@ const PurchaseOrderView: React.FC = () => {
                      >
                         <option value="">Choose Supplier from Master</option>
                         {vendors.map(v => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
+                     </select>
+                 </div>
+                 <div className="space-y-3">
+                     <label className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
+                         <ClipboardList size={14} className="text-blue-500"/> Link Approved Requisition
+                     </label>
+                     <select 
+                        className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm bg-slate-50/50 focus:bg-white focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-700 appearance-none shadow-sm"
+                        value={selectedPRId}
+                        onChange={e => handlePRSelect(e.target.value)}
+                     >
+                        <option value="">Manual Entry (No PR)</option>
+                        {prs.filter(p => p.status === 'Approved').map(p => (
+                            <option key={p.id} value={p.id}>{p.prNumber} - {p.department} ({p.items.length} items)</option>
+                        ))}
                      </select>
                  </div>
                  <div className="space-y-3">
@@ -373,7 +439,7 @@ const PurchaseOrderView: React.FC = () => {
                     </td></tr>
                 ) : (
                     pos.map((po) => (
-                        <tr key={po.id} className="hover:bg-slate-50/80 transition-all group border-l-4 border-l-transparent hover:border-l-blue-600">
+                        <tr key={po.id} onClick={() => handleOpenDetail(po)} className="hover:bg-slate-50/80 cursor-pointer transition-all group border-l-4 border-l-transparent hover:border-l-blue-600">
                             <td className="px-8 py-7">
                                 <div className="flex flex-col">
                                     <span className="font-black text-slate-900 group-hover:text-blue-600 transition-colors font-mono text-base tracking-tighter">
@@ -415,8 +481,10 @@ const PurchaseOrderView: React.FC = () => {
                             <td className="px-8 py-7">
                                 <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border shadow-sm flex items-center justify-center w-32 ${
                                     po.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                    po.status === 'Sent' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                    po.status === 'Sent' || po.status === 'Approved' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
                                     po.status === 'Partial' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                    po.status === 'Draft' ? 'bg-slate-100 text-slate-600 border-slate-200' :
+                                    po.status === 'Pending' || po.status === 'Pending Approval' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                     'bg-slate-50 text-slate-500 border-slate-100'
                                 }`}>
                                     {po.status}
@@ -437,8 +505,126 @@ const PurchaseOrderView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {isDetailModalOpen && selectedPO && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+              <div className="bg-white w-full max-w-4xl rounded-[3rem] shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-300">
+                  <div className="p-10">
+                      <div className="flex justify-between items-start mb-10">
+                          <div className="flex items-center gap-6">
+                              <div className="p-5 bg-indigo-600 rounded-[1.5rem] text-white shadow-xl shadow-indigo-100">
+                                  <FileText size={32} />
+                              </div>
+                              <div>
+                                  <h2 className="text-3xl font-black text-slate-900 tracking-tight">PO Details: #{selectedPO.poNumber}</h2>
+                                  <div className="flex items-center gap-3 mt-2">
+                                      <span className="bg-slate-100 text-slate-600 border border-slate-200 px-3 py-1 rounded-lg text-[10px] font-black uppercase">
+                                          {selectedPO.status}
+                                      </span>
+                                      <span className="text-slate-300">|</span>
+                                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedPO.date}</span>
+                                  </div>
+                              </div>
+                          </div>
+                          <button onClick={() => setIsDetailModalOpen(false)} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-900 transition-all">
+                              <Plus size={24} className="rotate-45" />
+                          </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                          <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 relative">
+                              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Supplier Allocation</h4>
+                              {selectedPO.status === 'Draft' ? (
+                                  <div className="space-y-4">
+                                      <select 
+                                          className="w-full border-2 border-white rounded-2xl p-4 text-sm bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-black text-slate-800 shadow-sm"
+                                          value={updatingVendorId}
+                                          onChange={e => setUpdatingVendorId(e.target.value)}
+                                      >
+                                          <option value="">Select Target Vendor</option>
+                                          {vendors.map(v => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
+                                      </select>
+                                      <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-tight ml-2">Currently: {selectedPO.vendorName}</p>
+                                  </div>
+                              ) : (
+                                  <div className="flex items-center gap-4">
+                                      <div className="w-14 h-14 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center text-xl font-black text-indigo-600">
+                                          {selectedPO.vendorName?.slice(0, 2).toUpperCase()}
+                                      </div>
+                                      <div>
+                                          <p className="text-lg font-black text-slate-900 leading-tight">{selectedPO.vendorName}</p>
+                                          <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-1">Verified Partner</p>
+                                      </div>
+                                  </div>
+                              )}
+                          </div>
+                          <div className="p-8 bg-slate-900 rounded-[2rem] text-white">
+                              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Financial Summary</h4>
+                              <div className="flex items-end justify-between">
+                                  <div>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase">Gross Commitment</p>
+                                      <p className="text-4xl font-black text-white mt-1 tabular-nums">${selectedPO.totalAmount.toLocaleString()}</p>
+                                  </div>
+                                  <div className="text-right">
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payment Status</p>
+                                      <span className="bg-white/10 text-white border border-white/20 mt-2 px-3 py-1 rounded-lg text-[10px] font-black uppercase inline-block">Pending</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+
+                      <div className="mb-8">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-2">Itemized Breakdown</h4>
+                          <div className="max-h-[300px] overflow-y-auto border border-slate-100 rounded-[2rem] bg-white">
+                              <table className="w-full text-sm text-left">
+                                  <thead className="sticky top-0 bg-slate-50 text-[10px] text-slate-400 font-black uppercase tracking-widest border-b border-slate-100">
+                                      <tr>
+                                          <th className="px-6 py-4">Material Name</th>
+                                          <th className="px-6 py-4 text-center">Ordered Qty</th>
+                                          <th className="px-6 py-4 text-right">Unit Price</th>
+                                          <th className="px-6 py-4 text-right">Line Total</th>
+                                      </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-50">
+                                      {selectedPO.items.map((item, idx) => (
+                                          <tr key={idx} className="hover:bg-slate-50/50">
+                                              <td className="px-6 py-5 font-black text-slate-800">{item.itemName}</td>
+                                              <td className="px-6 py-5 text-center font-bold text-slate-600">{item.quantity}</td>
+                                              <td className="px-6 py-5 text-right font-bold text-slate-600">${item.unitPrice}</td>
+                                              <td className="px-6 py-5 text-right font-black text-slate-900">${item.quantity * item.unitPrice}</td>
+                                          </tr>
+                                      ))}
+                                  </tbody>
+                              </table>
+                          </div>
+                      </div>
+
+                      {selectedPO.status === 'Draft' && (
+                          <div className="flex justify-end pt-6 border-t border-slate-100 gap-4">
+                              <button 
+                                  className="rounded-[1.5rem] px-8 py-4 text-slate-400 hover:text-slate-600 font-black text-xs uppercase tracking-widest transition-all"
+                                  onClick={() => setIsDetailModalOpen(false)}
+                              >
+                                  Close
+                              </button>
+                              <button 
+                                  className="rounded-[1.5rem] px-10 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest shadow-xl shadow-indigo-100 active:scale-95 transition-all flex items-center gap-2"
+                                  onClick={handleUpdatePO}
+                                  disabled={localLoading}
+                              >
+                                  {localLoading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                                  Authorize & Submit for Approval
+                              </button>
+                          </div>
+                      )}
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
 
 export default PurchaseOrderView;
+;

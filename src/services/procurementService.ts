@@ -62,11 +62,27 @@ const toFrontendGRN = (grn: any, inspection?: any): GRN & { inspectionId?: strin
 const toFrontendQCInspection = (inspection: any): GRN & { inspectionId?: string } => {
   const grn = toFrontendGRN(inspection.grnId || {}, inspection);
   const inspectionItems = Array.isArray(inspection.items) ? inspection.items : [];
+  const grnItemsById = new Map(
+    (grn.items || []).map((item: any) => [String((item as any).grnItemId || item.itemId || ''), item]),
+  );
 
   return {
     ...grn,
     status: 'Pending QC',
-    items: inspectionItems.length ? inspectionItems.map(toFrontendGRNItem) : grn.items,
+    items: inspectionItems.length
+      ? inspectionItems.map((item: any) => {
+          const mapped = toFrontendGRNItem(item);
+          const sourceGrnItem = grnItemsById.get(String(item.grnItemId || item._id || ''));
+
+          return {
+            ...mapped,
+            receivedQty: sourceGrnItem?.receivedQty ?? sourceGrnItem?.poQty ?? mapped.receivedQty,
+            poQty: sourceGrnItem?.poQty ?? mapped.poQty,
+            itemName: sourceGrnItem?.itemName || mapped.itemName,
+            itemId: sourceGrnItem?.itemId || mapped.itemId,
+          };
+        })
+      : grn.items,
   };
 };
 
@@ -162,6 +178,10 @@ export const procurementService = {
     return toFrontendPO(response.data.purchaseOrder || response.data);
   },
 
+  updatePO: async (id: string, updates: any): Promise<void> => {
+    await api.put(`/purchase/orders/${id}`, updates);
+  },
+
   // --- GRN (Goods Receipt Note) ---
   getAllGRNs: async (): Promise<GRN[]> => {
     const response = await api.get('/api/inward/grns', { params: { limit: 1000 } });
@@ -241,6 +261,78 @@ export const procurementService = {
         itemName: task.itemName,
       }],
     });
+  },
+
+  // --- Purchase Requisitions (PR) ---
+  getAllPRs: async (): Promise<PurchaseRequisition[]> => {
+    const response = await api.get('/purchase/requisitions');
+    return unwrapList<any>(response).map((pr: any) => ({
+      id: String(pr._id || pr.id || ''),
+      prNumber: pr.prNumber || '',
+      department: pr.department || '',
+      requestedBy: pr.requestedBy || '',
+      date: (pr.date || pr.createdAt || new Date().toISOString()).toString().slice(0, 10),
+      requiredDate: (pr.requiredDate || new Date().toISOString()).toString().slice(0, 10),
+      justification: pr.justification || '',
+      status: pr.status || 'Draft',
+      source: pr.source || 'Manual',
+      items: (pr.items || []).map((i: any) => ({
+        itemId: String(i.itemCode || i.itemId || ''),
+        itemName: i.name || i.itemName || '',
+        quantity: Number(i.qty || i.quantity || 0),
+        estimatedPrice: Number(i.unitPrice || i.estimatedPrice || 0),
+      }))
+    }));
+  },
+
+  createPR: async (pr: Omit<PurchaseRequisition, 'id' | 'prNumber' | 'status'>): Promise<PurchaseRequisition> => {
+    const response = await api.post('/purchase/requisitions', pr);
+    return response.data.data ?? response.data;
+  },
+
+  approvePR: async (id: string): Promise<void> => {
+    await api.patch(`/purchase/requisitions/${id}/approve`);
+  },
+
+  updatePR: async (id: string, updates: Partial<PurchaseRequisition>): Promise<void> => {
+    await api.put(`/purchase/requisitions/${id}`, updates);
+  },
+
+  deletePR: async (id: string): Promise<void> => {
+    await api.delete(`/purchase/requisitions/${id}`);
+  },
+
+  // --- Purchase Invoices (3-Way Match) ---
+  getAllPurchaseInvoices: async (): Promise<PurchaseInvoice[]> => {
+    const response = await api.get('/purchase/invoices');
+    return unwrapList<any>(response).map((inv: any) => ({
+      id: String(inv._id || inv.id || ''),
+      invoiceNumber: inv.invoiceNumber || '',
+      vendorId: String(inv.vendorId || ''),
+      vendorName: inv.vendorName || '',
+      poId: String(inv.poId || ''),
+      poNumber: inv.poNumber || '',
+      grnId: String(inv.grnId || ''),
+      grnNumber: inv.grnNumber || '',
+      date: (inv.date || inv.createdAt || new Date().toISOString()).toString().slice(0, 10),
+      dueDate: (inv.dueDate || new Date().toISOString()).toString().slice(0, 10),
+      totalAmount: Number(inv.totalAmount || 0),
+      status: inv.status || 'Draft',
+      items: (inv.items || []).map((i: any) => ({
+        itemId: String(i.itemId || ''),
+        itemName: i.itemName || '',
+        poQty: Number(i.poQty || 0),
+        grnQty: Number(i.grnQty || 0),
+        invoiceQty: Number(i.invoiceQty || 0),
+        unitPrice: Number(i.unitPrice || 0),
+        variance: Number(i.variance || 0)
+      }))
+    }));
+  },
+
+  createPurchaseInvoice: async (invoice: Omit<PurchaseInvoice, 'id' | 'status'>): Promise<PurchaseInvoice> => {
+    const response = await api.post('/purchase/invoices', invoice);
+    return response.data.data ?? response.data;
   },
 
   // --- Inward Returns ---

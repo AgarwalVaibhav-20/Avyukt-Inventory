@@ -15,8 +15,10 @@ const DB_KEYS = {
   WAREHOUSES: 'nexus_warehouses',
   TRANSFERS: 'nexus_transfers',
   VENDORS: 'nexus_vendors',
+  PRS: 'nexus_prs',
   POS: 'nexus_pos',
   GRNS: 'nexus_grns',
+  PURCHASE_INVOICES: 'nexus_purchase_invoices',
   PUTAWAY: 'nexus_putaway',
   RETURNS: 'nexus_returns',
   CUSTOMERS: 'nexus_customers',
@@ -128,6 +130,20 @@ const SEED_DATA = {
     { id: 'v3', name: 'Machinery World', code: 'VEN003', contactPerson: 'Charlie Chap', email: 'charlie@machines.com', phone: '+1 555-0303', status: 'Pending Approval', rating: 0, category: 'Machinery', address: '789 Heavy Rd, TX', taxId: 'GST11223' },
     { id: 'v4', name: 'Bad Supplies Co', code: 'VEN004', contactPerson: 'Davil Downer', email: 'dave@badsupplies.com', phone: '+1 555-0404', status: 'Blacklisted', rating: 1.5, category: 'General', address: '000 Nowhere, NV', taxId: 'GST99887' }
   ] as Vendor[],
+  prs: [
+    {
+      id: 'pr1',
+      prNumber: 'PR-2023-001',
+      department: 'Production',
+      requestedBy: 'John Foreman',
+      date: '2023-10-10',
+      requiredDate: '2023-10-20',
+      justification: 'Stock critical for production run #44',
+      status: 'Pending Approval',
+      source: 'Manual',
+      items: [{ itemId: '1', itemName: 'Industrial Ball Bearing X200', quantity: 200, estimatedPrice: 12.00 }]
+    }
+  ] as PurchaseRequisition[],
   pos: [
     {
       id: 'po1',
@@ -170,6 +186,7 @@ const SEED_DATA = {
         items: [{ itemId: '1', itemName: 'Industrial Ball Bearing X200', poQty: 400, receivedQty: 400, acceptedQty: 400, rejectedQty: 0 }]
       }
   ] as GRN[],
+  purchaseInvoices: [] as PurchaseInvoice[],
   putaway: [] as PutAwayTask[],
   returns: [] as PurchaseReturn[],
   customers: [
@@ -403,11 +420,17 @@ export const mockDb = {
   getVendors: () => getOrSeed<Vendor[]>(DB_KEYS.VENDORS, SEED_DATA.vendors) as Vendor[],
   saveVendors: (data: Vendor[]) => save(DB_KEYS.VENDORS, data),
 
+  getPRs: () => getOrSeed<PurchaseRequisition[]>(DB_KEYS.PRS, SEED_DATA.prs) as PurchaseRequisition[],
+  savePRs: (data: PurchaseRequisition[]) => save(DB_KEYS.PRS, data),
+
   getPOs: () => getOrSeed<PurchaseOrder[]>(DB_KEYS.POS, SEED_DATA.pos) as PurchaseOrder[],
   savePOs: (data: PurchaseOrder[]) => save(DB_KEYS.POS, data),
 
   getGRNs: () => getOrSeed<GRN[]>(DB_KEYS.GRNS, SEED_DATA.grns) as GRN[],
   saveGRNs: (data: GRN[]) => save(DB_KEYS.GRNS, data),
+
+  getPurchaseInvoices: () => getOrSeed<PurchaseInvoice[]>(DB_KEYS.PURCHASE_INVOICES, SEED_DATA.purchaseInvoices) as PurchaseInvoice[],
+  savePurchaseInvoices: (data: PurchaseInvoice[]) => save(DB_KEYS.PURCHASE_INVOICES, data),
 
   getPutAwayTasks: () => getOrSeed<PutAwayTask[]>(DB_KEYS.PUTAWAY, SEED_DATA.putaway) as PutAwayTask[],
   savePutAwayTasks: (data: PutAwayTask[]) => save(DB_KEYS.PUTAWAY, data),

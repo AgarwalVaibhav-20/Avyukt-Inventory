@@ -43,6 +43,12 @@ export const warehouseService = {
     await api.delete(`/warehouse/delete/${id}`);
   },
 
+  updateWarehouse: async (id: string, data: Partial<Warehouse>): Promise<Warehouse> => {
+    const response = await api.put(`/warehouse/update/${id}`, data);
+    const w = response.data.warehouse || response.data;
+    return { ...w, id: w._id || w.id };
+  },
+
   // --- Transfers ---
   getAllTransfers: async (): Promise<StockTransfer[]> => {
     const response = await api.get("/stock-transfers");
@@ -229,8 +235,19 @@ export const warehouseService = {
   // --- Capacity Stats ---
   getWarehouseCapacityStats: async (): Promise<WarehouseCapacityStats[]> => {
     try {
-      const response = await api.get("/api/warehouse/capacity-stats");
-      return response.data.data || [];
+      const orgId = getOrgId();
+      const response = await api.get("/warehouse/capacity-stats", {
+        params: { organisationId: orgId }
+      });
+      const data = response.data.data || [];
+      return data.map((wh: any) => ({
+        ...wh,
+        id: wh.warehouseId || wh._id || wh.id,
+        zoneStats: (wh.zoneStats || []).map((z: any) => ({
+          ...z,
+          id: z._id || z.id
+        }))
+      }));
     } catch (error) {
       console.error("Failed to fetch warehouse capacity stats", error);
       return [];

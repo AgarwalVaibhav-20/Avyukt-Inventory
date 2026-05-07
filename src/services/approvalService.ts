@@ -1,64 +1,179 @@
 import { mockDb } from './mockDb';
-import { PurchaseOrder, GRN, StockAdjustment, StockTransfer, PurchaseReturn, SalesReturn, PutAwayTask } from '@/types';
+import api from './api';
+import { PurchaseOrder, GRN, StockAdjustment, StockTransfer, PurchaseReturn, SalesReturn, PutAwayTask, PurchaseRequisition } from '@/types';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const toFrontendGRN = (grn: any): GRN => ({
+  id: String(grn._id || grn.id || ''),
+  grnNumber: grn.grnNumber || '',
+  poId: String(grn.purchaseOrderId?._id || grn.purchaseOrderId || ''),
+  poNumber: grn.purchaseOrderId?.poNo || grn.poNumber || '',
+  vendorId: String(grn.supplierId?._id || grn.supplierId || ''),
+  vendorName: grn.supplierId?.vendorName || grn.vendorName || grn.purchaseOrderId?.vendor || '',
+  date: (grn.date || grn.createdAt || new Date().toISOString()).toString().slice(0, 10),
+  challanNumber: grn.challanNumber || grn.transportInfo?.challanNumber || '',
+  status: grn.status || 'Pending QC',
+  items: (grn.items || []).map((item: any) => ({
+    grnItemId: String(item._id || item.grnItemId || ''),
+    itemId: String(item.materialId || item.productId || item._id || ''),
+    itemName: item.itemName || '',
+    poQty: Number(item.poQty ?? item.orderedQty ?? item.quantity ?? 0),
+    receivedQty: Number(item.receivedQty ?? item.qty ?? item.acceptedQty ?? 0),
+    acceptedQty: Number(item.acceptedQty ?? 0),
+    rejectedQty: Number(item.rejectedQty ?? 0),
+    qcRemarks: item.qcRemarks || item.remarks || '',
+  })),
+});
+
 export const approvalService = {
+  // --- Purchase Requisitions (PR) ---
+  getPendingPRs: async (): Promise<PurchaseRequisition[]> => {
+    // Attempt real API if available, fallback to mock logic for PRs
+    try {
+      console.log("🌐 Fetching pending PRs from API...");
+      const response = await api.get('/purchase/requisitions/pending');
+      const data = response.data.data ?? [];
+      console.log(`✅ API Success: Found ${data.length} pending PRs`);
+      return data.map((pr: any) => ({
+        ...pr,
+        id: String(pr._id || pr.id || ''),
+        items: (pr.items || []).map((item: any) => ({
+            ...item,
+            itemName: item.name || item.itemName || "Unknown Item",
+            quantity: Number(item.qty || item.quantity || 0),
+            estimatedPrice: Number(item.unitPrice || item.estimatedPrice || 0)
+        }))
+      }));
+    } catch (e: any) {
+      console.error("❌ API Error fetching pending PRs:", e.response?.data || e.message);
+      await delay(200);
+      const mockData = mockDb.getPRs().filter(p => p.status === 'Pending Approval');
+      console.log(`⚠️ Falling back to mock data: ${mockData.length} items`);
+      return mockData;
+    }
+  },
+
+  approvePR: async (id: string): Promise<void> => {
+    try {
+      await api.patch(`/purchase/requisitions/${id}/approve`);
+    } catch (e) {
+      await delay(300);
+      const prs = mockDb.getPRs();
+      const idx = prs.findIndex(p => p.id === id);
+      if(idx !== -1) {
+          prs[idx].status = 'Approved';
+          mockDb.savePRs(prs);
+      }
+    }
+  },
+
+  rejectPR: async (id: string): Promise<void> => {
+    try {
+      await api.patch(`/purchase/requisitions/${id}/reject`);
+    } catch (e) {
+      await delay(300);
+      const prs = mockDb.getPRs();
+      const idx = prs.findIndex(p => p.id === id);
+      if(idx !== -1) {
+          prs[idx].status = 'Rejected';
+          mockDb.savePRs(prs);
+      }
+    }
+  },
+
   // --- Purchase Orders ---
   getPendingPOs: async (): Promise<PurchaseOrder[]> => {
-    await delay(200);
-    return mockDb.getPOs().filter(p => p.status === 'Draft' || p.status === 'Pending Approval');
+    try {
+      const response = await api.get('/purchase/orders', {
+        params: { status: 'Pending', limit: 1000 }
+      });
+      const data = response.data.purchaseOrders ?? response.data.data ?? [];
+      return data.map((po: any) => ({
+        ...po,
+        id: String(po._id || po.id || ''),
+        items: (po.productLines || []).map((line: any) => ({
+          itemId: String(line.materialId || line.productId || line._id || ''),
+          itemName: line.product || '',
+          quantity: Number(line.quantity || 0),
+          unitPrice: Number(line.unitPrice || 0),
+          receivedQty: Number(line.receivedQuantity || 0),
+        })),
+      }));
+    } catch (e) {
+      await delay(200);
+      return mockDb.getPOs().filter(
+        p => p.status === 'Draft' || p.status === 'Pending Approval' || p.status === 'Pending'
+      );
+    }
   },
 
   approvePO: async (id: string): Promise<void> => {
-    await delay(300);
-    const pos = mockDb.getPOs();
-    const idx = pos.findIndex(p => p.id === id);
-    if(idx !== -1) {
-        pos[idx].status = 'Sent';
-        mockDb.savePOs(pos);
+    try {
+      await api.put(`/purchase/orders/${id}`, { status: 'Sent' });
+    } catch (e) {
+      await delay(300);
+      const pos = mockDb.getPOs();
+      const idx = pos.findIndex(p => p.id === id);
+      if(idx !== -1) {
+          pos[idx].status = 'Sent';
+          mockDb.savePOs(pos);
+      }
     }
   },
 
   rejectPO: async (id: string): Promise<void> => {
-    await delay(300);
-    const pos = mockDb.getPOs();
-    const idx = pos.findIndex(p => p.id === id);
-    if(idx !== -1) {
-        pos[idx].status = 'Rejected';
-        mockDb.savePOs(pos);
+    try {
+      await api.put(`/purchase/orders/${id}`, { status: 'Rejected' });
+    } catch (e) {
+      await delay(300);
+      const pos = mockDb.getPOs();
+      const idx = pos.findIndex(p => p.id === id);
+      if(idx !== -1) {
+          pos[idx].status = 'Rejected';
+          mockDb.savePOs(pos);
+      }
     }
   },
 
   // --- GRN (Goods Receipt Note) ---
   getPendingGRNs: async (): Promise<GRN[]> => {
-    await delay(200);
-    // After QC completion, GRN needs final approval before Putaway logic is officially triggered
-    return mockDb.getGRNs().filter(g => g.status === 'QC Completed');
+    try {
+      const response = await api.get('/api/inward/grns/for-approval', {
+        params: { limit: 1000 }
+      });
+      return (response.data.data ?? []).map(toFrontendGRN);
+    } catch (e) {
+      await delay(200);
+      return mockDb.getGRNs().filter(g => g.status === 'QC Completed');
+    }
   },
 
   approveGRN: async (id: string): Promise<void> => {
-    await delay(300);
-    const grns = mockDb.getGRNs();
-    const idx = grns.findIndex(g => g.id === id);
-    if(idx !== -1) {
-        grns[idx].status = 'Approved'; // Or directly 'Put Away Pending'
-        mockDb.saveGRNs(grns);
-        
-        // At this point we could also trigger PutAway tasks if not done in QC step
-        // In previous implementation QC triggered it, but approval step is a safeguard.
-        // We will assume QC triggered tasks, this just formalizes the document status.
+    try {
+      await api.post('/api/inward/grn/approve', { grnId: id, status: 'Approved' });
+    } catch (e) {
+      await delay(300);
+      const grns = mockDb.getGRNs();
+      const idx = grns.findIndex(g => g.id === id);
+      if(idx !== -1) {
+          grns[idx].status = 'Approved';
+          mockDb.saveGRNs(grns);
+      }
     }
   },
 
   rejectGRN: async (id: string): Promise<void> => {
-    await delay(300);
-    const grns = mockDb.getGRNs();
-    const idx = grns.findIndex(g => g.id === id);
-    if(idx !== -1) {
-        grns[idx].status = 'Rejected';
-        mockDb.saveGRNs(grns);
-        // Should also cancel PutAway tasks conceptually
+    try {
+      await api.post('/api/inward/grn/approve', { grnId: id, status: 'Rejected' });
+    } catch (e) {
+      await delay(300);
+      const grns = mockDb.getGRNs();
+      const idx = grns.findIndex(g => g.id === id);
+      if(idx !== -1) {
+          grns[idx].status = 'Rejected';
+          mockDb.saveGRNs(grns);
+      }
     }
   },
 

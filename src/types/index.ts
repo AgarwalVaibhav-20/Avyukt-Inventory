@@ -234,6 +234,28 @@ export interface VendorPerformanceReview {
   notes: string;
 }
 
+// --- Procurement & Requisition Types ---
+
+export interface PurchaseRequisition {
+  id: string;
+  prNumber: string;
+  department: string;
+  requestedBy: string;
+  date: string;
+  requiredDate: string;
+  justification: string;
+  items: PRItem[];
+  status: 'Draft' | 'Pending Approval' | 'Approved' | 'PO Created' | 'Rejected';
+  source: 'Manual' | 'Stock Alert' | 'Production Plan';
+}
+
+export interface PRItem {
+  itemId: string;
+  itemName: string;
+  quantity: number;
+  estimatedPrice?: number;
+}
+
 export interface PurchaseOrder {
   id: string;
   poNumber: string;
@@ -241,9 +263,10 @@ export interface PurchaseOrder {
   vendorName: string;
   date: string;
   expectedDate: string;
-  status: 'Draft' | 'Pending Approval' | 'Sent' | 'Partially Received' | 'Completed' | 'Cancelled' | 'Rejected';
+  status: 'Draft' | 'Pending' | 'Pending Approval' | 'Sent' | 'Approved' | 'Partially Received' | 'Completed' | 'Cancelled' | 'Rejected';
   totalAmount: number;
   items: POItem[];
+  prId?: string; // Link to PR if any
 }
 
 export interface POItem {
@@ -287,6 +310,32 @@ export interface PutAwayTask {
   quantity: number;
   status: 'Pending' | 'Completed';
   assignedLocation?: string;
+}
+
+export interface PurchaseInvoice {
+  id: string;
+  invoiceNumber: string;
+  vendorId: string;
+  vendorName: string;
+  poId: string;
+  poNumber: string;
+  grnId: string;
+  grnNumber: string;
+  date: string;
+  dueDate: string;
+  items: InvoiceMatchItem[];
+  totalAmount: number;
+  status: 'Draft' | 'Matched' | 'Discrepancy' | 'Paid';
+}
+
+export interface InvoiceMatchItem {
+  itemId: string;
+  itemName: string;
+  poQty: number;
+  grnQty: number;
+  invoiceQty: number;
+  unitPrice: number;
+  variance: number;
 }
 
 export interface PurchaseReturn {
