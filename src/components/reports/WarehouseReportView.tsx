@@ -3,11 +3,13 @@ import DashboardWarehouse from '@/components/dashboard/DashboardWarehouse'; // R
 
 const WarehouseReportView: React.FC = () => {
   return (
-    <div className="space-y-6">
-        <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-slate-800">Warehouse-wise Stock Report</h2>
-        </div>
-        <DashboardWarehouse />
+    <div className="space-y-8 pb-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Warehouse-wise Stock Report</h1>
+        <p className="text-slate-600">Monitor inventory distribution across all warehouses</p>
+      </div>
+      <DashboardWarehouse />
     </div>
   );
 };

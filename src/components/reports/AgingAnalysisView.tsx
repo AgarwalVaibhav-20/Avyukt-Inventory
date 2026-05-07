@@ -53,116 +53,140 @@ const AgingAnalysisView: React.FC = () => {
     setLoading(false);
   };
 
-  if (loading) return <div className="flex h-64 justify-center items-center"><Loader2 className="animate-spin text-slate-400"/></div>;
+  if (loading) return (
+    <div className="flex h-screen justify-center items-center">
+      <div className="text-center">
+        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
+        <p className="text-slate-600 font-medium">Loading aging analysis...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Total Stock</p>
-                        <h3 className="text-3xl font-bold text-slate-900 mt-2">{stats.totalStock.toLocaleString()}</h3>
-                    </div>
-                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600"><Package size={24}/></div>
-                </div>
-            </div>
+    <div className="space-y-8 pb-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Stock Aging Analysis</h1>
+        <p className="text-slate-600">Analyze inventory age and optimize stock rotation</p>
+      </div>
 
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Fresh Stock (0-30d)</p>
-                        <h3 className="text-3xl font-bold text-green-600 mt-2">{stats.freshStock.toLocaleString()}</h3>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg text-green-600"><TrendingUp size={24}/></div>
-                </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="group overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">Total Stock</p>
+              <p className="text-4xl font-bold text-blue-900 mt-3">{stats.totalStock.toLocaleString()}</p>
             </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Medium Age (31-90d)</p>
-                        <h3 className="text-3xl font-bold text-blue-600 mt-2">{stats.mediumStock.toLocaleString()}</h3>
-                    </div>
-                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600"><Clock size={24}/></div>
-                </div>
+            <div className="rounded-xl bg-white p-3 text-blue-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <Package size={28} />
             </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Old Stock (&gt;90d)</p>
-                        <h3 className="text-3xl font-bold text-red-600 mt-2">{stats.oldStock.toLocaleString()}</h3>
-                        <span className="text-red-500 text-xs font-medium flex items-center mt-1"><AlertTriangle size={12} className="mr-1" /> {stats.oldPercentage}% of total</span>
-                    </div>
-                    <div className="p-3 bg-red-50 rounded-lg text-red-600"><AlertTriangle size={24}/></div>
-                </div>
-            </div>
+          </div>
         </div>
 
-        {/* Age Distribution Chart */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <Clock size={20} className="text-orange-600"/> Stock Age Distribution
-            </h3>
-            <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                        <Tooltip 
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
-                            formatter={(value: any, name: string, props: any) => [`${value} units (${props.payload.percentage}%)`, 'Quantity']}
-                        />
-                        <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                            {chartData.map((entry: any, index: number) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index]} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+        <div className="group overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Fresh Stock (0-30d)</p>
+              <p className="text-4xl font-bold text-emerald-900 mt-3">{stats.freshStock.toLocaleString()}</p>
             </div>
+            <div className="rounded-xl bg-white p-3 text-emerald-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <TrendingUp size={28} />
+            </div>
+          </div>
         </div>
 
-        {/* Detailed Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-6">Item-wise Aging Analysis</h3>
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
-                        <tr>
-                            <th className="px-6 py-4">Item Name</th>
-                            <th className="px-6 py-4 text-right">Total Stock</th>
-                            <th className="px-6 py-4 text-right bg-green-50 text-green-700">0-30 Days</th>
-                            <th className="px-6 py-4 text-right bg-blue-50 text-blue-700">31-60 Days</th>
-                            <th className="px-6 py-4 text-right bg-orange-50 text-orange-700">61-90 Days</th>
-                            <th className="px-6 py-4 text-right bg-red-50 text-red-700">&gt; 90 Days</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                         {data.map(item => {
-                             const b30 = item.buckets.find(b => b.range === '0-30 Days')?.quantity || 0;
-                             const b60 = item.buckets.find(b => b.range === '31-60 Days')?.quantity || 0;
-                             const b90 = item.buckets.find(b => b.range === '61-90 Days')?.quantity || 0;
-                             const b90plus = item.buckets.find(b => b.range === '>90 Days')?.quantity || 0;
-
-                             return (
-                                <tr key={item.itemId} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4 font-medium text-slate-800">{item.itemName}</td>
-                                    <td className="px-6 py-4 text-right font-bold">{item.totalStock}</td>
-                                    <td className="px-6 py-4 text-right bg-green-50/30 text-green-700 font-medium">{b30 || '-'}</td>
-                                    <td className="px-6 py-4 text-right bg-blue-50/30 text-blue-700 font-medium">{b60 || '-'}</td>
-                                    <td className="px-6 py-4 text-right bg-orange-50/30 text-orange-700 font-medium">{b90 || '-'}</td>
-                                    <td className="px-6 py-4 text-right bg-red-50/30 text-red-700 font-bold">{b90plus || '-'}</td>
-                                </tr>
-                             );
-                         })}
-                    </tbody>
-                </table>
+        <div className="group overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-cyan-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-600">Medium Age (31-90d)</p>
+              <p className="text-4xl font-bold text-cyan-900 mt-3">{stats.mediumStock.toLocaleString()}</p>
             </div>
+            <div className="rounded-xl bg-white p-3 text-cyan-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <Clock size={28} />
+            </div>
+          </div>
         </div>
+
+        <div className="group overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-red-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-red-600">Old Stock (&gt;90d)</p>
+              <p className="text-4xl font-bold text-red-900 mt-3">{stats.oldStock.toLocaleString()}</p>
+              <span className="text-red-600 text-xs font-semibold flex items-center mt-2"><AlertTriangle size={14} className="mr-1" /> {stats.oldPercentage}% of total</span>
+            </div>
+            <div className="rounded-xl bg-white p-3 text-red-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <AlertTriangle size={28} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Age Distribution Chart */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 p-2.5 text-white">
+            <Clock size={20} />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Stock Age Distribution</h3>
+        </div>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} formatter={(value: any, name: string, props: any) => [`${value} units (${props.payload.percentage}%)`, 'Quantity']} />
+              <Bar dataKey="value" radius={[12, 12, 0, 0]}>
+                {chartData.map((entry: any, index: number) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Detailed Table */}
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
+        <div className="bg-gradient-to-r from-slate-50 to-white p-8 border-b border-slate-200">
+          <h3 className="text-2xl font-bold text-slate-900">Item-wise Aging Analysis</h3>
+          <p className="text-sm text-slate-600 mt-1">Stock distribution by age range</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead>
+              <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-b border-slate-200">
+                <th className="px-6 py-4 font-semibold text-slate-700">Item Name</th>
+                <th className="px-6 py-4 text-right font-semibold text-slate-700">Total Stock</th>
+                <th className="px-6 py-4 text-right font-semibold text-emerald-700 bg-emerald-50">0-30 Days</th>
+                <th className="px-6 py-4 text-right font-semibold text-blue-700 bg-blue-50">31-60 Days</th>
+                <th className="px-6 py-4 text-right font-semibold text-orange-700 bg-orange-50">61-90 Days</th>
+                <th className="px-6 py-4 text-right font-semibold text-red-700 bg-red-50">&gt; 90 Days</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.map((item, index) => {
+                const b30 = item.buckets.find((b) => b.range === '0-30 Days')?.quantity || 0;
+                const b60 = item.buckets.find((b) => b.range === '31-60 Days')?.quantity || 0;
+                const b90 = item.buckets.find((b) => b.range === '61-90 Days')?.quantity || 0;
+                const b90plus = item.buckets.find((b) => b.range === '>90 Days')?.quantity || 0;
+
+                return (
+                  <tr key={item.itemId} className={`transition-colors hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                    <td className="px-6 py-4 font-semibold text-slate-900">{item.itemName}</td>
+                    <td className="px-6 py-4 text-right font-bold text-slate-900">{item.totalStock}</td>
+                    <td className="px-6 py-4 text-right bg-emerald-50 text-emerald-700 font-semibold">{b30 || '-'}</td>
+                    <td className="px-6 py-4 text-right bg-blue-50 text-blue-700 font-semibold">{b60 || '-'}</td>
+                    <td className="px-6 py-4 text-right bg-orange-50 text-orange-700 font-semibold">{b90 || '-'}</td>
+                    <td className="px-6 py-4 text-right bg-red-50 text-red-700 font-bold">{b90plus || '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };

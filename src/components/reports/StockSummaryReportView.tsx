@@ -50,123 +50,157 @@ const StockSummaryReportView: React.FC = () => {
     setLoading(false);
   };
 
-  if (loading) return <div className="flex h-64 justify-center items-center"><Loader2 className="animate-spin text-slate-400"/></div>;
+  if (loading) return (
+    <div className="flex h-screen justify-center items-center">
+      <div className="text-center">
+        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
+        <p className="text-slate-600 font-medium">Loading stock summary...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-6 animate-fade-in">
-        {/* Summary Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Total Items</p>
-                        <h3 className="text-3xl font-bold text-slate-900 mt-2">{stats.totalItems}</h3>
-                    </div>
-                    <div className="p-3 bg-blue-50 rounded-lg text-blue-600"><Package size={24}/></div>
-                </div>
+    <div className="space-y-8 pb-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Stock Summary Report</h1>
+        <p className="text-slate-600">Real-time inventory valuation and stock analysis</p>
+      </div>
+
+      {/* Summary Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="group overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">Total Items</p>
+              <p className="text-4xl font-bold text-blue-900 mt-3">{stats.totalItems}</p>
             </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Total Quantity</p>
-                        <h3 className="text-3xl font-bold text-slate-900 mt-2">{stats.totalStock.toLocaleString()}</h3>
-                    </div>
-                    <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600"><BarChart3 size={24}/></div>
-                </div>
+            <div className="rounded-xl bg-white p-3 text-blue-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <Package size={28} />
             </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Total Value</p>
-                        <h3 className="text-3xl font-bold text-slate-900 mt-2">${(stats.totalValue / 1000000).toFixed(2)}M</h3>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg text-green-600"><DollarSign size={24}/></div>
-                </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <div className="flex items-start justify-between mb-4">
-                    <div>
-                        <p className="text-slate-500 text-sm font-medium">Low Stock Items</p>
-                        <h3 className="text-3xl font-bold text-slate-900 mt-2">{stats.lowStock}</h3>
-                        <span className="text-red-500 text-xs font-medium flex items-center mt-1"><AlertTriangle size={12} className="mr-1" /> Action Required</span>
-                    </div>
-                    <div className="p-3 bg-red-50 rounded-lg text-red-600"><AlertTriangle size={24}/></div>
-                </div>
-            </div>
-        </div>
-
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Stock Value Trend */}
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                <TrendingUp size={20} className="text-blue-600"/> Stock Value Trend
-              </h3>
-              <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData?.valueData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                          <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                          <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} />
-                      </LineChart>
-                  </ResponsiveContainer>
-              </div>
-          </div>
-
-          {/* Stock Value by Category */}
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Value by Category</h3>
-              <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                          <Pie
-                              data={chartData?.categoryData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={50}
-                              outerRadius={80}
-                              paddingAngle={5}
-                              dataKey="value"
-                          >
-                              {chartData?.categoryData.map((entry: any, index: number) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
-                      </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex flex-wrap gap-3 mt-4 justify-center">
-                      {chartData?.categoryData.map((entry: any, index: number) => (
-                          <div key={index} className="flex items-center gap-1 text-xs text-slate-600">
-                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                              {entry.name}
-                          </div>
-                      ))}
-                  </div>
-              </div>
           </div>
         </div>
 
-        {/* Top Stock Items Bar Chart */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Top Stock Items by Value</h3>
-            <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData?.topItems}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value) => `$${value.toLocaleString()}`} />
-                        <Bar dataKey="value" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                </ResponsiveContainer>
+        <div className="group overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">Total Quantity</p>
+              <p className="text-4xl font-bold text-indigo-900 mt-3">{stats.totalStock.toLocaleString()}</p>
             </div>
+            <div className="rounded-xl bg-white p-3 text-indigo-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <BarChart3 size={28} />
+            </div>
+          </div>
         </div>
+
+        <div className="group overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Total Value</p>
+              <p className="text-4xl font-bold text-emerald-900 mt-3">${(stats.totalValue / 1000000).toFixed(2)}M</p>
+            </div>
+            <div className="rounded-xl bg-white p-3 text-emerald-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <DollarSign size={28} />
+            </div>
+          </div>
+        </div>
+
+        <div className="group overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-red-100 p-6 shadow-md hover:shadow-xl transition-all">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-red-600">Low Stock Items</p>
+              <p className="text-4xl font-bold text-red-900 mt-3">{stats.lowStock}</p>
+              <span className="text-red-600 text-xs font-semibold flex items-center mt-2"><AlertTriangle size={14} className="mr-1" /> Action Required</span>
+            </div>
+            <div className="rounded-xl bg-white p-3 text-red-600 shadow-md group-hover:shadow-lg transition-shadow">
+              <AlertTriangle size={28} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Stock Value Trend */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 text-white">
+              <TrendingUp size={20} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">Stock Value Trend</h3>
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData?.valueData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, fill: '#3b82f6' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Stock Value by Category */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 p-2.5 text-white">
+              <BarChart3 size={20} />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">Value by Category</h3>
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData?.categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {chartData?.categoryData.map((entry: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-3 mt-6 justify-center">
+              {chartData?.categoryData.map((entry: any, index: number) => (
+                <div key={index} className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-semibold text-slate-700">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                  {entry.name}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Stock Items Bar Chart */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 p-2.5 text-white">
+            <TrendingUp size={20} />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900">Top Stock Items by Value</h3>
+        </div>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData?.topItems}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} formatter={(value) => `$${value.toLocaleString()}`} />
+              <Bar dataKey="value" fill="#8b5cf6" radius={[12, 12, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 };

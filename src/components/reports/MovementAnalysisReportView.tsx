@@ -3,9 +3,13 @@ import DashboardMovement from '@/components/dashboard/DashboardMovement'; // Reu
 
 const MovementAnalysisReportView: React.FC = () => {
   return (
-    <div className="space-y-6">
-        <h2 className="text-xl font-bold text-slate-800">Movement Analysis Report</h2>
-        <DashboardMovement />
+    <div className="space-y-8 pb-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-slate-900 mb-2">Movement Analysis Report</h1>
+        <p className="text-slate-600">Track inbound and outbound stock movements with detailed insights</p>
+      </div>
+      <DashboardMovement />
     </div>
   );
 };
