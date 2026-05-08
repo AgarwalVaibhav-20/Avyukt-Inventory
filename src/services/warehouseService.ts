@@ -213,8 +213,11 @@ export const warehouseService = {
     rackId?: string;
   }): Promise<Bin[]> => {
     const response = await api.get("/api/bins", { params: filters });
-    const data = response.data.items || [];
-    return data.map((b: any) => ({ ...b, id: b._id }));
+    const data = response.data;
+    const items = Array.isArray(data)
+      ? data
+      : data.items || data.data || data.bins || [];
+    return items.map((b: any) => ({ ...b, id: b._id || b.id }));
   },
 
   getBinsByRack: async (rackId: string): Promise<Bin[]> => {

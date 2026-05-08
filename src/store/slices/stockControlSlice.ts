@@ -112,6 +112,30 @@ export const releaseReservationRecord = createAsyncThunk(
   }
 );
 
+export const updateReservationRecord = createAsyncThunk(
+  'stockControl/updateReservation',
+  async ({ id, data }: { id: string; data: Partial<StockReservation> }, { rejectWithValue }) => {
+    try {
+      await stockControlService.updateReservation(id, data);
+      return await fetchAllStockControlData();
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update reservation');
+    }
+  }
+);
+
+export const deleteReservationRecord = createAsyncThunk(
+  'stockControl/deleteReservation',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await stockControlService.deleteReservation(id);
+      return await fetchAllStockControlData();
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to delete reservation');
+    }
+  }
+);
+
 export const updateReorderLevelRecord = createAsyncThunk(
   'stockControl/updateReorderLevel',
   async (payload: { id: string; reorderLevel: number }, { rejectWithValue }) => {
@@ -156,6 +180,8 @@ const stockControlSlice = createSlice({
       createBatchRecord,
       createSerialRecord,
       createReservationRecord,
+      updateReservationRecord,
+      deleteReservationRecord,
       releaseReservationRecord,
       updateReorderLevelRecord,
     ].forEach((thunk) => {

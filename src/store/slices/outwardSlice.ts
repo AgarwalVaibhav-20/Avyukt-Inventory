@@ -53,6 +53,7 @@ interface WorkflowChallan {
   vehicleNo?: string;
   packingOrderIds: string[];
   items: {
+    productId: string;
     description: string;
     packedQty: number;
     unit: string;
@@ -128,6 +129,42 @@ export const createSalesOrder = createAsyncThunk(
       ]);
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to create sales order');
+    }
+  }
+);
+
+export const updateSalesOrder = createAsyncThunk(
+  'outward/updateSalesOrder',
+  async (payload: { id: string; data: Partial<SalesOrder> }, { rejectWithValue }) => {
+    try {
+      await salesService.updateSO(payload.id, payload.data);
+      return await Promise.all([
+        salesService.getWorkflowSalesOrders(),
+        salesService.getWorkflowPickLists(),
+        salesService.getWorkflowPackingOrders(),
+        salesService.getWorkflowChallans(),
+        salesService.getWorkflowDispatches(),
+      ]);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update sales order');
+    }
+  }
+);
+
+export const deleteSalesOrder = createAsyncThunk(
+  'outward/deleteSalesOrder',
+  async (id: string, { rejectWithValue }) => {
+    try {
+      await salesService.deleteSO(id);
+      return await Promise.all([
+        salesService.getWorkflowSalesOrders(),
+        salesService.getWorkflowPickLists(),
+        salesService.getWorkflowPackingOrders(),
+        salesService.getWorkflowChallans(),
+        salesService.getWorkflowDispatches(),
+      ]);
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to delete sales order');
     }
   }
 );
@@ -228,13 +265,17 @@ export const createDispatch = createAsyncThunk(
   }
 );
 
-const applyWorkflowPayload = (state: OutwardState, payload: any[]) => {
-  const [salesOrders, pickLists, packingOrders, challans, dispatches] = payload;
-  state.salesOrders = salesOrders;
-  state.pickLists = pickLists;
-  state.packingOrders = packingOrders;
-  state.challans = challans;
-  state.dispatches = dispatches;
+const applyWorkflowPayload = (state: OutwardState, payload: any) => {
+  if (Array.isArray(payload) && payload.length === 5) {
+    const [salesOrders, pickLists, packingOrders, challans, dispatches] = payload;
+    state.salesOrders = salesOrders || state.salesOrders;
+    state.pickLists = pickLists || state.pickLists;
+    state.packingOrders = packingOrders || state.packingOrders;
+    state.challans = challans || state.challans;
+    state.dispatches = dispatches || state.dispatches;
+  } else if (Array.isArray(payload)) {
+    state.salesOrders = payload;
+  }
 };
 
 const outwardSlice = createSlice({
@@ -268,6 +309,30 @@ const outwardSlice = createSlice({
         applyWorkflowPayload(state, action.payload);
       })
       .addCase(createSalesOrder.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(updateSalesOrder.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateSalesOrder.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        applyWorkflowPayload(state, action.payload);
+      })
+      .addCase(updateSalesOrder.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(deleteSalesOrder.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteSalesOrder.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        applyWorkflowPayload(state, action.payload);
+      })
+      .addCase(deleteSalesOrder.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       })

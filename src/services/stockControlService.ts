@@ -283,17 +283,38 @@ export const stockControlService = {
     }
   },
 
-  releaseReservation: async (id: string): Promise<void> => {
+  updateReservation: async (id: string, data: Partial<StockReservation>): Promise<void> => {
     try {
       const organisationId = requireOrganisationId();
       await api.put(`/api/stock-reservations/${id}`, {
         organisationId,
-        status: 'Released',
+        ...data,
+        // Map frontend field names to backend if necessary
+        ref: data.reference,
+        item: data.itemName,
+        qty: data.quantity,
+        expires: data.expiryDate,
       });
     } catch (err: any) {
-      console.error('Error releasing reservation:', err);
-      throw new Error(err.response?.data?.message || 'Failed to release reservation');
+      console.error('Error updating reservation:', err);
+      throw new Error(err.response?.data?.message || 'Failed to update reservation');
     }
+  },
+
+  deleteReservation: async (id: string): Promise<void> => {
+    try {
+      const organisationId = requireOrganisationId();
+      await api.delete(`/api/stock-reservations/${id}`, {
+        params: { organisationId },
+      });
+    } catch (err: any) {
+      console.error('Error deleting reservation:', err);
+      throw new Error(err.response?.data?.message || 'Failed to delete reservation');
+    }
+  },
+
+  releaseReservation: async (id: string): Promise<void> => {
+    return stockControlService.updateReservation(id, { status: 'Released' });
   },
 
   getValuationMethod: async (): Promise<'FIFO' | 'LIFO' | 'Avg'> => {
@@ -419,4 +440,28 @@ export const stockControlService = {
       throw new Error(err.response?.data?.message || 'Failed to recalculate costs');
     }
   },
+
+  getCOGSData: async (): Promise<any[]> => {
+    try {
+      const organisationId = requireOrganisationId();
+      const response = await api.get('/material-movements', {
+        params: { organisationId, movementType: 'outbound' }
+      });
+
+      return (response.data.data || []).map((m: any) => ({
+        id: m._id,
+        date: m.movementDate || m.createdAt,
+        itemName: m.materialName,
+        quantity: m.quantity,
+        unit: m.unit,
+        unitCost: m.unitCost || 0,
+        totalCost: m.totalCost || 0,
+        reference: m.referenceNumber,
+        destination: m.destination
+      }));
+    } catch (err) {
+      console.error('Error fetching COGS data:', err);
+      return [];
+    }
+  }
 };

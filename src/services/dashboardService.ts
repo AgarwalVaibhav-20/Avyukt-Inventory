@@ -76,26 +76,15 @@ export const dashboardService = {
 
   // 4. Warehouse-wise Stock
   getWarehouseStockReport: async (): Promise<WarehouseStockReport[]> => {
-      await delay(400);
-      const warehouses = mockDb.getWarehouses();
-      const items = mockDb.getItems();
-      const totalGlobalValue = items.reduce((sum, i) => sum + (i.stock * i.unitPrice), 0);
-
-      // Simulate distribution since we don't have granular warehouse-item mapping table in this mock
-      // In a real app, we would query the ItemWarehouse table
-      return warehouses.map((w, idx) => {
-          // distribute pseudo-randomly for demo visualization
-          const share = (idx + 1) / (warehouses.length * (warehouses.length + 1) / 2); // weighted share
-          const estimatedValue = totalGlobalValue * (0.2 + (Math.random() * 0.3)); // Random chunk
-          
-          return {
-              warehouseId: w.id,
-              warehouseName: w.name,
-              totalItems: Math.floor(items.length * 0.8), // Assuming most items exist in most warehouses
-              totalValue: estimatedValue,
-              utilization: Math.floor(40 + Math.random() * 50) // 40-90% utilization
-          };
-      });
+    const orgId = getOrgId();
+    if (!orgId) return [];
+    try {
+      const response = await api.get(`/inventory/dashboard/overview/${orgId}`);
+      return response.data.warehouseDistribution || [];
+    } catch (error) {
+      console.error("Failed to fetch warehouse stock report:", error);
+      return [];
+    }
   },
 
   // 5. Inward vs Outward Summary

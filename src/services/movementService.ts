@@ -106,10 +106,8 @@ const mapConsignment = (entry: any): ConsignmentEntry => ({
 export const movementService = {
   getInternalMovements: async (): Promise<InternalMovement[]> => {
     try {
-      // Internal movements are created via /api/internal-movement/bin-transfer
-      // Fetching them requires a dedicated endpoint or querying from StockMovement model
-      // For now, return empty and let the UI show after creation
-      return [];
+      const response = await api.get('/api/internal-movement/history');
+      return (response.data.data || []).map(mapInternalMovement);
     } catch (err) {
       console.error('Error fetching internal movements:', err);
       return [];

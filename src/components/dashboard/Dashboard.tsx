@@ -1,22 +1,90 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  LineChart, Line, PieChart, Pie, Cell 
-} from 'recharts';
-import { AlertTriangle, TrendingUp, Package, Activity, Sparkles, RefreshCcw } from 'lucide-react';
-import { MOCK_INVENTORY } from '@/constants';
-import { getInventoryInsights } from '@/services/geminiService';
+import React, { useEffect, useState } from "react";
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  AlertTriangle,
+  TrendingUp,
+  Package,
+  RefreshCcw,
+  Activity,
+  Sparkles,
+  DollarSign,
+} from "lucide-react";
+import { MOCK_INVENTORY } from "@/constants";
+import { getInventoryInsights } from "@/services/geminiService";
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
+
+const statCards = [
+  {
+    label: "Total Inventory Value",
+    value: "$1.2M",
+    sub: "+2.5% vs last month",
+    subColor: "text-emerald-500",
+    icon: DollarSign,
+    iconBg: "bg-blue-50",
+    iconColor: "text-blue-500",
+  },
+  {
+    label: "Low Stock Items",
+    value: "12",
+    sub: "Action Required",
+    subColor: "text-red-500",
+    icon: AlertTriangle,
+    iconBg: "bg-red-50",
+    iconColor: "text-red-500",
+  },
+  {
+    label: "Active Purchase Orders",
+    value: "8",
+    sub: "3 Pending Approval",
+    subColor: "text-slate-400",
+    icon: Package,
+    iconBg: "bg-orange-50",
+    iconColor: "text-orange-500",
+  },
+  {
+    label: "Stock Turnover Rate",
+    value: "4.2x",
+    sub: "Healthy",
+    subColor: "text-emerald-500",
+    icon: RefreshCcw,
+    iconBg: "bg-purple-50",
+    iconColor: "text-purple-500",
+  },
+];
+
+const stockData = [
+  { name: "Jan", stock: 4000 },
+  { name: "Feb", stock: 3500 },
+  { name: "Mar", stock: 5000 },
+  { name: "Apr", stock: 4800 },
+  { name: "May", stock: 6000 },
+];
+
+const categoryData = [
+  { name: "Components", value: 400 },
+  { name: "Machinery", value: 300 },
+  { name: "Safety", value: 300 },
+  { name: "Raw Mat", value: 200 },
+];
 
 const Dashboard: React.FC = () => {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
 
   useEffect(() => {
-    // Initial AI Load
     handleGenerateInsight();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleGenerateInsight = async () => {
@@ -26,163 +94,172 @@ const Dashboard: React.FC = () => {
     setLoadingAi(false);
   };
 
-  // Mock Chart Data
-  const stockData = [
-    { name: 'Jan', stock: 4000 },
-    { name: 'Feb', stock: 3500 },
-    { name: 'Mar', stock: 5000 },
-    { name: 'Apr', stock: 4800 },
-    { name: 'May', stock: 6000 },
-  ];
-
-  const categoryData = [
-    { name: 'Components', value: 400 },
-    { name: 'Machinery', value: 300 },
-    { name: 'Safety', value: 300 },
-    { name: 'Raw Mat', value: 200 },
-  ];
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-            <div>
-                <p className="text-slate-500 text-sm font-medium">Total Inventory Value</p>
-                <h3 className="text-2xl font-bold text-slate-900 mt-2">$1.2M</h3>
-                <span className="text-green-500 text-xs font-medium flex items-center mt-1">
-                    <TrendingUp size={12} className="mr-1" /> +2.5% vs last month
-                </span>
+    <div className="space-y-5 p-1">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map(
+          ({ label, value, sub, subColor, icon: Icon, iconBg, iconColor }) => (
+            <div
+              key={label}
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center gap-4"
+            >
+              <div className={`${iconBg} ${iconColor} p-3 rounded-xl shrink-0`}>
+                <Icon size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-400 font-medium truncate">
+                  {label}
+                </p>
+                <p className="text-xl font-bold text-slate-800 leading-tight">
+                  {value}
+                </p>
+                <p className={`text-xs font-medium mt-0.5 ${subColor}`}>
+                  {sub}
+                </p>
+              </div>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-                <Activity size={24} />
-            </div>
-        </div>
+          ),
+        )}
+      </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-            <div>
-                <p className="text-slate-500 text-sm font-medium">Low Stock Items</p>
-                <h3 className="text-2xl font-bold text-slate-900 mt-2">12</h3>
-                <span className="text-red-500 text-xs font-medium flex items-center mt-1">
-                    <AlertTriangle size={12} className="mr-1" /> Action Required
-                </span>
+      {/* AI Insight */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="bg-indigo-50 text-indigo-500 p-2 rounded-xl">
+              <Sparkles size={16} />
             </div>
-            <div className="p-3 bg-red-50 rounded-lg text-red-600">
-                <AlertTriangle size={24} />
-            </div>
+            <span className="text-sm font-semibold text-slate-700">
+              AI Inventory Analyst
+            </span>
+          </div>
+          <button
+            onClick={handleGenerateInsight}
+            disabled={loadingAi}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
+          >
+            <RefreshCcw size={12} className={loadingAi ? "animate-spin" : ""} />
+            {loadingAi ? "Analyzing…" : "Refresh"}
+          </button>
         </div>
-
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-            <div>
-                <p className="text-slate-500 text-sm font-medium">Active Purchase Orders</p>
-                <h3 className="text-2xl font-bold text-slate-900 mt-2">8</h3>
-                <span className="text-slate-400 text-xs mt-1">
-                    3 Pending Approval
-                </span>
-            </div>
-            <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
-                <Package size={24} />
-            </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-start justify-between">
-            <div>
-                <p className="text-slate-500 text-sm font-medium">Stock Turnover Rate</p>
-                <h3 className="text-2xl font-bold text-slate-900 mt-2">4.2</h3>
-                <span className="text-green-500 text-xs font-medium flex items-center mt-1">
-                     Healthy
-                </span>
-            </div>
-            <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
-                <RefreshCcw size={24} />
-            </div>
+        <div className="bg-slate-50 rounded-xl p-4 min-h-[80px] text-sm text-slate-600">
+          {aiInsight ? (
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: aiInsight }}
+            />
+          ) : (
+            <span className="text-slate-400 italic">
+              Initializing AI model to analyze stock levels…
+            </span>
+          )}
         </div>
       </div>
 
-      {/* AI Insights Section */}
-      <div className="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-            <Sparkles size={120} />
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Line Chart */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Activity size={16} className="text-blue-500" />
+            <span className="text-sm font-semibold text-slate-700">
+              Stock Value Trend
+            </span>
+            <span className="ml-auto text-xs text-slate-400">
+              Last 5 months
+            </span>
+          </div>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={stockData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f1f5f9"
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 11 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 11 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "10px",
+                    border: "none",
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                    fontSize: 12,
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="stock"
+                  stroke="#3b82f6"
+                  strokeWidth={2.5}
+                  dot={{ r: 3.5, fill: "#3b82f6", strokeWidth: 0 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                    <Sparkles className="text-yellow-400" size={20}/> 
-                    Gemini AI Inventory Analyst
-                </h2>
-                <button 
-                    onClick={handleGenerateInsight}
-                    disabled={loadingAi}
-                    className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors flex items-center gap-1"
-                >
-                    <RefreshCcw size={12} className={loadingAi ? 'animate-spin' : ''} />
-                    {loadingAi ? 'Analyzing...' : 'Refresh Insights'}
-                </button>
-            </div>
-            
-            <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm min-h-[100px]">
-                {aiInsight ? (
-                    <div 
-                        className="prose prose-invert prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: aiInsight }} 
-                    />
-                ) : (
-                    <p className="text-sm text-indigo-200">Initializing AI model to analyze stock levels...</p>
-                )}
-            </div>
-        </div>
-      </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Stock Valuation Trend */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Stock Value Trend (Last 5 Months)</h3>
-            <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={stockData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b'}} />
-                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                        <Line type="monotone" dataKey="stock" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} />
-                    </LineChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
-
-        {/* Category Distribution */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">Stock Value by Category</h3>
-            <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={categoryData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            paddingAngle={5}
-                            dataKey="value"
-                        >
-                            {categoryData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip />
-                    </PieChart>
-                </ResponsiveContainer>
-                <div className="flex justify-center gap-4 mt-2">
-                    {categoryData.map((entry, index) => (
-                        <div key={index} className="flex items-center gap-1 text-xs text-slate-600">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
-                            {entry.name}
-                        </div>
+        {/* Pie Chart */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Package size={16} className="text-emerald-500" />
+            <span className="text-sm font-semibold text-slate-700">
+              Stock by Category
+            </span>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="h-52 flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={75}
+                    paddingAngle={4}
+                    dataKey="value"
+                  >
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
-                </div>
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: "10px",
+                      border: "none",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                      fontSize: 12,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
+            <div className="space-y-2 shrink-0">
+              {categoryData.map((entry, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 text-xs text-slate-600"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                  />
+                  <span>{entry.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

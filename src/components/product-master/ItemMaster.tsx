@@ -1,17 +1,25 @@
-"use client";
-
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  InventoryItem,
+  Category,
+  Brand,
+  UOM,
+  HSN,
+  Attribute,
+  Warehouse,
+  Bin,
+} from "@/types";
 import { productService } from "@/services/productService";
 import { warehouseService } from "@/services/warehouseService";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchItems } from "@/store/slices/inventorySlice";
-import { Attribute, Bin, Brand, Category, HSN, InventoryItem, UOM, Warehouse } from "@/types";
+import { fetchStockMovementData } from "@/store/slices/stockMovementSlice";
 import {
   ArrowRightLeft,
   Barcode,
   Boxes,
+  Check,
+  ChevronDown,
   Clock,
   Download,
   Edit,
@@ -20,6 +28,7 @@ import {
   IndianRupee,
   Layers,
   Loader2,
+  MoreHorizontal,
   Package,
   Plus,
   QrCode,
@@ -28,18 +37,18 @@ import {
   Tags,
   Trash2,
   Warehouse as WarehouseIcon,
+  X,
 } from "lucide-react";
 
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -48,123 +57,154 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const ITEM_TYPES = [
-  "Raw Material",
-  "Finished Goods",
-  "Semi-Finished",
-  "Consumable",
   "Trading",
+  "Raw Material",
+  "Consumable",
   "Service",
+  "Asset",
 ] as const;
 
 const BARCODE_FORMATS = ["Code128", "EAN-13", "QR"] as const;
-const VALUATION_METHODS = ["FIFO", "LIFO", "Weighted Average", "Standard Cost"] as const;
+const VALUATION_METHODS = [
+  "FIFO",
+  "LIFO",
+  "Weighted Average",
+  "Standard Cost",
+] as const;
 
 const emptyForm: Partial<InventoryItem> = {
   itemCode: "",
-  name: "",
   sku: "",
+  name: "",
   description: "",
   itemType: "Trading",
   category: "",
   brand: "",
-  uom: "",
-  stockUom: "",
-  purchaseUom: "",
-  salesUom: "",
+  uom: "PCS",
+  stockUom: "PCS",
+  purchaseUom: "PCS",
+  salesUom: "PCS",
+  taxRate: 0,
+  hsnCode: "",
+  minimumStockLevel: 0,
+  reorderLevel: 5,
+  maximumStockLevel: 0,
+  reorderQuantity: 0,
+  shelfLifeDays: 0,
+  leadTimeDays: 0,
   uomConversions: "",
   warehouseId: "",
+  binCode: "",
   quantity: 0,
   unitCost: 0,
-  binCode: "",
   unitPrice: 0,
   salePrice: 0,
   mrp: 0,
   customerPrice: 0,
   quantityBreakPrice: 0,
   currency: "INR",
-  priceEffectiveFrom: "",
-  priceEffectiveTo: "",
-  reorderLevel: 5,
-  minimumStockLevel: 0,
-  maximumStockLevel: 0,
-  reorderQuantity: 0,
-  leadTimeDays: 0,
-  shelfLifeDays: 0,
-  hsnCode: "",
-  taxRate: 0,
+  valuationMethod: "FIFO",
   barcode: "",
-  barcodes: [],
   qrCode: "",
   barcodeFormat: "Code128",
-  images: [],
+  barcodes: [],
   attributes: {},
-  valuationMethod: "FIFO",
-  status: "in-stock",
+  images: [],
 };
 
 const ItemMaster: React.FC = () => {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const { items, loading } = useAppSelector((state) => state.inventory);
+  const { warehouses, bins: globalBins } = useAppSelector(
+    (state) => state.stockMovement,
+  );
 
+  const [formData, setFormData] = useState<Partial<InventoryItem>>(emptyForm);
   const [search, setSearch] = useState("");
+
+  const warehouseBins = useMemo(() => {
+    if (!formData.warehouseId) return [];
+    return globalBins.filter(
+      (b) => (b.warehouseId || b.warehouse) === formData.warehouseId,
+    );
+  }, [globalBins, formData.warehouseId]);
+
+  const [attributeDraft, setAttributeDraft] = useState({ name: "", value: "" });
+  const [barcodeDraft, setBarcodeDraft] = useState("");
+  const [imageDraft, setImageDraft] = useState("");
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+
+  // Filter state
+  const [filters, setFilters] = useState({
+    category: "all",
+    brand: "all",
+    itemType: "all",
+  });
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [uoms, setUoms] = useState<UOM[]>([]);
   const [hsns, setHsns] = useState<HSN[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [bins, setBins] = useState<Bin[]>([]);
 
-  const [formData, setFormData] = useState<Partial<InventoryItem>>(emptyForm);
-  const [attributeDraft, setAttributeDraft] = useState({ name: "", value: "" });
-  const [barcodeDraft, setBarcodeDraft] = useState("");
-  const [imageDraft, setImageDraft] = useState("");
+  useEffect(() => {
+    loadItems();
+    loadMasterData();
+  }, [dispatch]);
 
-  const loadItems = () => dispatch(fetchItems());
+  const loadItems = () => {
+    dispatch(fetchItems());
+    dispatch(fetchStockMovementData());
+  };
 
   const loadMasterData = async () => {
     try {
-      const [catData, brandData, uomData, hsnData, attrData, warehouseData] = await Promise.all([
-        productService.getCategories(),
-        productService.getBrands(),
-        productService.getUOMs(),
-        productService.getHSN(),
-        productService.getAttributes(),
-        warehouseService.getAllWarehouses(),
-      ]);
+      const [catData, brandData, uomData, hsnData, attrData] =
+        await Promise.all([
+          productService.getCategories(),
+          productService.getBrands(),
+          productService.getUOMs(),
+          productService.getHSN(),
+          productService.getAttributes(),
+        ]);
       setCategories(catData);
       setBrands(brandData);
       setUoms(uomData);
       setHsns(hsnData);
       setAttributes(attrData);
-      setWarehouses(warehouseData);
     } catch (error) {
       console.error("Failed to load master data", error);
     }
   };
 
   useEffect(() => {
-    loadItems();
-    loadMasterData();
-  }, []);
-
-  useEffect(() => {
-    setFormData(editingItem ? { ...emptyForm, ...editingItem } : emptyForm);
+    if (editingItem) {
+      setFormData({ ...editingItem });
+    } else {
+      setFormData(emptyForm);
+    }
     setAttributeDraft({ name: "", value: "" });
     setBarcodeDraft("");
     setImageDraft("");
   }, [editingItem]);
 
   const selectedHsn = useMemo(
-    () => hsns.find((h) => h.code === formData.hsnCode || (h as any).hsnCode === formData.hsnCode),
+    () =>
+      hsns.find(
+        (h) =>
+          h.code === formData.hsnCode ||
+          (h as any).hsnCode === formData.hsnCode,
+      ),
     [hsns, formData.hsnCode],
   );
 
@@ -172,46 +212,44 @@ const ItemMaster: React.FC = () => {
     if (selectedHsn) {
       setFormData((current) => ({
         ...current,
-        taxRate: selectedHsn.taxRate ?? (selectedHsn as any).taxPercentage ?? current.taxRate ?? 0,
+        taxRate:
+          selectedHsn.taxRate ??
+          (selectedHsn as any).taxPercentage ??
+          current.taxRate ??
+          0,
       }));
     }
   }, [selectedHsn]);
 
-  useEffect(() => {
-    const loadBins = async () => {
-      if (!formData.warehouseId) {
-        setBins([]);
-        return;
-      }
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const s = search.toLowerCase();
+      const matchesSearch =
+        item.name.toLowerCase().includes(s) ||
+        (item.sku || "").toLowerCase().includes(s) ||
+        (item.itemCode || "").toLowerCase().includes(s) ||
+        (item.barcode || "").toLowerCase().includes(s);
 
-      try {
-        const data = await warehouseService.getAllBins({
-          warehouseId: formData.warehouseId,
-        });
-        setBins(data);
-      } catch (error) {
-        console.error("Failed to load warehouse bins", error);
-        setBins([]);
-      }
-    };
+      const matchesCategory =
+        filters.category === "all" || item.category === filters.category;
+      const matchesBrand =
+        filters.brand === "all" || item.brand === filters.brand;
+      const matchesType =
+        filters.itemType === "all" || item.itemType === filters.itemType;
 
-    loadBins();
-  }, [formData.warehouseId]);
+      return matchesSearch && matchesCategory && matchesBrand && matchesType;
+    });
+  }, [items, search, filters]);
 
-  const filteredItems = items.filter(
-    (item) =>
-      item.name.toLowerCase().includes(search.toLowerCase()) ||
-      item.sku.toLowerCase().includes(search.toLowerCase()) ||
-      (item.itemCode || "").toLowerCase().includes(search.toLowerCase()) ||
-      (item.barcode || "").toLowerCase().includes(search.toLowerCase()),
-  );
-
-  const setField = <K extends keyof InventoryItem>(field: K, value: InventoryItem[K]) => {
+  const setField = <K extends keyof InventoryItem>(
+    field: K,
+    value: InventoryItem[K],
+  ) => {
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this item?")) {
+    if (confirm("Delete this item?")) {
       await productService.deleteItem(id);
       loadItems();
     }
@@ -219,12 +257,17 @@ const ItemMaster: React.FC = () => {
 
   const handleOpenAdd = () => {
     setEditingItem(null);
+    setFormData(emptyForm);
     setIsDialogOpen(true);
   };
-
   const handleOpenEdit = (item: InventoryItem) => {
     setEditingItem(item);
     setIsDialogOpen(true);
+  };
+
+  const openConnectedPage = (path: string, item: InventoryItem) => {
+    console.log(`Navigating to ${path} for item ${item.id}`);
+    alert(`This would open the ${path} module for ${item.name}`);
   };
 
   const addAttribute = () => {
@@ -240,21 +283,23 @@ const ItemMaster: React.FC = () => {
   };
 
   const removeAttribute = (name: string) => {
-    const nextAttributes = { ...(formData.attributes || {}) };
-    delete nextAttributes[name];
-    setFormData((current) => ({ ...current, attributes: nextAttributes }));
+    const next = { ...(formData.attributes || {}) };
+    delete next[name];
+    setFormData((current) => ({ ...current, attributes: next }));
   };
 
   const addBarcode = () => {
-    const nextBarcode = barcodeDraft.trim();
-    if (!nextBarcode) return;
-
+    const next = barcodeDraft.trim();
+    if (!next) return;
     setFormData((current) => {
-      const existing = current.barcodes || (current.barcode ? [current.barcode] : []);
-      const nextBarcodes = existing.includes(nextBarcode) ? existing : [...existing, nextBarcode];
+      const existing =
+        current.barcodes || (current.barcode ? [current.barcode] : []);
+      const nextBarcodes = existing.includes(next)
+        ? existing
+        : [...existing, next];
       return {
         ...current,
-        barcode: current.barcode || nextBarcode,
+        barcode: current.barcode || next,
         barcodes: nextBarcodes,
       };
     });
@@ -263,23 +308,23 @@ const ItemMaster: React.FC = () => {
 
   const removeBarcode = (code: string) => {
     setFormData((current) => {
-      const nextBarcodes = (current.barcodes || []).filter((barcode) => barcode !== code);
+      const next = (current.barcodes || []).filter((b) => b !== code);
       return {
         ...current,
-        barcodes: nextBarcodes,
-        barcode: current.barcode === code ? nextBarcodes[0] || "" : current.barcode,
+        barcodes: next,
+        barcode: current.barcode === code ? next[0] || "" : current.barcode,
       };
     });
   };
 
   const addImage = () => {
-    const nextImage = imageDraft.trim();
-    if (!nextImage) return;
+    const next = imageDraft.trim();
+    if (!next) return;
     setFormData((current) => ({
       ...current,
-      images: (current.images || []).includes(nextImage)
+      images: (current.images || []).includes(next)
         ? current.images || []
-        : [...(current.images || []), nextImage],
+        : [...(current.images || []), next],
     }));
     setImageDraft("");
   };
@@ -287,20 +332,25 @@ const ItemMaster: React.FC = () => {
   const removeImage = (url: string) => {
     setFormData((current) => ({
       ...current,
-      images: (current.images || []).filter((image) => image !== url),
+      images: (current.images || []).filter((i) => i !== url),
     }));
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const normalized: Partial<InventoryItem> = {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.sku) {
+      alert("Item Name and SKU are required.");
+      return;
+    }
+
+    const normalized = {
       ...formData,
-      itemCode: formData.itemCode || formData.sku,
       stockUom: formData.stockUom || formData.uom,
       purchaseUom: formData.purchaseUom || formData.uom,
       salesUom: formData.salesUom || formData.uom,
       reorderLevel: formData.reorderLevel || formData.minimumStockLevel || 0,
-      minimumStockLevel: formData.minimumStockLevel || formData.reorderLevel || 0,
+      minimumStockLevel:
+        formData.minimumStockLevel || formData.reorderLevel || 0,
       unitCost: formData.unitCost || formData.unitPrice || 0,
       barcodes: formData.barcodes?.length
         ? formData.barcodes
@@ -309,553 +359,1107 @@ const ItemMaster: React.FC = () => {
           : [],
       barcode: formData.barcode || formData.barcodes?.[0] || "",
     };
-
     try {
       if (editingItem) {
         await productService.updateItem(editingItem.id, normalized);
       } else {
-        await productService.createItem({
-          ...normalized,
-          stock: 0,
-          consignmentStock: 0,
-          lastUpdated: new Date().toISOString().split("T")[0],
-        } as Omit<InventoryItem, "id">);
+        await productService.createItem(normalized as any);
       }
       setIsDialogOpen(false);
       loadItems();
     } catch (error) {
       console.error("Failed to save item", error);
-      alert("Failed to save item. Please check the required fields and try again.");
+      alert("Failed to save item. Please check required fields.");
     }
   };
 
-  const openConnectedPage = (path: string, item: InventoryItem) => {
-    navigate(`${path}?item=${item.id}&sku=${encodeURIComponent(item.sku)}`);
+  const handleExportExcel = () => {
+    if (filteredItems.length === 0) return alert("No items to export");
+
+    // Create CSV content
+    const headers = [
+      "Name",
+      "SKU",
+      "Item Code",
+      "Category",
+      "Brand",
+      "Type",
+      "Stock",
+      "UoM",
+      "Purchase Price",
+      "Sale Price",
+      "Barcode",
+    ];
+    const rows = filteredItems.map((item) => [
+      `"${item.name}"`,
+      `"${item.sku}"`,
+      `"${item.itemCode || ""}"`,
+      `"${item.category || ""}"`,
+      `"${item.brand || ""}"`,
+      `"${item.itemType || ""}"`,
+      item.stock,
+      `"${item.uom}"`,
+      item.unitPrice || 0,
+      item.salePrice || 0,
+      `"${item.barcode || ""}"`,
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((r) => r.join(",")),
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `inventory_export_${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getLinkedWarehouseName = (item: InventoryItem) => {
-    const linkedWarehouseId = item.warehouseId || item.stocks?.[0]?.warehouseId;
-    return warehouses.find((warehouse) => warehouse.id === linkedWarehouseId)?.name;
+    const id = item.warehouseId || item.stocks?.[0]?.warehouseId;
+    return warehouses.find((w) => w.id === id)?.name;
   };
 
+  const stockStatus = (item: InventoryItem) => {
+    if (item.stock === 0)
+      return { label: "Out of stock", color: "text-red-500 bg-red-50" };
+    if (item.stock <= item.reorderLevel)
+      return { label: "Low stock", color: "text-amber-600 bg-amber-50" };
+    return { label: "In stock", color: "text-emerald-600 bg-emerald-50" };
+  };
+
+  const activeFiltersCount = Object.values(filters).filter(
+    (v) => v !== "all",
+  ).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={handleOpenAdd} className="bg-blue-600 hover:bg-blue-700 text-white h-10 px-4">
-            <Plus className="mr-2 h-4 w-4" /> Add New Item
-          </Button>
-          <Button variant="outline" className="border-gray-200 text-gray-700 h-10 px-4">
-            <Download className="mr-2 h-4 w-4" /> Import/Export
-          </Button>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500" size={16} />
-            <Input
-              type="text"
-              placeholder="Search code, SKU, name, barcode..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="pl-9 w-72 h-10 border-gray-200 focus-visible:ring-blue-500"
-            />
+    <div className="min-h-screen bg-white font-sans">
+      {/* Page header */}
+      <div className="border-b border-gray-100 px-8 py-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight">
+              Item Master
+            </h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              Single source of truth for all inventory items
+            </p>
           </div>
-          <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-600">
-            <Filter size={20} />
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-lg p-4">
-          <div className="text-xs text-slate-500 font-medium">Item Master</div>
-          <div className="mt-2 text-2xl font-bold text-slate-900">{items.length}</div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-4">
-          <div className="text-xs text-slate-500 font-medium">Low Stock</div>
-          <div className="mt-2 text-2xl font-bold text-amber-600">
-            {items.filter((item) => item.stock <= item.reorderLevel).length}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-4">
-          <div className="text-xs text-slate-500 font-medium">Missing Barcode</div>
-          <div className="mt-2 text-2xl font-bold text-purple-600">
-            {items.filter((item) => !item.barcode).length}
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-4">
-          <div className="text-xs text-slate-500 font-medium">GST Linked</div>
-          <div className="mt-2 text-2xl font-bold text-emerald-600">
-            {items.filter((item) => item.hsnCode).length}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportExcel}
+              className="h-8 text-xs border-gray-200 text-gray-600 hover:bg-gray-50 font-normal gap-1.5"
+            >
+              <Download size={13} /> Export
+            </Button>
+            <Button
+              onClick={handleOpenAdd}
+              size="sm"
+              className="h-8 text-xs bg-gray-900 hover:bg-gray-800 text-white gap-1.5 font-normal"
+            >
+              <Plus size={13} /> New item
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-100">
-                <th className="px-6 py-4 font-semibold text-gray-600">Item Details</th>
-                <th className="px-6 py-4 font-semibold text-gray-600">Classification</th>
-                <th className="px-6 py-4 font-semibold text-gray-600">Stock Rules</th>
-                <th className="px-6 py-4 font-semibold text-gray-600">Compliance</th>
-                <th className="px-6 py-4 font-semibold text-gray-600">Pricing</th>
-                <th className="px-6 py-4 font-semibold text-gray-600 text-right">Connected Pages</th>
+      {/* Stats row */}
+      <div className="px-8 py-4 border-b border-gray-100 flex gap-6">
+        {[
+          { label: "Total items", value: items.length, color: "text-gray-900" },
+          {
+            label: "Low stock",
+            value: items.filter((i) => i.stock <= i.reorderLevel).length,
+            color: "text-amber-600",
+          },
+          {
+            label: "No barcode",
+            value: items.filter((i) => !i.barcode).length,
+            color: "text-purple-600",
+          },
+          {
+            label: "GST linked",
+            value: items.filter((i) => i.hsnCode).length,
+            color: "text-emerald-600",
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="flex items-center gap-2">
+            <span className={cn("text-xl font-semibold", stat.color)}>
+              {stat.value}
+            </span>
+            <span className="text-xs text-gray-400">{stat.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Toolbar */}
+      <div className="px-8 py-3 flex items-center gap-3 border-b border-gray-100 bg-gray-50/30">
+        <div className="relative">
+          <Search
+            size={13}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <Input
+            placeholder="Search name, sku, barcode..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-8 h-8 w-72 text-sm border-gray-200 rounded-md bg-white focus-visible:ring-1 focus-visible:ring-gray-300 focus-visible:ring-offset-0"
+          />
+        </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-8 text-xs gap-1.5 font-normal border-gray-200",
+                activeFiltersCount > 0
+                  ? "bg-blue-50 text-blue-600 border-blue-200"
+                  : "text-gray-500 hover:bg-gray-50",
+              )}
+            >
+              <Filter size={13} />
+              Filters
+              {activeFiltersCount > 0 && (
+                <span className="ml-1 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-80 p-4 bg-white border border-gray-200 shadow-xl rounded-lg"
+            align="start"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-900">Filters</h4>
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={() =>
+                      setFilters({
+                        category: "all",
+                        brand: "all",
+                        itemType: "all",
+                      })
+                    }
+                    className="text-[10px] text-blue-600 hover:underline font-medium"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Category
+                  </label>
+                  <Select
+                    value={filters.category}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({ ...f, category: v }))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs border-gray-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.name}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Brand
+                  </label>
+                  <Select
+                    value={filters.brand}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({ ...f, brand: v }))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs border-gray-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="all">All Brands</SelectItem>
+                      {brands.map((b) => (
+                        <SelectItem key={b.id} value={b.name}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Item Type
+                  </label>
+                  <Select
+                    value={filters.itemType}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({ ...f, itemType: v }))
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs border-gray-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="all">All Types</SelectItem>
+                      {ITEM_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {activeFiltersCount > 0 && (
+          <button
+            onClick={() =>
+              setFilters({ category: "all", brand: "all", itemType: "all" })
+            }
+            className="text-xs text-gray-400 hover:text-gray-600 font-medium"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="px-8">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100">
+              {[
+                "Item",
+                "Type / Category",
+                "Stock",
+                "Compliance",
+                "Pricing",
+                "Actions",
+              ].map((h) => (
+                <th
+                  key={h}
+                  className={cn(
+                    "py-3 text-xs font-medium text-gray-400 text-left",
+                    h === "Actions" ? "text-right" : "",
+                  )}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="py-24 text-center">
+                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-gray-300" />
+                  <p className="text-xs text-gray-400 mt-2">Loading…</p>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-20 text-center">
-                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-500" />
-                    <p className="text-gray-400 mt-2">Loading items...</p>
-                  </td>
-                </tr>
-              ) : filteredItems.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-20 text-center">
-                    <Package className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 font-medium">No items found</p>
-                    <p className="text-gray-400 text-xs">Add an item to create the shared product record.</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                          <Package size={20} />
+            ) : filteredItems.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-24 text-center">
+                  <Package className="h-8 w-8 text-gray-200 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">
+                    No items match your search
+                  </p>
+                  <p className="text-xs text-gray-300 mt-1">
+                    Try adjusting your filters or search terms
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              filteredItems.map((item) => {
+                const status = stockStatus(item);
+                return (
+                  <tr
+                    key={item.id}
+                    className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors group"
+                  >
+                    {/* Item details */}
+                    <td className="py-3 pr-6">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
+                          <Package size={14} className="text-gray-400" />
                         </div>
                         <div>
-                          <div className="font-bold text-gray-900">{item.name}</div>
-                          <div className="text-[11px] uppercase tracking-wider font-bold text-gray-400">
-                            Code: {item.itemCode || item.sku} | SKU: {item.sku}
+                          <div className="font-medium text-gray-900 text-sm">
+                            {item.name}
                           </div>
-                          <div className="mt-2 flex flex-wrap gap-1.5">
-                            {Object.entries(item.attributes || {}).slice(0, 3).map(([name, value]) => (
-                              <Badge key={name} variant="outline" className="text-[10px]">
-                                {name}: {value}
-                              </Badge>
-                            ))}
+                          <div className="text-xs text-gray-400 font-mono mt-0.5">
+                            {item.sku}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="font-medium">{item.itemType || "Trading"}</div>
-                      <div className="text-xs text-gray-400">{item.category || "No category"}</div>
-                      <div className="text-xs text-gray-400">{item.brand || "No brand"}</div>
+
+                    {/* Classification */}
+                    <td className="py-3 pr-6">
+                      <div className="text-xs text-gray-600">
+                        {item.itemType || "Trading"}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        {item.category || "—"}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <Badge
+
+                    {/* Stock */}
+                    <td className="py-3 pr-6">
+                      <span
                         className={cn(
-                          "rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                          item.stock > item.reorderLevel
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                            : item.stock === 0
-                              ? "bg-rose-50 text-rose-700 border-rose-100"
-                              : "bg-amber-50 text-amber-700 border-amber-100",
+                          "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
+                          status.color,
                         )}
-                        variant="outline"
                       >
-                        {item.stock > item.reorderLevel ? "In Stock" : item.stock === 0 ? "Out of Stock" : "Low Stock"}
-                      </Badge>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {item.stock} {item.stockUom || item.uom} / reorder {item.reorderLevel}
-                      </div>
+                        {status.label}
+                      </span>
                       <div className="text-xs text-gray-400 mt-1">
-                        {getLinkedWarehouseName(item) || "No warehouse linked"}
+                        {item.stock} {item.stockUom || item.uom}
+                        {" · "}reorder {item.reorderLevel}
+                      </div>
+                      {getLinkedWarehouseName(item) && (
+                        <div className="text-xs text-gray-300">
+                          {getLinkedWarehouseName(item)}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Compliance */}
+                    <td className="py-3 pr-6">
+                      <div className="text-xs font-mono text-gray-600">
+                        {item.hsnCode || (
+                          <span className="text-gray-300">No HSN</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        GST {item.taxRate ?? 0}%
+                      </div>
+                      {item.barcode ? (
+                        <div className="text-xs text-gray-300 font-mono">
+                          {item.barcode}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-300">No barcode</div>
+                      )}
+                    </td>
+
+                    {/* Pricing */}
+                    <td className="py-3 pr-6">
+                      <div className="text-sm font-medium text-gray-800">
+                        ₹{(item.salePrice || 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Cost ₹{(item.unitPrice || 0).toLocaleString()}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs text-slate-700">{item.hsnCode || "No HSN"}</div>
-                      <div className="text-xs text-slate-400">GST {item.taxRate ?? 0}%</div>
-                      <div className="text-xs text-slate-400">{item.barcode || "No barcode"}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-semibold text-gray-900">INR {(item.salePrice || 0).toLocaleString()}</div>
-                      <div className="text-[10px] text-gray-400">Cost: INR {(item.unitPrice || 0).toLocaleString()}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" title="Edit item" onClick={() => handleOpenEdit(item)}>
-                          <Edit size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Variants" onClick={() => openConnectedPage("/product-master/pm-variants", item)}>
-                          <Layers size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="UoM and reorder" onClick={() => openConnectedPage("/product-master/pm-reorder", item)}>
-                          <ArrowRightLeft size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Barcode mapping" onClick={() => openConnectedPage("/product-master/pm-barcode", item)}>
-                          <Barcode size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Pricing" onClick={() => openConnectedPage("/product-master/pm-pricing", item)}>
-                          <IndianRupee size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Warehouse" onClick={() => openConnectedPage("/warehouse/wm-capacity", item)}>
-                          <WarehouseIcon size={16} />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="hover:text-rose-600" title="Delete" onClick={() => handleDelete(item.id)}>
-                          <Trash2 size={16} />
-                        </Button>
+
+                    {/* Actions */}
+                    <td className="py-3">
+                      <div className="flex items-center justify-end gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <ActionBtn
+                          title="Edit"
+                          onClick={() => handleOpenEdit(item)}
+                        >
+                          <Edit size={13} />
+                        </ActionBtn>
+                        <ActionBtn
+                          title="Variants"
+                          onClick={() =>
+                            openConnectedPage(
+                              "/product-master/pm-variants",
+                              item,
+                            )
+                          }
+                        >
+                          <Layers size={13} />
+                        </ActionBtn>
+                        <ActionBtn
+                          title="Reorder rules"
+                          onClick={() =>
+                            openConnectedPage(
+                              "/product-master/pm-reorder",
+                              item,
+                            )
+                          }
+                        >
+                          <ArrowRightLeft size={13} />
+                        </ActionBtn>
+                        <ActionBtn
+                          title="Barcode"
+                          onClick={() =>
+                            openConnectedPage(
+                              "/product-master/pm-barcode",
+                              item,
+                            )
+                          }
+                        >
+                          <Barcode size={13} />
+                        </ActionBtn>
+                        <ActionBtn
+                          title="Pricing"
+                          onClick={() =>
+                            openConnectedPage(
+                              "/product-master/pm-pricing",
+                              item,
+                            )
+                          }
+                        >
+                          <IndianRupee size={13} />
+                        </ActionBtn>
+                        <ActionBtn
+                          title="Warehouse"
+                          onClick={() =>
+                            openConnectedPage("/warehouse/wm-capacity", item)
+                          }
+                        >
+                          <WarehouseIcon size={13} />
+                        </ActionBtn>
+                        <ActionBtn
+                          title="Delete"
+                          onClick={() => handleDelete(item.id)}
+                          className="hover:text-red-500"
+                        >
+                          <Trash2 size={13} />
+                        </ActionBtn>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
+      {/* ── Dialog ── */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[920px] bg-white p-0 overflow-hidden border-none shadow-2xl">
-          <form onSubmit={handleSubmit}>
-            <DialogHeader className="px-8 pt-8 pb-6 bg-gray-50/70">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-blue-600 flex items-center justify-center text-white">
-                  <Package size={22} />
-                </div>
+        <DialogContent className="max-w-7xl sm:max-w-7xl w-full p-0 gap-0 bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
+          <form onSubmit={handleSubmit} className="flex h-[90vh] flex-col">
+            {/* Dialog header */}
+            <DialogHeader className="px-7 py-5 border-b border-gray-100 shrink-0">
+              <div className="flex items-center justify-between">
                 <div>
-                  <DialogTitle className="text-2xl font-bold text-gray-900">
-                    {editingItem ? "Edit Item Master Record" : "New Item Master Record"}
+                  <DialogTitle className="text-base font-semibold text-gray-900">
+                    {editingItem
+                      ? `Edit — ${editingItem.name}`
+                      : "New item record"}
                   </DialogTitle>
-                  <DialogDescription className="text-gray-500 font-medium">
-                    Single source of truth used by GRN, PO, sales, barcode, valuation, and replenishment.
+                  <DialogDescription className="text-xs text-gray-400 mt-0.5">
+                    Configure all product parameters in one view. Shared across
+                    GRN, PO, and sales.
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
 
-            <div className="p-8 space-y-8 max-h-[68vh] overflow-y-auto">
-              <section className="space-y-5">
-                <SectionTitle icon={<Package size={16} />} label="Core Item Identity" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Item Code">
-                    <Input value={formData.itemCode || ""} onChange={(event) => setField("itemCode", event.target.value)} placeholder="ITM-0001" />
-                  </Field>
-                  <Field label="SKU">
-                    <Input required value={formData.sku || ""} onChange={(event) => setField("sku", event.target.value)} placeholder="SKU-0001" />
-                  </Field>
-                  <Field label="Item Type">
-                    <Select value={formData.itemType} onValueChange={(value) => setField("itemType", value as InventoryItem["itemType"])}>
-                      <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {ITEM_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <Field label="Item Name">
-                    <Input required value={formData.name || ""} onChange={(event) => setField("name", event.target.value)} placeholder="Industrial Bearing X200" />
-                  </Field>
-                  <Field label="Description">
-                    <textarea
-                      value={formData.description || ""}
-                      onChange={(event) => setField("description", event.target.value)}
-                      className="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      placeholder="Short product description"
-                    />
-                  </Field>
-                </div>
-              </section>
-
-              <Separator />
-
-              <section className="space-y-5">
-                <SectionTitle icon={<Tags size={16} />} label="Classification Masters" />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  <Field label="Category">
-                    <Select value={formData.category} onValueChange={(value) => setField("category", value)}>
-                      <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {categories.map((category) => <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Brand">
-                    <Select value={formData.brand} onValueChange={(value) => setField("brand", value)}>
-                      <SelectTrigger><SelectValue placeholder="Brand" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {brands.map((brand) => <SelectItem key={brand.id} value={brand.name}>{brand.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="HSN / SAC">
-                    <Select value={formData.hsnCode} onValueChange={(value) => setField("hsnCode", value)}>
-                      <SelectTrigger><SelectValue placeholder="HSN/SAC" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {hsns.map((hsn) => {
-                          const code = hsn.code || (hsn as any).hsnCode;
-                          const rate = hsn.taxRate ?? (hsn as any).taxPercentage ?? 0;
-                          return <SelectItem key={hsn.id} value={code}>{code} - {rate}%</SelectItem>;
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Tax Rate (%)">
-                    <Input type="number" value={formData.taxRate ?? 0} onChange={(event) => setField("taxRate", Number(event.target.value))} />
-                  </Field>
-                </div>
-              </section>
-
-              <Separator />
-
-              <section className="space-y-5">
-                <SectionTitle icon={<Boxes size={16} />} label="UoM, Lifecycle, and Replenishment" />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  <UomSelect label="Default UoM" value={formData.uom || ""} uoms={uoms} onChange={(value) => setField("uom", value)} />
-                  <UomSelect label="Purchase UoM" value={formData.purchaseUom || ""} uoms={uoms} onChange={(value) => setField("purchaseUom", value)} />
-                  <UomSelect label="Stock UoM" value={formData.stockUom || ""} uoms={uoms} onChange={(value) => setField("stockUom", value)} />
-                  <UomSelect label="Sales UoM" value={formData.salesUom || ""} uoms={uoms} onChange={(value) => setField("salesUom", value)} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  <NumberField label="Min Stock" value={formData.minimumStockLevel ?? 0} onChange={(value) => setField("minimumStockLevel", value)} />
-                  <NumberField label="Reorder Point" value={formData.reorderLevel ?? 0} onChange={(value) => setField("reorderLevel", value)} />
-                  <NumberField label="Max Stock" value={formData.maximumStockLevel ?? 0} onChange={(value) => setField("maximumStockLevel", value)} />
-                  <NumberField label="Reorder Qty / EOQ" value={formData.reorderQuantity ?? 0} onChange={(value) => setField("reorderQuantity", value)} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <NumberField label="Shelf Life (days)" value={formData.shelfLifeDays ?? 0} onChange={(value) => setField("shelfLifeDays", value)} />
-                  <NumberField label="Lead Time (days)" value={formData.leadTimeDays ?? 0} onChange={(value) => setField("leadTimeDays", value)} />
-                  <Field label="UoM Conversion">
-                    <Input value={formData.uomConversions || ""} onChange={(event) => setField("uomConversions", event.target.value)} placeholder="1 Carton = 12 Box = 144 Piece" />
-                  </Field>
-                </div>
-              </section>
-
-              <Separator />
-
-              <section className="space-y-5">
-                <SectionTitle icon={<WarehouseIcon size={16} />} label="Warehouse Link and Opening Stock" />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  <Field label="Warehouse">
-                    <Select
-                      value={formData.warehouseId}
-                      onValueChange={(value) =>
-                        setFormData((current) => ({
-                          ...current,
-                          warehouseId: value,
-                          binCode: "",
-                        }))
-                      }
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {warehouses.map((warehouse) => (
-                          <SelectItem key={warehouse.id} value={warehouse.id}>
-                            {warehouse.name}
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-7 py-8 space-y-12">
+              {/* ── SECTION: IDENTITY ── */}
+              <section className="space-y-6">
+                <SectionHead
+                  title="Item Identity"
+                  icon={<Package size={14} />}
+                />
+                <div className="space-y-5">
+                  <Row3>
+                    <NField label="Item Code">
+                      <Input
+                        value={formData.itemCode || ""}
+                        onChange={(e) => setField("itemCode", e.target.value)}
+                        placeholder="ITM-0001"
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="SKU *">
+                      <Input
+                        required
+                        value={formData.sku || ""}
+                        onChange={(e) => setField("sku", e.target.value)}
+                        placeholder="SKU-0001"
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="Item Type">
+                      <NotionSelect
+                        value={formData.itemType || ""}
+                        onValueChange={(v) =>
+                          setField("itemType", v as InventoryItem["itemType"])
+                        }
+                        placeholder="Select type"
+                      >
+                        {ITEM_TYPES.map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
                           </SelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Bin / Location">
-                    <Select value={formData.binCode} onValueChange={(value) => setField("binCode", value)}>
-                      <SelectTrigger><SelectValue placeholder="Optional bin" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {bins.map((bin) => {
-                          const code = bin.binCode || (bin as any).code || bin.name;
+                      </NotionSelect>
+                    </NField>
+                  </Row3>
+                  <Row2>
+                    <NField label="Item Name *">
+                      <Input
+                        required
+                        value={formData.name || ""}
+                        onChange={(e) => setField("name", e.target.value)}
+                        placeholder="Industrial Bearing X200"
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="Description">
+                      <textarea
+                        value={formData.description || ""}
+                        onChange={(e) =>
+                          setField("description", e.target.value)
+                        }
+                        rows={2}
+                        className={cn(inputCls, "resize-none h-auto py-2")}
+                        placeholder="Short product description"
+                      />
+                    </NField>
+                  </Row2>
+                </div>
+              </section>
+
+              {/* ── SECTION: CLASSIFICATION ── */}
+              <section className="space-y-6">
+                <SectionHead title="Classification" icon={<Tags size={14} />} />
+                <Row4>
+                  <NField label="Category">
+                    <NotionSelect
+                      value={formData.category || ""}
+                      onValueChange={(v) => setField("category", v)}
+                      placeholder="Category"
+                    >
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.name}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </NotionSelect>
+                  </NField>
+                  <NField label="Brand">
+                    <NotionSelect
+                      value={formData.brand || ""}
+                      onValueChange={(v) => setField("brand", v)}
+                      placeholder="Brand"
+                    >
+                      {brands.map((b) => (
+                        <SelectItem key={b.id} value={b.name}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </NotionSelect>
+                  </NField>
+                  <NField label="HSN / SAC">
+                    <NotionSelect
+                      value={formData.hsnCode || ""}
+                      onValueChange={(v) => setField("hsnCode", v)}
+                      placeholder="HSN code"
+                    >
+                      {hsns.map((h) => {
+                        const code = h.code || (h as any).hsnCode;
+                        const rate = h.taxRate ?? (h as any).taxPercentage ?? 0;
+                        return (
+                          <SelectItem key={h.id} value={code}>
+                            {code} — {rate}%
+                          </SelectItem>
+                        );
+                      })}
+                    </NotionSelect>
+                  </NField>
+                  <NField label="Tax Rate (%)">
+                    <Input
+                      type="number"
+                      value={formData.taxRate ?? 0}
+                      onChange={(e) =>
+                        setField("taxRate", Number(e.target.value))
+                      }
+                      className={inputCls}
+                    />
+                  </NField>
+                </Row4>
+              </section>
+
+              {/* ── SECTION: UOM & REPLENISHMENT ── */}
+              <section className="space-y-6">
+                <SectionHead
+                  title="UoM & Replenishment"
+                  icon={<Boxes size={14} />}
+                />
+                <div className="space-y-6">
+                  <Row4>
+                    <UomSel
+                      label="Default UoM"
+                      value={formData.uom || ""}
+                      uoms={uoms}
+                      onChange={(v) => setField("uom", v)}
+                    />
+                    <UomSel
+                      label="Purchase UoM"
+                      value={formData.purchaseUom || ""}
+                      uoms={uoms}
+                      onChange={(v) => setField("purchaseUom", v)}
+                    />
+                    <UomSel
+                      label="Stock UoM"
+                      value={formData.stockUom || ""}
+                      uoms={uoms}
+                      onChange={(v) => setField("stockUom", v)}
+                    />
+                    <UomSel
+                      label="Sales UoM"
+                      value={formData.salesUom || ""}
+                      uoms={uoms}
+                      onChange={(v) => setField("salesUom", v)}
+                    />
+                  </Row4>
+                  <Row4>
+                    <NumFld
+                      label="Min Stock"
+                      value={formData.minimumStockLevel ?? 0}
+                      onChange={(v) => setField("minimumStockLevel", v)}
+                    />
+                    <NumFld
+                      label="Reorder Point"
+                      value={formData.reorderLevel ?? 0}
+                      onChange={(v) => setField("reorderLevel", v)}
+                    />
+                    <NumFld
+                      label="Max Stock"
+                      value={formData.maximumStockLevel ?? 0}
+                      onChange={(v) => setField("maximumStockLevel", v)}
+                    />
+                    <NumFld
+                      label="Reorder Qty"
+                      value={formData.reorderQuantity ?? 0}
+                      onChange={(v) => setField("reorderQuantity", v)}
+                    />
+                  </Row4>
+                  <Row3>
+                    <NumFld
+                      label="Shelf Life (days)"
+                      value={formData.shelfLifeDays ?? 0}
+                      onChange={(v) => setField("shelfLifeDays", v)}
+                    />
+                    <NumFld
+                      label="Lead Time (days)"
+                      value={formData.leadTimeDays ?? 0}
+                      onChange={(v) => setField("leadTimeDays", v)}
+                    />
+                    <NField label="UoM Conversion">
+                      <Input
+                        value={formData.uomConversions || ""}
+                        onChange={(e) =>
+                          setField("uomConversions", e.target.value)
+                        }
+                        placeholder="1 Carton = 12 Box = 144 Pcs"
+                        className={inputCls}
+                      />
+                    </NField>
+                  </Row3>
+                </div>
+              </section>
+
+              {/* ── SECTION: WAREHOUSE ── */}
+              <section className="space-y-6">
+                <SectionHead
+                  title="Warehouse Stock"
+                  icon={<WarehouseIcon size={14} />}
+                />
+                <div className="space-y-5">
+                  <Row4>
+                    <NField label="Warehouse">
+                      <NotionSelect
+                        value={formData.warehouseId || ""}
+                        onValueChange={(v) =>
+                          setFormData((c) => ({
+                            ...c,
+                            warehouseId: v,
+                            binCode: "",
+                          }))
+                        }
+                        placeholder="Select warehouse"
+                      >
+                        {warehouses.map((w) => (
+                          <SelectItem key={w.id} value={w.id}>
+                            {w.name}
+                          </SelectItem>
+                        ))}
+                      </NotionSelect>
+                    </NField>
+                    <NField label="Bin / Location">
+                      <NotionSelect
+                        value={formData.binCode || ""}
+                        onValueChange={(v) => setField("binCode", v)}
+                        placeholder="Optional bin"
+                      >
+                        {warehouseBins.map((b) => {
+                          const code = b.binCode || (b as any).code || b.name;
                           return (
-                            <SelectItem key={bin.id} value={code}>
-                              {bin.name} ({code})
+                            <SelectItem key={b.id} value={code}>
+                              {b.name} ({code})
                             </SelectItem>
                           );
                         })}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <NumberField label="Opening Qty" value={formData.quantity ?? 0} onChange={(value) => setField("quantity", value)} />
-                  <NumberField label="Opening Unit Cost" value={formData.unitCost ?? formData.unitPrice ?? 0} onChange={(value) => setField("unitCost", value)} />
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                  Creating an item with a warehouse and opening quantity adds stock to the product record and to that warehouse's product list.
-                </div>
-              </section>
-
-              <Separator />
-
-              <section className="space-y-5">
-                <SectionTitle icon={<IndianRupee size={16} />} label="Pricing and Valuation" />
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  <NumberField label="Standard Cost" value={formData.unitPrice ?? 0} onChange={(value) => setField("unitPrice", value)} />
-                  <NumberField label="Purchase Price" value={formData.unitPrice ?? 0} onChange={(value) => setField("unitPrice", value)} />
-                  <NumberField label="Selling Price" value={formData.salePrice ?? 0} onChange={(value) => setField("salePrice", value)} />
-                  <NumberField label="MRP" value={formData.mrp ?? 0} onChange={(value) => setField("mrp", value)} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                  <NumberField label="Customer Price" value={formData.customerPrice ?? 0} onChange={(value) => setField("customerPrice", value)} />
-                  <NumberField label="Qty Break Price" value={formData.quantityBreakPrice ?? 0} onChange={(value) => setField("quantityBreakPrice", value)} />
-                  <Field label="Currency">
-                    <Input value={formData.currency || "INR"} onChange={(event) => setField("currency", event.target.value)} />
-                  </Field>
-                  <Field label="Valuation Method">
-                    <Select value={formData.valuationMethod} onValueChange={(value) => setField("valuationMethod", value as InventoryItem["valuationMethod"])}>
-                      <SelectTrigger><SelectValue placeholder="Method" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {VALUATION_METHODS.map((method) => <SelectItem key={method} value={method}>{method}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <Field label="Price Effective From">
-                    <Input type="date" value={formData.priceEffectiveFrom || ""} onChange={(event) => setField("priceEffectiveFrom", event.target.value)} />
-                  </Field>
-                  <Field label="Price Effective To">
-                    <Input type="date" value={formData.priceEffectiveTo || ""} onChange={(event) => setField("priceEffectiveTo", event.target.value)} />
-                  </Field>
-                </div>
-              </section>
-
-              <Separator />
-
-              <section className="space-y-5">
-                <SectionTitle icon={<ReceiptText size={16} />} label="Barcode, QR, Images, and Attributes" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <Field label="Barcode">
-                    <Input
-                      value={formData.barcode || ""}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setFormData((current) => ({
-                          ...current,
-                          barcode: value,
-                          barcodes: value
-                            ? [value, ...(current.barcodes || []).filter((code) => code !== value)]
-                            : current.barcodes || [],
-                        }));
-                      }}
-                      placeholder="Primary barcode"
+                      </NotionSelect>
+                    </NField>
+                    <NumFld
+                      label="Opening Qty"
+                      value={formData.quantity ?? 0}
+                      onChange={(v) => setField("quantity", v)}
                     />
-                  </Field>
-                  <Field label="QR Code">
-                    <Input value={formData.qrCode || ""} onChange={(event) => setField("qrCode", event.target.value)} placeholder="Internal QR value" />
-                  </Field>
-                  <Field label="Barcode Format">
-                    <Select value={formData.barcodeFormat} onValueChange={(value) => setField("barcodeFormat", value as InventoryItem["barcodeFormat"])}>
-                      <SelectTrigger><SelectValue placeholder="Format" /></SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {BARCODE_FORMATS.map((format) => <SelectItem key={format} value={format}>{format}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </Field>
+                    <NumFld
+                      label="Opening Unit Cost"
+                      value={formData.unitCost ?? formData.unitPrice ?? 0}
+                      onChange={(v) => setField("unitCost", v)}
+                    />
+                  </Row4>
+                  <div className="rounded-lg bg-blue-50/50 border border-blue-100 px-4 py-3 text-xs text-blue-600 flex items-center gap-2">
+                    <Clock size={12} />
+                    Adding opening quantity will stock this item in the selected
+                    warehouse automatically.
+                  </div>
                 </div>
+              </section>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2"><Barcode size={14} /> Barcode / QR Mappings</Label>
-                    <div className="grid grid-cols-[1fr_auto] gap-2">
+              {/* ── SECTION: PRICING ── */}
+              <section className="space-y-6">
+                <SectionHead
+                  title="Pricing & Valuation"
+                  icon={<IndianRupee size={14} />}
+                />
+                <div className="space-y-6">
+                  <Row4>
+                    <NumFld
+                      label="Standard Cost"
+                      value={formData.unitPrice ?? 0}
+                      onChange={(v) => setField("unitPrice", v)}
+                    />
+                    <NumFld
+                      label="Purchase Price"
+                      value={formData.unitPrice ?? 0}
+                      onChange={(v) => setField("unitPrice", v)}
+                    />
+                    <NumFld
+                      label="Selling Price"
+                      value={formData.salePrice ?? 0}
+                      onChange={(v) => setField("salePrice", v)}
+                    />
+                    <NumFld
+                      label="MRP"
+                      value={formData.mrp ?? 0}
+                      onChange={(v) => setField("mrp", v)}
+                    />
+                  </Row4>
+                  <Row4>
+                    <NumFld
+                      label="Customer Price"
+                      value={formData.customerPrice ?? 0}
+                      onChange={(v) => setField("customerPrice", v)}
+                    />
+                    <NumFld
+                      label="Qty Break Price"
+                      value={formData.quantityBreakPrice ?? 0}
+                      onChange={(v) => setField("quantityBreakPrice", v)}
+                    />
+                    <NField label="Currency">
+                      <Input
+                        value={formData.currency || "INR"}
+                        onChange={(e) => setField("currency", e.target.value)}
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="Valuation Method">
+                      <NotionSelect
+                        value={formData.valuationMethod || ""}
+                        onValueChange={(v) =>
+                          setField(
+                            "valuationMethod",
+                            v as InventoryItem["valuationMethod"],
+                          )
+                        }
+                        placeholder="Method"
+                      >
+                        {VALUATION_METHODS.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </NotionSelect>
+                    </NField>
+                  </Row4>
+                  <Row2>
+                    <NField label="Price From">
+                      <Input
+                        type="date"
+                        value={formData.priceEffectiveFrom || ""}
+                        onChange={(e) =>
+                          setField("priceEffectiveFrom", e.target.value)
+                        }
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="Price To">
+                      <Input
+                        type="date"
+                        value={formData.priceEffectiveTo || ""}
+                        onChange={(e) =>
+                          setField("priceEffectiveTo", e.target.value)
+                        }
+                        className={inputCls}
+                      />
+                    </NField>
+                  </Row2>
+                </div>
+              </section>
+
+              {/* ── SECTION: BARCODES & MEDIA ── */}
+              <section className="space-y-6">
+                <SectionHead
+                  title="Barcodes & Media"
+                  icon={<Barcode size={14} />}
+                />
+                <div className="space-y-8">
+                  <Row3>
+                    <NField label="Primary Barcode">
+                      <Input
+                        value={formData.barcode || ""}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormData((c) => ({
+                            ...c,
+                            barcode: v,
+                            barcodes: v
+                              ? [
+                                  v,
+                                  ...(c.barcodes || []).filter((b) => b !== v),
+                                ]
+                              : c.barcodes || [],
+                          }));
+                        }}
+                        placeholder="Primary barcode"
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="QR Code">
+                      <Input
+                        value={formData.qrCode || ""}
+                        onChange={(e) => setField("qrCode", e.target.value)}
+                        placeholder="Internal QR value"
+                        className={inputCls}
+                      />
+                    </NField>
+                    <NField label="Format">
+                      <NotionSelect
+                        value={formData.barcodeFormat || ""}
+                        onValueChange={(v) =>
+                          setField(
+                            "barcodeFormat",
+                            v as InventoryItem["barcodeFormat"],
+                          )
+                        }
+                        placeholder="Format"
+                      >
+                        {BARCODE_FORMATS.map((f) => (
+                          <SelectItem key={f} value={f}>
+                            {f}
+                          </SelectItem>
+                        ))}
+                      </NotionSelect>
+                    </NField>
+                  </Row3>
+
+                  {/* Additional barcodes */}
+                  <NField label="Additional Barcodes">
+                    <div className="flex gap-2 mb-3">
                       <Input
                         value={barcodeDraft}
-                        onChange={(event) => setBarcodeDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
+                        onChange={(e) => setBarcodeDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
                             addBarcode();
                           }
                         }}
-                        placeholder="Scan or type another barcode"
+                        placeholder="Scan or type barcode"
+                        className={cn(inputCls, "flex-1")}
                       />
-                      <button type="button" onClick={addBarcode} className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        <Plus size={16} className="mr-2" /> Add
-                      </button>
+                      <Button
+                        type="button"
+                        onClick={addBarcode}
+                        variant="outline"
+                        size="sm"
+                        className="h-9 text-xs border-gray-200 font-normal"
+                      >
+                        <Plus size={12} className="mr-1" /> Add
+                      </Button>
                     </div>
-                    <div className="flex flex-wrap gap-2 min-h-7">
+                    <div className="flex flex-wrap gap-1.5 min-h-6">
                       {(formData.barcodes || []).length === 0 ? (
-                        <span className="text-xs text-slate-400">No additional codes added.</span>
+                        <span className="text-xs text-gray-300">
+                          No additional barcodes
+                        </span>
                       ) : (
                         (formData.barcodes || []).map((code) => (
-                          <button
+                          <ChipTag
                             key={code}
-                            type="button"
-                            onClick={() => removeBarcode(code)}
-                            className="rounded-md border border-slate-200 px-2 py-1 text-xs font-mono text-slate-700 hover:border-rose-200 hover:text-rose-600"
-                            title="Click to remove"
+                            onRemove={() => removeBarcode(code)}
                           >
                             {code}
-                          </button>
+                          </ChipTag>
                         ))
                       )}
                     </div>
-                  </div>
+                  </NField>
 
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2"><Tags size={14} /> Configurable Attributes</Label>
-                    <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                      <Select value={attributeDraft.name} onValueChange={(value) => setAttributeDraft((current) => ({ ...current, name: value }))}>
-                        <SelectTrigger><SelectValue placeholder="Attribute" /></SelectTrigger>
+                  {/* Attributes */}
+                  <NField label="Attributes">
+                    <div className="flex gap-2 mb-3">
+                      <Select
+                        value={attributeDraft.name}
+                        onValueChange={(v) =>
+                          setAttributeDraft((c) => ({ ...c, name: v }))
+                        }
+                      >
+                        <SelectTrigger className={cn(inputCls, "flex-1")}>
+                          <SelectValue placeholder="Attribute" />
+                        </SelectTrigger>
                         <SelectContent className="bg-white">
-                          {attributes.map((attribute) => <SelectItem key={attribute.id} value={attribute.name}>{attribute.name}</SelectItem>)}
+                          {attributes.map((a) => (
+                            <SelectItem key={a.id} value={a.name}>
+                              {a.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      <Input value={attributeDraft.value} onChange={(event) => setAttributeDraft((current) => ({ ...current, value: event.target.value }))} placeholder="Value" />
-                      <button type="button" onClick={addAttribute} className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        <Plus size={16} className="mr-2" /> Add
-                      </button>
+                      <Input
+                        value={attributeDraft.value}
+                        onChange={(e) =>
+                          setAttributeDraft((c) => ({
+                            ...c,
+                            value: e.target.value,
+                          }))
+                        }
+                        placeholder="Value"
+                        className={cn(inputCls, "flex-1")}
+                      />
+                      <Button
+                        type="button"
+                        onClick={addAttribute}
+                        variant="outline"
+                        size="sm"
+                        className="h-9 text-xs border-gray-200 font-normal"
+                      >
+                        <Plus size={12} className="mr-1" /> Add
+                      </Button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(formData.attributes || {}).map(([name, value]) => (
-                        <button key={name} type="button" onClick={() => removeAttribute(name)} className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:border-rose-200 hover:text-rose-600">
-                          {name}: {value}
-                        </button>
-                      ))}
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(formData.attributes || {}).map(
+                        ([n, v]) => (
+                          <ChipTag key={n} onRemove={() => removeAttribute(n)}>
+                            {n}: {v}
+                          </ChipTag>
+                        ),
+                      )}
                     </div>
-                  </div>
+                  </NField>
 
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2"><Image size={14} /> Image URLs</Label>
-                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                  {/* Images */}
+                  <NField label="Image URLs">
+                    <div className="flex gap-2 mb-3">
                       <Input
                         value={imageDraft}
-                        onChange={(event) => setImageDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
+                        onChange={(e) => setImageDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
                             addImage();
                           }
                         }}
                         placeholder="https://..."
+                        className={cn(inputCls, "flex-1")}
                       />
-                      <button type="button" onClick={addImage} className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                        <Plus size={16} className="mr-2" /> Add
-                      </button>
+                      <Button
+                        type="button"
+                        onClick={addImage}
+                        variant="outline"
+                        size="sm"
+                        className="h-9 text-xs border-gray-200 font-normal"
+                      >
+                        <Plus size={12} className="mr-1" /> Add
+                      </Button>
                     </div>
-                    <div className="flex flex-wrap gap-2 min-h-7">
+                    <div className="flex flex-wrap gap-1.5">
                       {(formData.images || []).length === 0 ? (
-                        <span className="text-xs text-slate-400">No image URLs added.</span>
+                        <span className="text-xs text-gray-300">No images</span>
                       ) : (
                         (formData.images || []).map((url) => (
-                          <button key={url} type="button" onClick={() => removeImage(url)} className="max-w-full truncate rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:border-rose-200 hover:text-rose-600" title="Click to remove">
+                          <ChipTag
+                            key={url}
+                            onRemove={() => removeImage(url)}
+                            className="max-w-xs truncate"
+                          >
                             {url}
-                          </button>
+                          </ChipTag>
                         ))
                       )}
                     </div>
-                  </div>
+                  </NField>
                 </div>
               </section>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-blue-50 border border-blue-100 rounded-lg p-4 text-xs text-blue-900">
-                <LinkedHint icon={<Layers size={14} />} label="Variants use this item as parent." />
-                <LinkedHint icon={<QrCode size={14} />} label="Barcode page maps codes to this SKU." />
-                <LinkedHint icon={<Clock size={14} />} label="Reorder page reads these thresholds." />
-                <LinkedHint icon={<IndianRupee size={14} />} label="Pricing page updates these prices." />
-              </div>
             </div>
 
-            <DialogFooter className="px-8 py-6 bg-gray-50/70 border-t border-gray-100 gap-3">
-              <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-8 font-bold">
-                {editingItem ? "Update Item" : "Create Item"}
-              </Button>
-            </DialogFooter>
+            {/* Footer */}
+            <div className="px-7 py-4 border-t border-gray-100 flex items-center justify-between bg-white shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+              <div className="text-xs text-gray-400 italic">
+                Scroll to view all sections
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs font-normal text-gray-500 hover:bg-gray-50"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-8 text-xs font-medium bg-gray-900 hover:bg-gray-800 text-white px-6 transition-all"
+                >
+                  {editingItem
+                    ? "Update shared record"
+                    : "Create shared record"}
+                </Button>
+              </div>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
@@ -863,42 +1467,132 @@ const ItemMaster: React.FC = () => {
   );
 };
 
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="space-y-2">
-    <Label className="text-sm font-semibold text-gray-700">{label}</Label>
+// ── Shared UI components ──
+const inputCls =
+  "h-9 text-sm border-gray-200 bg-white focus-visible:ring-1 focus-visible:ring-gray-300 focus-visible:ring-offset-0 rounded-md placeholder:text-gray-300 transition-all";
+
+const ActionBtn: React.FC<{
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+  className?: string;
+}> = ({ title, onClick, children, className }) => (
+  <button
+    type="button"
+    title={title}
+    onClick={onClick}
+    className={cn(
+      "h-7 w-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors",
+      className,
+    )}
+  >
+    {children}
+  </button>
+);
+
+const SectionHead: React.FC<{ title: string; icon: React.ReactNode }> = ({
+  title,
+  icon,
+}) => (
+  <div className="flex items-center gap-2 pb-2 border-b border-gray-100">
+    <div className="h-6 w-6 rounded bg-gray-50 flex items-center justify-center text-gray-400">
+      {icon}
+    </div>
+    <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-gray-400">
+      {title}
+    </h3>
+  </div>
+);
+
+const NField: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <div className="space-y-1.5">
+    <Label className="text-xs font-medium text-gray-500">{label}</Label>
     {children}
   </div>
 );
 
-const NumberField: React.FC<{ label: string; value: number; onChange: (value: number) => void }> = ({ label, value, onChange }) => (
-  <Field label={label}>
-    <Input type="number" value={value} onChange={(event) => onChange(Number(event.target.value))} />
-  </Field>
+const NumFld: React.FC<{
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}> = ({ label, value, onChange }) => (
+  <NField label={label}>
+    <Input
+      type="number"
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className={inputCls}
+    />
+  </NField>
 );
 
-const UomSelect: React.FC<{ label: string; value: string; uoms: UOM[]; onChange: (value: string) => void }> = ({ label, value, uoms, onChange }) => (
-  <Field label={label}>
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger><SelectValue placeholder="Select UoM" /></SelectTrigger>
-      <SelectContent className="bg-white">
-        {uoms.map((uom) => <SelectItem key={uom.id} value={uom.code}>{uom.name} ({uom.code})</SelectItem>)}
-      </SelectContent>
-    </Select>
-  </Field>
+const UomSel: React.FC<{
+  label: string;
+  value: string;
+  uoms: UOM[];
+  onChange: (v: string) => void;
+}> = ({ label, value, uoms, onChange }) => (
+  <NField label={label}>
+    <NotionSelect value={value} onValueChange={onChange} placeholder="UoM">
+      {uoms.map((u) => (
+        <SelectItem key={u.id} value={u.code}>
+          {u.name} ({u.code})
+        </SelectItem>
+      ))}
+    </NotionSelect>
+  </NField>
 );
 
-const SectionTitle: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
-  <div className="flex items-center gap-2">
-    <div className="h-7 w-7 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center">{icon}</div>
-    <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">{label}</h3>
-  </div>
+const NotionSelect: React.FC<{
+  value: string;
+  onValueChange: (v: string) => void;
+  placeholder: string;
+  children: React.ReactNode;
+}> = ({ value, onValueChange, placeholder, children }) => (
+  <Select value={value} onValueChange={onValueChange}>
+    <SelectTrigger className={cn(inputCls, "w-full")}>
+      <SelectValue placeholder={placeholder} />
+    </SelectTrigger>
+    <SelectContent className="bg-white border border-gray-100 shadow-md rounded-lg text-sm max-h-[300px]">
+      {children}
+    </SelectContent>
+  </Select>
 );
 
-const LinkedHint: React.FC<{ icon: React.ReactNode; label: string }> = ({ icon, label }) => (
-  <div className="flex items-center gap-2 font-medium">
-    {icon}
-    <span>{label}</span>
-  </div>
+const ChipTag: React.FC<{
+  children: React.ReactNode;
+  onRemove: () => void;
+  className?: string;
+}> = ({ children, onRemove, className }) => (
+  <span
+    className={cn(
+      "inline-flex items-center gap-1 rounded-md bg-gray-50 border border-gray-100 px-2 py-0.5 text-xs text-gray-600 font-mono",
+      className,
+    )}
+  >
+    {children}
+    <button
+      type="button"
+      onClick={onRemove}
+      className="text-gray-300 hover:text-red-500 transition-colors ml-0.5"
+    >
+      <X size={10} />
+    </button>
+  </span>
+);
+
+// Layout helpers
+const Row2: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">{children}</div>
+);
+const Row3: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">{children}</div>
+);
+const Row4: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">{children}</div>
 );
 
 export default ItemMaster;

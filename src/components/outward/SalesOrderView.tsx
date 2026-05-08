@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, User, Loader2 } from 'lucide-react';
+import { Plus, User, Loader2, Edit, Trash2 } from 'lucide-react';
 import { productService } from '@/services/productService';
 import { salesService } from '@/services/salesService';
 import { InventoryItem, Customer, SOItem } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { createSalesOrder, fetchOutwardWorkflow } from '@/store/slices/outwardSlice';
+import { createSalesOrder, fetchOutwardWorkflow, updateSalesOrder, deleteSalesOrder } from '@/store/slices/outwardSlice';
 
 const SalesOrderView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -14,18 +14,25 @@ const SalesOrderView: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [supportLoading, setSupportLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newSO, setNewSO] = useState<{ customerId: string; date: string; items: SOItem[] }>({
     customerId: '',
     date: new Date().toISOString().split('T')[0],
     items: [],
   });
 
+  const organisationId = localStorage.getItem('organisationId');
+  
   useEffect(() => {
-    dispatch(fetchOutwardWorkflow());
-  }, [dispatch]);
+    if (organisationId) {
+      dispatch(fetchOutwardWorkflow());
+    }
+  }, [dispatch, organisationId]);
 
   useEffect(() => {
     const loadSupportData = async () => {
+      if (!organisationId) return;
       setSupportLoading(true);
       const [customerData, itemData] = await Promise.all([
         salesService.getCustomers(),
@@ -37,7 +44,7 @@ const SalesOrderView: React.FC = () => {
     };
 
     loadSupportData();
-  }, []);
+  }, [organisationId]);
 
   const handleAddItem = () => {
     setNewSO((current) => ({
@@ -67,6 +74,32 @@ const SalesOrderView: React.FC = () => {
     setNewSO((current) => ({ ...current, items: updatedItems }));
   };
 
+  const handleEdit = (so: any) => {
+    setEditingId(so.id);
+    setIsEditing(true);
+    setIsCreating(true);
+    setNewSO({
+      customerId: so.customerName || so.customerId,
+      date: so.date,
+      items: so.items.map((i: any) => ({
+        itemId: i.itemId,
+        itemName: i.itemName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice
+      })),
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this sales order?')) {
+      try {
+        await dispatch(deleteSalesOrder(id)).unwrap();
+      } catch (err: any) {
+        alert(err || 'Failed to delete order');
+      }
+    }
+  };
+
   const handleCreate = async () => {
     if (!newSO.customerId || newSO.items.length === 0) {
       alert('Please select customer and items');
@@ -80,17 +113,33 @@ const SalesOrderView: React.FC = () => {
     );
 
     try {
-      await dispatch(
-        createSalesOrder({
-          customerId: newSO.customerId,
-          customerName: customer?.name || '',
-          date: newSO.date,
-          totalAmount,
-          items: newSO.items,
-        })
-      ).unwrap();
+      if (isEditing && editingId) {
+        await dispatch(
+          updateSalesOrder({
+            id: editingId,
+            data: {
+              customerName: customer?.name || newSO.customerId,
+              date: newSO.date,
+              totalAmount,
+              items: newSO.items,
+            },
+          })
+        ).unwrap();
+      } else {
+        await dispatch(
+          createSalesOrder({
+            customerId: newSO.customerId,
+            customerName: customer?.name || '',
+            date: newSO.date,
+            totalAmount,
+            items: newSO.items,
+          })
+        ).unwrap();
+      }
 
       setIsCreating(false);
+      setIsEditing(false);
+      setEditingId(null);
       setNewSO({
         customerId: '',
         date: new Date().toISOString().split('T')[0],
@@ -108,8 +157,15 @@ const SalesOrderView: React.FC = () => {
       {isCreating ? (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 animate-fade-in">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Create Sales Order</h2>
-            <button onClick={() => setIsCreating(false)} className="text-slate-500 hover:text-slate-700">
+            <h2 className="text-lg font-bold text-slate-800">{isEditing ? 'Edit Sales Order' : 'Create Sales Order'}</h2>
+            <button 
+              onClick={() => {
+                setIsCreating(false);
+                setIsEditing(false);
+                setEditingId(null);
+              }} 
+              className="text-slate-500 hover:text-slate-700"
+            >
               Cancel
             </button>
           </div>
@@ -205,7 +261,7 @@ const SalesOrderView: React.FC = () => {
               disabled={actionLoading}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
             >
-              {actionLoading ? 'Creating...' : 'Generate Order'}
+              {actionLoading ? 'Saving...' : isEditing ? 'Update Order' : 'Generate Order'}
             </button>
           </div>
         </div>
@@ -230,6 +286,7 @@ const SalesOrderView: React.FC = () => {
                 <th className="px-6 py-4 font-medium">Date</th>
                 <th className="px-6 py-4 font-medium">Amount</th>
                 <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -266,6 +323,24 @@ const SalesOrderView: React.FC = () => {
                       >
                         {salesOrder.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => handleEdit(salesOrder)}
+                          className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(salesOrder.id)}
+                          className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

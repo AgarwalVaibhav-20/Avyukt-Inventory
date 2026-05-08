@@ -5,7 +5,7 @@ import { productService } from '@/services/productService';
 import { warehouseService } from '@/services/warehouseService';
 
 const fetchAllMovementData = async () => {
-  const [warehouses, items, transfers, internalMovements, adjustments, scrapEntries, consignments] =
+  const [warehouses, items, transfers, internalMovements, adjustments, scrapEntries, consignments, bins] =
     await Promise.all([
       warehouseService.getAllWarehouses(),
       productService.getAllItems(),
@@ -14,6 +14,7 @@ const fetchAllMovementData = async () => {
       movementService.getAdjustments(),
       movementService.getScrapEntries(),
       movementService.getConsignmentEntries(),
+      warehouseService.getAllBins(),
     ]);
 
   const consignmentTotals = consignments.reduce<Record<string, number>>((acc, entry) => {
@@ -36,6 +37,7 @@ const fetchAllMovementData = async () => {
     adjustments,
     scrapEntries,
     consignments,
+    bins,
   };
 };
 
@@ -47,6 +49,7 @@ interface StockMovementState {
   adjustments: any[];
   scrapEntries: any[];
   consignments: any[];
+  bins: any[];
   loading: boolean;
   actionLoading: boolean;
   error: string | null;
@@ -60,6 +63,7 @@ const initialState: StockMovementState = {
   adjustments: [],
   scrapEntries: [],
   consignments: [],
+  bins: [],
   loading: false,
   actionLoading: false,
   error: null,
@@ -144,6 +148,7 @@ const applyPayload = (state: StockMovementState, payload: any) => {
   state.adjustments = payload.adjustments;
   state.scrapEntries = payload.scrapEntries;
   state.consignments = payload.consignments;
+  state.bins = payload.bins;
 };
 
 const stockMovementSlice = createSlice({

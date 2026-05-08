@@ -5,6 +5,37 @@ import { authService } from './authService';
 
 const unwrapList = <T,>(response: any): T[] => response?.data?.data ?? response?.data ?? [];
 
+const mapId = (item: any) => ({
+    ...item,
+    id: item.id || item._id
+});
+
+const mapWorkflowItems = (item: any) => ({
+    ...item,
+    id: item.id || item._id,
+    items: (item.items || []).map((i: any) => ({
+        ...i,
+        productId: i.productId?._id || i.productId || i.product?._id || i.product || i.itemId || i._id || i.id,
+        itemId: i.productId?._id || i.productId || i.product?._id || i.product || i.itemId || i._id || i.id
+    }))
+});
+
+const toFrontendSO = (item: any): SalesOrder => ({
+    id: item.id || item._id,
+    soNumber: item.soNumber,
+    customerId: item.customer,
+    customerName: item.customer,
+    date: (item.date || '').toString().slice(0, 10),
+    status: item.status,
+    totalAmount: item.amount || 0,
+    items: (item.items || []).map((line: any) => ({
+        itemId: String(line.productId || ''),
+        itemName: line.description || '',
+        quantity: line.qty || 0,
+        unitPrice: line.unitPrice || 0,
+    }))
+});
+
 const toFrontendSalesReturn = (item: any): SalesReturn => ({
     id: item.id || item._id,
     returnNumber: item.returnNo || item.returnNumber,
@@ -37,17 +68,42 @@ export const salesService = {
   // --- Sales Orders ---
   getAllSOs: async () => { await delay(300); return mockDb.getSOs(); },
   
-  createSO: async (so: Omit<SalesOrder, 'id' | 'soNumber' | 'status'>): Promise<SalesOrder> => {
-    await delay(300);
-    const list = mockDb.getSOs();
-    const newSO: SalesOrder = {
-        ...so,
-        id: Math.random().toString(36).substr(2, 9),
-        soNumber: `SO-${new Date().getFullYear()}-${String(list.length + 1).padStart(3, '0')}`,
-        status: 'Confirmed' // Direct confirm for demo
+  createSO: async (so: any): Promise<SalesOrder> => {
+    // Map frontend fields to backend model schema
+    const backendSO = {
+      customer: so.customerName || so.customerId,
+      date: so.date,
+      amount: so.totalAmount,
+      items: so.items.map((item: any) => ({
+        productId: item.itemId,
+        description: item.itemName,
+        qty: item.quantity,
+        unitPrice: item.unitPrice
+      }))
     };
-    mockDb.saveSOs([newSO, ...list]);
-    return newSO;
+    const response = await api.post('/api/sales-orders', backendSO);
+    return toFrontendSO(response.data);
+  },
+
+  updateSO: async (id: string, so: any): Promise<SalesOrder> => {
+    const backendSO = {
+      customer: so.customerName || so.customerId,
+      date: so.date,
+      amount: so.totalAmount,
+      status: so.status,
+      items: so.items.map((item: any) => ({
+        productId: item.itemId,
+        description: item.itemName,
+        qty: item.quantity,
+        unitPrice: item.unitPrice
+      }))
+    };
+    const response = await api.put(`/api/sales-orders/${id}`, backendSO);
+    return toFrontendSO(response.data);
+  },
+
+  deleteSO: async (id: string): Promise<void> => {
+    await api.delete(`/api/sales-orders/${id}`);
   },
 
   // --- Outward Workflow ---
@@ -205,7 +261,7 @@ export const salesService = {
   getWorkflowSalesOrders: async () => {
     try {
       const response = await api.get('/api/sales-orders');
-      return unwrapList<SalesOrder>(response);
+      return unwrapList<any>(response).map(toFrontendSO);
     } catch (err) {
       console.error('Error fetching workflow sales orders:', err);
       return [];
@@ -215,7 +271,7 @@ export const salesService = {
   getWorkflowPickLists: async () => {
     try {
       const response = await api.get('/api/pick-lists');
-      return unwrapList(response);
+      return unwrapList(response).map(mapWorkflowItems);
     } catch (err) {
       console.error('Error fetching pick lists:', err);
       return [];
@@ -224,8 +280,8 @@ export const salesService = {
 
   getWorkflowPackingOrders: async () => {
     try {
-      const response = await api.get('/api/packing-lists');
-      return unwrapList(response);
+      const response = await api.get('/api/packing-orders');
+      return unwrapList(response).map(mapWorkflowItems);
     } catch (err) {
       console.error('Error fetching packing orders:', err);
       return [];
@@ -235,7 +291,7 @@ export const salesService = {
   getWorkflowChallans: async () => {
     try {
       const response = await api.get('/api/delivery-challans');
-      return unwrapList(response);
+      return unwrapList(response).map(mapWorkflowItems);
     } catch (err) {
       console.error('Error fetching challans:', err);
       return [];
@@ -245,7 +301,7 @@ export const salesService = {
   getWorkflowDispatches: async () => {
     try {
       const response = await api.get('/api/dispatches');
-      return unwrapList(response);
+      return unwrapList(response).map(mapWorkflowItems);
     } catch (err) {
       console.error('Error fetching dispatches:', err);
       return [];
@@ -257,9 +313,15 @@ export const salesService = {
       const response = await api.post('/api/pick-lists', {
         salesOrderId: salesOrder.id,
         soNumber: salesOrder.soNumber,
-        items: salesOrder.items || [],
+        items: (salesOrder.items || []).map(item => ({
+          productId: item.itemId || (item as any).productId || (item as any).product || (item as any).id || (item as any)._id,
+          sku: (item as any).sku || '',
+          description: item.itemName || item.description,
+          required: item.quantity || (item as any).qty
+        })),
+        assignedTo: 'Warehouse Team', // Placeholder for now
       });
-      return response.data;
+      return mapId(response.data);
     } catch (err: any) {
       console.error('Error creating pick list:', err);
       throw new Error(err.response?.data?.message || 'Failed to create pick list');
@@ -269,9 +331,10 @@ export const salesService = {
   completeWorkflowPickList: async (pickList: any) => {
     try {
       const response = await api.put(`/api/pick-lists/${pickList.id}`, {
+        ...pickList,
         status: 'Completed',
       });
-      return response.data;
+      return mapId(response.data);
     } catch (err: any) {
       console.error('Error completing pick list:', err);
       throw new Error(err.response?.data?.message || 'Failed to complete pick list');
@@ -280,13 +343,21 @@ export const salesService = {
 
   createWorkflowPackingOrder: async (pickList: any, salesOrder: SalesOrder) => {
     try {
-      const response = await api.post('/api/packing-lists', {
+      const response = await api.post('/api/packing-orders', {
         pickListId: pickList.id,
         salesOrderId: salesOrder.id,
-        soNumber: salesOrder.soNumber,
-        items: pickList.items || [],
+        soNumber: salesOrder.soNumber || (salesOrder as any).soReference,
+        customer: salesOrder.customerName || salesOrder.customerId || 'Customer',
+        items: (pickList.items || []).map((item: any) => ({
+          productId: item.productId?._id || item.productId || item.product?._id || item.product || item.itemId || item._id || item.id,
+          sku: item.sku,
+          description: item.description,
+          qtyOrdered: item.required || item.qtyOrdered || item.qty,
+          qtyPacked: item.picked || item.qtyPacked || 0,
+          packed: (item.picked || item.qtyPacked || 0) >= (item.required || item.qtyOrdered)
+        })),
       });
-      return response.data;
+      return mapId(response.data);
     } catch (err: any) {
       console.error('Error creating packing order:', err);
       throw new Error(err.response?.data?.message || 'Failed to create packing order');
@@ -296,10 +367,19 @@ export const salesService = {
   createWorkflowChallan: async (packingOrder: any) => {
     try {
       const response = await api.post('/api/delivery-challans', {
-        packingOrderId: packingOrder.id,
-        items: packingOrder.items || [],
+        packingOrderIds: [packingOrder.id],
+        soReference: packingOrder.soNumber || 'N/A',
+        poReference: (packingOrder as any).poNumber || 'N/A',
+        customer: packingOrder.customer || 'Customer',
+        generatedOn: new Date().toISOString(),
+        items: (packingOrder.items || []).map((item: any) => ({
+          productId: item.productId?._id || item.productId || item.product?._id || item.product || item.itemId || item._id || item.id,
+          description: item.description,
+          packedQty: item.qtyPacked || item.picked || item.quantity || 1,
+          unit: (item as any).unit || 'Unit'
+        })),
       });
-      return response.data;
+      return mapId(response.data);
     } catch (err: any) {
       console.error('Error creating challan:', err);
       throw new Error(err.response?.data?.message || 'Failed to create challan');
@@ -310,10 +390,21 @@ export const salesService = {
     try {
       const response = await api.post('/api/dispatches', {
         deliveryChallanId: challan.id,
-        transporter: challan.transporter || '',
-        vehicleNo: challan.vehicleNo || '',
+        salesOrderId: challan.salesOrderId,
+        challanRef: challan.challanNo,
+        soReference: challan.soReference || 'N/A',
+        customer: challan.customer || 'Customer',
+        transporter: challan.transporter || 'Self/Third Party',
+        vehicleNo: challan.vehicleNo || 'TBD',
+        dispatchedOn: new Date().toISOString(),
+        items: (challan.items || []).map((item: any) => ({
+          productId: item.productId?._id || item.productId || item.product?._id || item.product || item.itemId || item._id || item.id,
+          description: item.description,
+          qty: item.packedQty || item.qty || item.quantity || 1,
+          unit: item.unit || 'Unit'
+        }))
       });
-      return response.data;
+      return mapId(response.data);
     } catch (err: any) {
       console.error('Error creating dispatch:', err);
       throw new Error(err.response?.data?.message || 'Failed to create dispatch');
@@ -321,13 +412,58 @@ export const salesService = {
   },
 
   // --- Returns ---
-    getSalesReturns: async () => {
-        const response = await api.get('/api/sales-returns');
-        return unwrapList<SalesReturn>(response).map(toFrontendSalesReturn);
-    },
-  
-  createSalesReturn: async (data: Omit<SalesReturn, 'id' | 'returnNumber' | 'status'>) => {
-            const response = await api.post('/api/sales-returns', data);
-            return toFrontendSalesReturn(response.data.data ?? response.data);
+  getSalesReturns: async () => {
+    try {
+      const response = await api.get('/api/sales-returns');
+      return unwrapList<SalesReturn>(response).map(toFrontendSalesReturn);
+    } catch (err) {
+      console.error('Error fetching sales returns:', err);
+      return [];
+    }
+  },
+
+  createSalesReturn: async (data: any) => {
+    try {
+      const response = await api.post('/api/sales-returns', data);
+      return toFrontendSalesReturn(response.data.data ?? response.data);
+    } catch (err: any) {
+      console.error('Error creating sales return:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create sales return');
+    }
+  },
+
+  // --- Invoice Mapping ---
+  getInvoiceMappings: async () => {
+    try {
+      const response = await api.get('/api/invoice-mappings');
+      return unwrapList<any>(response).map(mapId);
+    } catch (err) {
+      console.error('Error fetching invoice mappings:', err);
+      return [];
+    }
+  },
+
+  updateInvoiceMapping: async (id: string, data: any) => {
+    try {
+      const response = await api.put(`/api/invoice-mappings/${id}`, data);
+      return mapId(response.data);
+    } catch (err: any) {
+      console.error('Error updating invoice mapping:', err);
+      throw new Error(err.response?.data?.message || 'Failed to update invoice mapping');
+    }
+  },
+
+  uploadInvoiceFile: async (id: string, file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post(`/api/invoice-mappings/${id}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return mapId(response.data);
+    } catch (err: any) {
+      console.error('Error uploading invoice file:', err);
+      throw new Error(err.response?.data?.message || 'Failed to upload invoice file');
+    }
   }
 };

@@ -64,6 +64,7 @@ export const productService = {
     const payload = {
       ...item,
       type: item.itemType === "Service" ? "services" : "goods",
+      status: "in-stock",
       itemCode: item.itemCode || item.sku,
       unitOfMeasure: item.stockUom || item.uom,
       quantity: item.quantity || 0,
@@ -84,36 +85,47 @@ export const productService = {
     id: string,
     updates: Partial<InventoryItem>,
   ): Promise<InventoryItem> => {
-    const payload = {
+    // Standardize fields to match backend schema expectations
+    const payload: any = {
       ...updates,
-      ...(updates.salePrice !== undefined && { salesPrice: updates.salePrice }),
-      ...(updates.unitPrice !== undefined && {
-        purchasePrice: updates.unitPrice,
-      }),
-      ...(updates.reorderLevel !== undefined && {
-        minStock: updates.reorderLevel,
-      }),
-      ...(updates.quantity !== undefined &&
-        updates.warehouseId && {
-          stocks: [
-            {
-              warehouseId: updates.warehouseId,
-              quantity: updates.quantity,
-              unitCost: updates.unitCost || updates.unitPrice || 0,
-            },
-          ],
-        }),
-      ...(updates.taxRate !== undefined && {
-        salesTax: updates.taxRate,
-        purchaseTax: updates.taxRate,
-      }),
-      ...(updates.barcodes !== undefined && {
-        barcode: updates.barcode || updates.barcodes[0] || "",
-      }),
-      ...((updates.stockUom || updates.uom) && {
-        unitOfMeasure: updates.stockUom || updates.uom,
-      }),
     };
+
+    // Remove ID and status from payload to avoid Mongoose errors
+    delete payload.id;
+    delete payload._id;
+    delete payload.status;
+
+    if (updates.itemType) {
+      payload.type = updates.itemType === "Service" ? "services" : "goods";
+    }
+
+    if (updates.salePrice !== undefined) payload.salesPrice = updates.salePrice;
+    if (updates.unitPrice !== undefined)
+      payload.purchasePrice = updates.unitPrice;
+    if (updates.reorderLevel !== undefined)
+      payload.minStock = updates.reorderLevel;
+    if (updates.taxRate !== undefined) {
+      payload.salesTax = updates.taxRate;
+      payload.purchaseTax = updates.taxRate;
+    }
+    if (updates.stockUom || updates.uom) {
+      payload.unitOfMeasure = updates.stockUom || updates.uom;
+    }
+    if (updates.barcodes) {
+      payload.barcode = updates.barcode || updates.barcodes[0] || "";
+    }
+
+    // Special handling for stock initialization/update
+    if (updates.quantity !== undefined && updates.warehouseId) {
+      payload.stocks = [
+        {
+          warehouseId: updates.warehouseId,
+          quantity: updates.quantity,
+          unitCost: updates.unitCost || updates.unitPrice || 0,
+        },
+      ];
+    }
+
     const response = await api.put(`/product/update/${id}`, payload);
     return response.data.product;
   },

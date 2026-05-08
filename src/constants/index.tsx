@@ -92,6 +92,7 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'out-pack', label: 'Packing' },
       { id: 'out-challan', label: 'Delivery Challan' },
       { id: 'out-dispatch', label: 'Dispatch Note' },
+      { id: 'out-eway', label: 'E-Way Bill' },
       { id: 'out-return', label: 'Outward Returns' },
       { id: 'out-invoice', label: 'Customer Invoice Mapping' },
     ]
@@ -107,6 +108,18 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'mv-damage', label: 'Damage / Loss Entry' },
       { id: 'mv-scrap', label: 'Scrap Management' },
       { id: 'mv-consign', label: 'Consignment Stock' },
+    ]
+  },
+  {
+    id: 'compliance',
+    label: 'Dispatch & Compliance',
+    icon: ShieldCheck,
+    subMenus: [
+      { id: 'comp-reserve', label: 'Stock Reservation' },
+      { id: 'comp-deduct', label: 'Stock Deductions' },
+      { id: 'comp-cogs', label: 'COGS Posting' },
+      { id: 'comp-invoice', label: 'Invoice Mapping' },
+      { id: 'comp-eway', label: 'E-Way Bill' },
     ]
   },
   {
@@ -134,6 +147,7 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'val-realtime', label: 'Real-Time Stock Value' },
       { id: 'val-closing', label: 'Closing Stock Reports' },
       { id: 'val-recalc', label: 'Cost Recalculation' },
+      { id: 'val-cogs', label: 'COGS Posted' },
     ]
   },
   {

@@ -1,44 +1,73 @@
-import { mockDb } from './mockDb';
+import api from './api';
 import { Invoice, EWayBill, InspectionReport, DocumentAttachment } from '@/types';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const unwrapList = <T>(response: any): T[] => {
+  if (response.data && Array.isArray(response.data)) return response.data;
+  if (response.data?.data && Array.isArray(response.data.data)) return response.data.data;
+  return [];
+};
+
+const mapId = (item: any) => ({
+  ...item,
+  id: item._id || item.id
+});
 
 export const documentService = {
   // --- Invoices ---
   getInvoices: async (): Promise<Invoice[]> => {
-    await delay(300);
-    return mockDb.getInvoices();
-  },
-
-  createInvoice: async (data: Omit<Invoice, 'id' | 'invoiceNumber'>): Promise<Invoice> => {
-    await delay(300);
-    const list = mockDb.getInvoices();
-    const newRec: Invoice = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        invoiceNumber: `INV-${new Date().getFullYear()}-${String(list.length + 1).padStart(4, '0')}`
-    };
-    mockDb.saveInvoices([newRec, ...list]);
-    return newRec;
+    try {
+      const response = await api.get('/api/invoice-mappings');
+      return unwrapList<any>(response).map(mapId);
+    } catch (err) {
+      console.error('Error fetching invoices:', err);
+      return [];
+    }
   },
 
   // --- E-Way Bills ---
-  getEWayBills: async (): Promise<EWayBill[]> => {
-    await delay(300);
-    return mockDb.getEWayBills();
+  getEWayBills: async (params?: { page?: number; limit?: number; search?: string; status?: string }): Promise<{ data: EWayBill[]; total: number; totalPages: number; page: number }> => {
+    try {
+      const response = await api.get('/api/eway-bills', { params });
+      const data = response.data;
+      return {
+        data: (data.data || []).map(mapId),
+        total: data.total || 0,
+        totalPages: data.totalPages || 1,
+        page: data.page || 1
+      };
+    } catch (err) {
+      console.error('Error fetching e-way bills:', err);
+      return { data: [], total: 0, totalPages: 1, page: 1 };
+    }
   },
 
-  createEWayBill: async (data: Omit<EWayBill, 'id' | 'billNumber' | 'generatedDate'>): Promise<EWayBill> => {
-    await delay(400);
-    const list = mockDb.getEWayBills();
-    const newRec: EWayBill = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        billNumber: `EWB-${Math.floor(Math.random() * 100000000000)}`, // Random 12 digit mock
-        generatedDate: new Date().toISOString().split('T')[0]
-    };
-    mockDb.saveEWayBills([newRec, ...list]);
-    return newRec;
+  createEWayBill: async (data: any): Promise<EWayBill> => {
+    try {
+      const response = await api.post('/api/eway-bills', data);
+      return mapId(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error creating e-way bill:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create e-way bill');
+    }
+  },
+
+  updateEWayBill: async (id: string, data: any): Promise<EWayBill> => {
+    try {
+      const response = await api.put(`/api/eway-bills/${id}`, data);
+      return mapId(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error updating e-way bill:', err);
+      throw new Error(err.response?.data?.message || 'Failed to update e-way bill');
+    }
+  },
+
+  deleteEWayBill: async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/api/eway-bills/${id}`);
+    } catch (err: any) {
+      console.error('Error deleting e-way bill:', err);
+      throw new Error(err.response?.data?.message || 'Failed to delete e-way bill');
+    }
   },
 
   // --- Inspection Reports ---

@@ -34,6 +34,7 @@ import WarehouseValuationView from "@/components/valuation/WarehouseValuationVie
 import RealTimeValuationView from "@/components/valuation/RealTimeValuationView";
 import ClosingStockReportView from "@/components/valuation/ClosingStockReportView";
 import CostRecalculationView from "@/components/valuation/CostRecalculationView";
+import COGSView from "@/components/valuation/COGSView";
 import QualityParametersView from "@/components/quality/QualityParametersView";
 import InspectionPlansView from "@/components/quality/InspectionPlansView";
 import QualityChecklistsView from "@/components/quality/QualityChecklistsView";
@@ -911,6 +912,10 @@ const App: React.FC = () => {
                 path="/outward/out-dispatch"
                 element={<OutwardOpsView stage="dispatch" />}
               />
+              <Route
+                path="/outward/out-eway"
+                element={<EWayBillsView />}
+              />
               <Route path="/outward/out-return" element={<SalesReturnView />} />
               <Route
                 path="/outward/out-invoice"
@@ -938,6 +943,28 @@ const App: React.FC = () => {
               <Route
                 path="/movement/mv-consign"
                 element={<ConsignmentStockView />}
+              />
+
+              {/* Dispatch & Compliance */}
+              <Route
+                path="/compliance/comp-reserve"
+                element={<StockReservationView />}
+              />
+              <Route
+                path="/compliance/comp-deduct"
+                element={<StockLedgerView />}
+              />
+              <Route
+                path="/compliance/comp-cogs"
+                element={<COGSView />}
+              />
+              <Route
+                path="/compliance/comp-invoice"
+                element={<CustomerInvoiceView />}
+              />
+              <Route
+                path="/compliance/comp-eway"
+                element={<EWayBillsView />}
               />
 
               {/* Stock Control */}
@@ -994,6 +1021,10 @@ const App: React.FC = () => {
               <Route
                 path="/valuation/val-recalc"
                 element={<CostRecalculationView />}
+              />
+              <Route
+                path="/valuation/val-cogs"
+                element={<COGSView />}
               />
 
               {/* Barcode & Automation */}
