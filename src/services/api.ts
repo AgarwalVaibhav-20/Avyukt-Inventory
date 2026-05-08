@@ -2,7 +2,7 @@ import axios from "axios";
 import { authService } from "./authService";
 
 const api = axios.create({
-  baseURL: "http://localhost:4000",
+  baseURL: import.meta.env.VITE_API_URL || "https://inventory-backend-alpha-eight.vercel.app",
   headers: {
     "Content-Type": "application/json",
   },

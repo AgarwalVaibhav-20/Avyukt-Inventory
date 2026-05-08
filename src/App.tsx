@@ -156,7 +156,7 @@ const App: React.FC = () => {
     import('socket.io-client')
       .then(({ io }) => {
         try {
-          const socket = io(process.env.REACT_APP_API_URL || 'http://localhost:4000', { transports: ['websocket', 'polling'] });
+          const socket = io(import.meta.env.VITE_SOCKET_URL || "https://inventory-backend-alpha-eight.vercel.app", { transports: ["websocket", "polling"] });
           socketRef.current = socket;
 
           socket.on('connect', () => {

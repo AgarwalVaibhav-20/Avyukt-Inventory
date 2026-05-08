@@ -4,7 +4,7 @@ import { dashboardService } from './dashboardService';
 import { stockControlService } from './stockControlService';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://inventory-backend-alpha-eight.vercel.app") + "/api";
 const REPORTS_API = `${API_BASE_URL}/reports`;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
