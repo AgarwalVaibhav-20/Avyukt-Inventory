@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { qualityService } from '@/services/qualityService';
 import { procurementService } from '@/services/procurementService';
 import { GRN } from '@/types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
@@ -8,6 +10,7 @@ const AcceptedRejectedStockView: React.FC = () => {
   const [grns, setGRNs] = useState<GRN[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ accepted: 0, rejected: 0, pending: 0 });
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadData();
@@ -36,6 +39,34 @@ const AcceptedRejectedStockView: React.FC = () => {
       { name: 'Rejected', value: stats.rejected, color: '#ef4444' },
       { name: 'Pending', value: stats.pending, color: '#f59e0b' }
   ];
+
+  const handleRaiseNCR = async (row: any) => {
+      try {
+          await qualityService.createNCR({
+              itemId: row.materialId || row.productId || row._id || '',
+              quantity: row.rejectedQty,
+              refType: 'GRN',
+              refId: row.grnNo,
+              description: `System generated NCR for rejected quantity in GRN ${row.grnNo}`
+          });
+          alert('NCR raised successfully. You can view it in the NCR tab.');
+      } catch(e: any) {
+          alert('Failed to raise NCR: ' + e.message);
+      }
+  };
+
+  const handleRework = async (row: any) => {
+      try {
+          await qualityService.createReworkEntry({
+              itemId: row.materialId || row.productId || row._id || '',
+              quantity: row.rejectedQty,
+              reason: `Rejected during QC of GRN ${row.grnNo}`
+          });
+          alert('Sent to Rework successfully. You can view it in the Rework tab.');
+      } catch(e: any) {
+          alert('Failed to send to rework: ' + e.message);
+      }
+  };
 
   return (
     <div className="space-y-6">
@@ -95,6 +126,7 @@ const AcceptedRejectedStockView: React.FC = () => {
                             <th className="px-6 py-4 text-right text-green-600">Accepted</th>
                             <th className="px-6 py-4 text-right text-red-600">Rejected</th>
                             <th className="px-6 py-4">Remarks</th>
+                            <th className="px-6 py-4 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -110,6 +142,26 @@ const AcceptedRejectedStockView: React.FC = () => {
                                     <td className="px-6 py-4 text-right text-green-600 font-bold bg-green-50">{row.acceptedQty}</td>
                                     <td className="px-6 py-4 text-right text-red-600 font-bold bg-red-50">{row.rejectedQty}</td>
                                     <td className="px-6 py-4 text-slate-500 truncate max-w-xs">{row.qcRemarks || '-'}</td>
+                                    <td className="px-6 py-4 text-center">
+                                        {row.rejectedQty > 0 ? (
+                                            <div className="flex justify-center gap-3">
+                                                <button 
+                                                    onClick={() => handleRaiseNCR(row)}
+                                                    className="text-xs font-medium text-red-600 hover:text-red-800 hover:underline"
+                                                >
+                                                    Raise NCR
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleRework(row)}
+                                                    className="text-xs font-medium text-orange-600 hover:text-orange-800 hover:underline"
+                                                >
+                                                    Rework
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-400">-</span>
+                                        )}
+                                    </td>
                                 </tr>
                         ))}
                     </tbody>

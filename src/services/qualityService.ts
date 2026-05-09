@@ -43,6 +43,23 @@ const toBackendParameter = (param: any) => ({
   description: param.description || ''
 });
 
+// Transform backend inspection plan to frontend
+const toFrontendInspectionPlan = (plan: any): InspectionPlan => ({
+  id: plan.id || plan._id,
+  itemId: plan.itemId || plan.partNumber || '',
+  itemName: plan.itemName || plan.name || '',
+  name: plan.name || '',
+  sampleSize: plan.sampleSize || 10,
+  parameters: (plan.parameters || []).map((p: any) => ({
+    parameterId: p.parameterId || p._id || '',
+    parameterName: p.parameterName || p.name || '',
+    minValue: p.minValue ?? p.min,
+    maxValue: p.maxValue ?? p.max,
+    expectedValue: p.expectedValue || p.expected || '',
+    unit: p.unit || ''
+  }))
+});
+
 // Transform backend checklist to frontend
 const toFrontendChecklist = (checklist: any): QualityChecklistTemplate => ({
   id: checklist.id || checklist._id,
@@ -146,6 +163,14 @@ export const qualityService = {
     return unwrapList<any>(response).map(toFrontendParameter);
   },
 
+  getPaginatedParameters: async (page = 1, limit = 10, search = ""): Promise<{ data: QualityParameter[], total: number }> => {
+    const response = await api.get(`/api/quality-parameters?page=${page}&limit=${limit}&search=${search}`, orgHeaders());
+    return {
+      data: (response.data.data || []).map(toFrontendParameter),
+      total: response.data.pagination?.totalItems || response.data.pagination?.total || 0
+    };
+  },
+
   addParameter: async (data: Omit<QualityParameter, 'id'>): Promise<QualityParameter> => {
     const response = await api.post('/api/quality-parameters', toBackendParameter(data), orgHeaders());
     return toFrontendParameter(response.data.data ?? response.data);
@@ -155,10 +180,15 @@ export const qualityService = {
     await api.delete(`/api/quality-parameters/${id}`, orgHeaders());
   },
 
+  updateParameter: async (id: string, data: Partial<QualityParameter>): Promise<QualityParameter> => {
+    const response = await api.put(`/api/quality-parameters/${id}`, toBackendParameter(data), orgHeaders());
+    return toFrontendParameter(response.data.data ?? response.data);
+  },
+
   // --- Inspection Plans ---
   getInspectionPlans: async (): Promise<InspectionPlan[]> => {
     const response = await api.get('/api/inspection-plans', orgHeaders());
-    return unwrapList<InspectionPlan>(response);
+    return unwrapList<any>(response).map(toFrontendInspectionPlan);
   },
 
   saveInspectionPlan: async (plan: Omit<InspectionPlan, 'id'>): Promise<InspectionPlan> => {

@@ -17,7 +17,7 @@ import { toast } from "react-hot-toast";
 
 const ProfileView: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { user, loading } = useAppSelector((state) => state.auth);
+  const { user, profileLoading, updateLoading } = useAppSelector((state) => state.auth);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -93,6 +93,15 @@ const ProfileView: React.FC = () => {
       toast.error("An unexpected error occurred");
     }
   };
+
+  if (profileLoading && !user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <Loader2 size={40} className="text-blue-600 animate-spin" />
+        <p className="text-slate-500 font-medium">Loading profile data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -247,10 +256,10 @@ const ProfileView: React.FC = () => {
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={updateLoading}
                   className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/40 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  {loading ? (
+                  {updateLoading ? (
                     <Loader2 size={20} className="animate-spin" />
                   ) : (
                     <Save size={20} />

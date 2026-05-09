@@ -1,57 +1,118 @@
-import { mockDb } from './mockDb';
+import api from './api';
+import { authService } from './authService';
 import { InventoryItem, ScanLog, LabelTemplate } from '@/types';
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const getOrgId = () => {
+    const user = authService.getCurrentUser();
+    return user?.organisationId;
+};
 
 export const automationService = {
   
   // 1. Generate URLs for visualization
-  getBarcodeImageUrl: (text: string, type: 'code128' | 'ean13' = 'code128') => {
-      // Using bwip-js API for free barcode generation
-      return `https://bwipjs-api.metafloor.com/?bcid=${type}&text=${text}&scale=2&includetext`;
+  getBarcodeImageUrl: (text: string, type: 'code128' | 'ean13' | 'qr' = 'code128') => {
+      // Point to backend generator
+      const API_URL = api.defaults.baseURL || "http://localhost:4000";
+      return `${API_URL}/utils/bc-gen?text=${encodeURIComponent(text)}&type=${type}`;
   },
 
   getQrCodeImageUrl: (text: string) => {
-      // Using QR Server API
-      return `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(text)}`;
+      const API_URL = api.defaults.baseURL || "http://localhost:4000";
+      return `${API_URL}/utils/bc-gen?text=${encodeURIComponent(text)}&type=qr`;
   },
 
   // 2. Scan Logic
-  scanItem: async (code: string): Promise<InventoryItem | null> => {
-      await delay(300); // Simulate processing time
-      const items = mockDb.getItems();
-      // Try finding by exact barcode match first
-      let item = items.find(i => i.barcode === code);
-      // If not, try SKU
-      if (!item) {
-          item = items.find(i => i.sku.toLowerCase() === code.toLowerCase());
+  scanItem: async (code: string, action: string = 'Check'): Promise<InventoryItem | null> => {
+      const orgId = getOrgId();
+      if (!orgId) return null;
+
+      try {
+          // First, find the item by barcode/sku
+          const response = await api.get(`/inventory/product/all/${orgId}`);
+          const products = response.data.products || [];
+          const item = products.find((p: any) => 
+            p.barcode === code || 
+            (p.barcodes && p.barcodes.includes(code)) || 
+            p.sku === code ||
+            p.itemCode === code
+          );
+
+          if (item) {
+              // Log the successful scan in backend
+              await api.post('/barcode-scans/create', {
+                  organisationId: orgId,
+                  location: item.warehouseId || item.stocks?.[0]?.warehouseId,
+                  code: code,
+                  item: item.name,
+                  action: action,
+                  status: 'success'
+              });
+              
+              // Map to frontend type
+              return {
+                  ...item,
+                  id: item._id,
+                  stock: (item.stocks || []).reduce((acc: number, s: any) => acc + (s.quantity || 0), 0)
+              } as InventoryItem;
+          } else {
+              // Log failed scan
+              await api.post('/barcode-scans/create', {
+                organisationId: orgId,
+                location: '000000000000000000000000', // Dummy or generic location
+                code: code,
+                item: 'Unknown',
+                action: action,
+                status: 'error'
+            });
+            return null;
+          }
+      } catch (error) {
+          console.error("Scan error:", error);
+          return null;
       }
-      return item || null;
   },
 
-  // 3. Logging
+  // 3. Logging & History
   logScan: async (log: Omit<ScanLog, 'id' | 'date' | 'timestamp'>) => {
-      // Do not delay logging for snappy UI feel in scanner
-      const list = mockDb.getScanLogs();
-      const now = new Date();
-      const newLog: ScanLog = {
-          ...log,
-          id: Math.random().toString(36).substr(2, 9),
-          date: now.toISOString().split('T')[0],
-          timestamp: now.toLocaleTimeString(),
-      };
-      mockDb.saveScanLogs([newLog, ...list]);
-      return newLog;
+      const orgId = getOrgId();
+      if (!orgId) return null;
+
+      const response = await api.post('/barcode-scans/create', {
+          organisationId: orgId,
+          location: '000000000000000000000000',
+          code: log.scannedCode,
+          item: log.itemName || 'Manual Entry',
+          action: log.actionType,
+          status: log.status === 'Success' ? 'success' : 'error'
+      });
+      return response.data.data;
   },
 
   getScanHistory: async (): Promise<ScanLog[]> => {
-      await delay(200);
-      return mockDb.getScanLogs();
+      const orgId = getOrgId();
+      if (!orgId) return [];
+
+      const response = await api.get('/barcode-scans/fetch', {
+          params: { organisationId: orgId }
+      });
+      
+      const items = response.data.data || [];
+      return items.map((i: any) => ({
+          id: i._id,
+          scannedCode: i.code,
+          itemId: i.item, // Backend uses item name/string
+          itemName: i.item,
+          actionType: i.action,
+          status: i.status === 'success' ? 'Success' : 'error',
+          timestamp: new Date(i.createdAt).toLocaleTimeString(),
+          date: new Date(i.createdAt).toISOString().split('T')[0]
+      }));
   },
 
   // 4. Label Templates
   getLabelTemplates: async (): Promise<LabelTemplate[]> => {
-      await delay(100);
+      // These could be fetched from backend if we had a dedicated endpoint, 
+      // but for now keeping them as standard defaults
       return [
           { id: 't1', name: 'Standard Product (2x1)', width: '2in', height: '1in', type: 'Product' },
           { id: 't2', name: 'Shipping Label (4x6)', width: '4in', height: '6in', type: 'Shipping' },
@@ -60,3 +121,4 @@ export const automationService = {
       ];
   }
 };
+

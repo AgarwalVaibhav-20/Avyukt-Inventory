@@ -6,6 +6,8 @@ interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
+  profileLoading: boolean;
+  updateLoading: boolean;
   error: string | null;
 }
 
@@ -14,6 +16,8 @@ const initialState: AuthState = {
   token: authService.getToken(),
   isAuthenticated: !!authService.getToken(),
   loading: false,
+  profileLoading: false,
+  updateLoading: false,
   error: null,
 };
 
@@ -159,25 +163,25 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(fetchProfile.pending, (state) => {
-        state.loading = true;
+        state.profileLoading = true;
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
-        state.loading = false;
+        state.profileLoading = false;
         state.user = action.payload.user;
       })
       .addCase(fetchProfile.rejected, (state, action) => {
-        state.loading = false;
+        state.profileLoading = false;
         state.error = action.payload as string;
       })
       .addCase(updateProfile.pending, (state) => {
-        state.loading = true;
+        state.updateLoading = true;
       })
       .addCase(updateProfile.fulfilled, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
         state.user = action.payload.user;
       })
       .addCase(updateProfile.rejected, (state, action) => {
-        state.loading = false;
+        state.updateLoading = false;
         state.error = action.payload as string;
       });
   },

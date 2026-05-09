@@ -1,61 +1,66 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { automationService } from '@/services/automationService';
-import { ScanLog, InventoryItem } from '@/types';
 import { Scan, Smartphone, CheckCircle2, XCircle, Search, Clock, Box } from 'lucide-react';
+import { ScanLog, InventoryItem } from '@/types';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '@/store';
+import { performScan, fetchScanHistory, addScanToHistory } from '@/store/slices/barcodeSlice';
 
 interface BarcodeScannerViewProps {
   isMobileMode?: boolean;
 }
 
 const BarcodeScannerView: React.FC<BarcodeScannerViewProps> = ({ isMobileMode = false }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { scanHistory, lastScannedItem, loading } = useSelector((state: RootState) => state.barcode);
+  const user = useSelector((state: RootState) => state.auth.user);
+  
   const [scanInput, setScanInput] = useState('');
-  const [history, setHistory] = useState<ScanLog[]>([]);
-  const [lastScannedItem, setLastScannedItem] = useState<InventoryItem | null>(null);
   const [lastScanStatus, setLastScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [localHistory, setLocalHistory] = useState<ScanLog[]>([]);
 
   useEffect(() => {
-    loadHistory();
-    // Auto focus for immediate scanning simulation
+    if (user?.organisationId) {
+        dispatch(fetchScanHistory(user.organisationId));
+    }
     if(inputRef.current) inputRef.current.focus();
-  }, []);
-
-  const loadHistory = async () => {
-      const logs = await automationService.getScanHistory();
-      setHistory(logs);
-  };
+  }, [user]);
 
   const handleScan = async (e: React.FormEvent) => {
       e.preventDefault();
-      if(!scanInput.trim()) return;
+      if(!scanInput.trim() || !user?.organisationId) return;
 
       const code = scanInput.trim();
-      setScanInput(''); // Clear immediately for next scan
+      setScanInput('');
       
-      const item = await automationService.scanItem(code);
-      
-      if(item) {
-          setLastScannedItem(item);
-          setLastScanStatus('success');
-          await automationService.logScan({
-              scannedCode: code,
-              itemId: item.id,
-              itemName: item.name,
-              actionType: 'Check',
-              status: 'Success',
-              deviceId: isMobileMode ? 'Mobile-App' : 'Desktop-Station'
-          });
+      const resultAction = await dispatch(performScan({ 
+          code, 
+          organisationId: user.organisationId,
+          actionType: 'Check',
+          locationId: user.location
+      }));
+
+      if (performScan.fulfilled.match(resultAction)) {
+          const item = resultAction.payload.data?.item;
+          if (item) {
+              setLastScanStatus('success');
+              // The scan history in redux will be updated on next fetch, 
+              // but we can also manually add it for immediate UI update
+              dispatch(addScanToHistory({
+                  id: Math.random().toString(36).substr(2, 9),
+                  scannedCode: code,
+                  itemName: item.name,
+                  actionType: 'Check',
+                  status: 'Success',
+                  timestamp: new Date().toLocaleTimeString(),
+                  date: new Date().toISOString().split('T')[0]
+              }));
+          } else {
+              setLastScanStatus('error');
+          }
       } else {
-          setLastScannedItem(null);
           setLastScanStatus('error');
-          await automationService.logScan({
-              scannedCode: code,
-              actionType: 'Check',
-              status: 'Not Found',
-              deviceId: isMobileMode ? 'Mobile-App' : 'Desktop-Station'
-          });
       }
-      loadHistory();
   };
 
   const MobileLayout = () => (
@@ -185,8 +190,8 @@ const BarcodeScannerView: React.FC<BarcodeScannerViewProps> = ({ isMobileMode = 
                     <Clock size={18}/> Session History
                 </h3>
                 <div className="overflow-y-auto flex-1 space-y-2 pr-1">
-                    {history.length === 0 ? <p className="text-slate-400 text-sm text-center py-4">No scans yet.</p> :
-                     history.map(log => (
+                    {scanHistory.length === 0 ? <p className="text-slate-400 text-sm text-center py-4">No scans yet.</p> :
+                     scanHistory.map(log => (
                         <div key={log.id} className="text-sm p-2 rounded border border-slate-100 bg-slate-50 flex justify-between items-center">
                             <div>
                                 <p className="font-medium text-slate-700">{log.scannedCode}</p>
