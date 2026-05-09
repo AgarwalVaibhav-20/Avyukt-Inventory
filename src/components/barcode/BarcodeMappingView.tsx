@@ -3,12 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import { productService } from '@/services/productService';
 import { InventoryItem } from '@/types';
 import { QrCode, Save, Search, RefreshCw, Loader2 } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const BarcodeMappingView: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [barcodeFilter, setBarcodeFilter] = useState('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBarcode, setEditBarcode] = useState('');
 
@@ -46,11 +49,30 @@ const BarcodeMappingView: React.FC = () => {
     setEditBarcode(prefix + random);
   };
 
-  const filteredItems = items.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
-    i.sku.toLowerCase().includes(search.toLowerCase()) ||
-    (i.barcode && i.barcode.includes(search))
-  );
+  const {
+    filteredItems,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items,
+    searchTerm: search,
+    filters: { barcode: barcodeFilter },
+    initialPageSize: 10,
+    searchFn: (i, term) =>
+      i.name.toLowerCase().includes(term) ||
+      i.sku.toLowerCase().includes(term) ||
+      (i.barcode || '').toLowerCase().includes(term),
+    filterFn: (i, filters) => {
+      if (filters.barcode === 'assigned') return Boolean(i.barcode);
+      if (filters.barcode === 'missing') return !i.barcode;
+      return true;
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -59,7 +81,8 @@ const BarcodeMappingView: React.FC = () => {
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <QrCode className="text-purple-600" size={20}/> Barcode / QR Mapping
             </h2>
-            <div className="relative w-64">
+            <div className="flex gap-3">
+              <div className="relative w-64">
                 <Search className="absolute left-3 top-2.5 text-slate-400" size={16}/>
                 <input 
                     type="text" 
@@ -68,6 +91,16 @@ const BarcodeMappingView: React.FC = () => {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                 />
+              </div>
+              <select
+                value={barcodeFilter}
+                onChange={(e) => setBarcodeFilter(e.target.value)}
+                className="w-40 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              >
+                <option value="all">All items</option>
+                <option value="assigned">Assigned</option>
+                <option value="missing">Missing</option>
+              </select>
             </div>
         </div>
 
@@ -87,7 +120,7 @@ const BarcodeMappingView: React.FC = () => {
                     ) : filteredItems.length === 0 ? (
                         <tr><td colSpan={4} className="py-8 text-center text-slate-500">No items found.</td></tr>
                     ) : (
-                        filteredItems.map(item => {
+                        pagedItems.map(item => {
                             const isEditing = editingId === item.id;
                             
                             return (
@@ -145,6 +178,14 @@ const BarcodeMappingView: React.FC = () => {
                 </tbody>
             </table>
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

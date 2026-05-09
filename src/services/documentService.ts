@@ -1,9 +1,5 @@
 import api from './api';
 import { Invoice, EWayBill, InspectionReport, DocumentAttachment } from '@/types';
-import { mockDb } from './mockDb';
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 const unwrapList = <T>(response: any): T[] => {
   if (response.data && Array.isArray(response.data)) return response.data;
   if (response.data?.data && Array.isArray(response.data.data)) return response.data.data;
@@ -14,6 +10,26 @@ const mapId = (item: any) => ({
   ...item,
   id: item._id || item.id
 });
+
+const mapAttachment = (item: any): DocumentAttachment => {
+  const latestVersion = item.versions?.[item.versions.length - 1];
+  return {
+    id: item._id || item.id,
+    fileName: item.name || latestVersion?.originalName || item.fileName || 'Untitled document',
+    fileType: item.category || item.fileType || 'Document',
+    size: item.size || latestVersion?.size || '',
+    uploadDate: item.uploadedOn
+      ? new Date(item.uploadedOn).toISOString().split('T')[0]
+      : item.uploadDate || '',
+    uploadedBy: item.uploadedBy || 'Admin User',
+    referenceType: item.referenceType || 'General',
+    referenceId: item.referenceId || '',
+    referenceLabel: item.referenceLabel || '',
+    version: item.currentVersion || item.version || 1,
+    url: latestVersion?.fileUrl || item.url,
+    versions: item.versions || [],
+  };
+};
 
 export const documentService = {
   // --- Invoices ---
@@ -85,31 +101,71 @@ export const documentService = {
 
   // --- Inspection Reports ---
   getInspectionReports: async (): Promise<InspectionReport[]> => {
-    await delay(200);
-    return mockDb.getInspectionReports();
+    return [];
   },
 
   // --- Attachments ---
-  getAttachments: async (): Promise<DocumentAttachment[]> => {
-    await delay(200);
-    return mockDb.getAttachments();
+  getAttachments: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    tag?: string;
+    referenceType?: string;
+    referenceId?: string;
+  }): Promise<DocumentAttachment[]> => {
+    try {
+      const response = await api.get('/api/attachments', { params });
+      return (response.data?.data || []).map(mapAttachment);
+    } catch (err) {
+      console.error('Error fetching attachments:', err);
+      return [];
+    }
   },
 
-  uploadAttachment: async (data: Omit<DocumentAttachment, 'id' | 'uploadDate'>): Promise<DocumentAttachment> => {
-    await delay(500); // Simulate upload
-    const list = mockDb.getAttachments();
-    const newRec: DocumentAttachment = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-        uploadDate: new Date().toISOString().split('T')[0]
-    };
-    mockDb.saveAttachments([newRec, ...list]);
-    return newRec;
+  uploadAttachment: async (
+    file: File,
+    data: {
+      name?: string;
+      category?: string;
+      tag?: string;
+      uploadedBy?: string;
+      notes?: string;
+      referenceType?: DocumentAttachment['referenceType'];
+      referenceId?: string;
+      referenceLabel?: string;
+    } = {},
+  ): Promise<DocumentAttachment> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formData.append(key, String(value));
+      }
+    });
+
+    // Let the browser set multipart boundary automatically.
+    const response = await api.post('/api/attachments', formData);
+    return mapAttachment(response.data);
+  },
+
+  uploadAttachmentVersion: async (
+    id: string,
+    file: File,
+    data: { uploadedBy?: string; notes?: string } = {},
+  ): Promise<DocumentAttachment> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    Object.entries(data).forEach(([key, value]) => {
+      if (value) formData.append(key, String(value));
+    });
+
+    // Let the browser set multipart boundary automatically.
+    const response = await api.post(`/api/attachments/${id}/version`, formData);
+    return mapAttachment(response.data);
   },
 
   deleteAttachment: async (id: string): Promise<void> => {
-    await delay(200);
-    const list = mockDb.getAttachments().filter(a => a.id !== id);
-    mockDb.saveAttachments(list);
+    await api.delete(`/api/attachments/${id}`);
   }
 };

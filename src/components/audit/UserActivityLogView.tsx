@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { reportService } from '@/services/reportService';
 import { AuditLog } from '@/types';
 import { UserCheck, Search, Loader2 } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const UserActivityLogView: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState('all');
 
   useEffect(() => {
     loadData();
@@ -19,10 +22,26 @@ const UserActivityLogView: React.FC = () => {
     setLoading(false);
   };
 
-  const filtered = logs.filter(l => 
-      l.user.toLowerCase().includes(search.toLowerCase()) || 
-      l.description.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filteredItems: filtered,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+      items: logs,
+      searchTerm: search,
+      filters: { action: actionFilter },
+      initialPageSize: 10,
+      searchFn: (l, term) =>
+        l.user.toLowerCase().includes(term) ||
+        l.description.toLowerCase().includes(term) ||
+        l.module.toLowerCase().includes(term),
+      filterFn: (l, filters) => filters.action === 'all' || l.action === filters.action,
+  });
 
   return (
     <div className="space-y-6">
@@ -31,15 +50,30 @@ const UserActivityLogView: React.FC = () => {
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <UserCheck className="text-indigo-600" size={20}/> User Activity Logs
                 </h2>
-                <div className="relative">
-                    <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                    <input 
-                        type="text" 
-                        placeholder="Search Activity..." 
-                        className="pl-9 pr-4 py-2 border rounded-lg text-sm w-64"
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                    />
+                <div className="flex gap-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                        <input 
+                            type="text" 
+                            placeholder="Search Activity..." 
+                            className="pl-9 pr-4 py-2 border rounded-lg text-sm w-64"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <select
+                        value={actionFilter}
+                        onChange={(e) => setActionFilter(e.target.value)}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                    >
+                        <option value="all">All actions</option>
+                        <option value="Create">Create</option>
+                        <option value="Update">Update</option>
+                        <option value="Delete">Delete</option>
+                        <option value="Approve">Approve</option>
+                        <option value="Reject">Reject</option>
+                        <option value="Login">Login</option>
+                    </select>
                 </div>
             </div>
 
@@ -57,7 +91,7 @@ const UserActivityLogView: React.FC = () => {
                     <tbody className="divide-y divide-slate-100">
                         {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
                          filtered.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No logs found.</td></tr> :
-                         filtered.map(log => (
+                         pagedItems.map(log => (
                             <tr key={log.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4 text-slate-500 font-mono text-xs">{log.date} {log.timestamp}</td>
                                 <td className="px-6 py-4 font-bold text-slate-700">{log.user}</td>
@@ -77,6 +111,14 @@ const UserActivityLogView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+            <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                pageSize={pageSize}
+                totalItems={totalItems}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+            />
         </div>
     </div>
   );

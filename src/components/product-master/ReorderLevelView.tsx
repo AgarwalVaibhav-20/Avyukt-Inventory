@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   fetchStockControlData,
@@ -16,6 +16,8 @@ import {
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchItems, updateInventoryItem } from "@/store/slices/inventorySlice";
+import Pagination from "@/components/common/Pagination";
+import { useListControls } from "@/hooks/useListControls";
 
 const ReorderLevelView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -23,6 +25,7 @@ const ReorderLevelView: React.FC = () => {
   const { items, loading, error } = useAppSelector((state) => state.inventory);
   const { actionLoading } = useAppSelector((state) => state.stockControl);
   const [search, setSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editLevel, setEditLevel] = useState<number>(0);
 
@@ -47,15 +50,30 @@ const ReorderLevelView: React.FC = () => {
     setEditingId(null);
   };
 
-  const filteredItems = useMemo(
-    () =>
-      items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(search.toLowerCase()) ||
-          item.sku.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [items, search],
-  );
+  const {
+    filteredItems,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items,
+    searchTerm: search,
+    filters: { stock: stockFilter },
+    initialPageSize: 10,
+    searchFn: (item, term) =>
+      item.name.toLowerCase().includes(term) ||
+      item.sku.toLowerCase().includes(term),
+    filterFn: (item, filters) => {
+      if (filters.stock === "low") return item.stock <= item.reorderLevel && item.stock > 0;
+      if (filters.stock === "out") return item.stock === 0;
+      if (filters.stock === "healthy") return item.stock > item.reorderLevel;
+      return true;
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -65,18 +83,30 @@ const ReorderLevelView: React.FC = () => {
             <BarChart3 className="text-blue-600" size={20} /> Reorder Levels &
             Safety Stock
           </h2>
-          <div className="relative w-64">
-            <Search
-              className="absolute left-3 top-2.5 text-slate-400"
-              size={16}
-            />
-            <input
-              type="text"
-              placeholder="Search Item..."
-              className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex gap-3">
+            <div className="relative w-64">
+              <Search
+                className="absolute left-3 top-2.5 text-slate-400"
+                size={16}
+              />
+              <input
+                type="text"
+                placeholder="Search Item..."
+                className="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg text-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <select
+              value={stockFilter}
+              onChange={(e) => setStockFilter(e.target.value)}
+              className="w-40 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            >
+              <option value="">All stock</option>
+              <option value="healthy">Healthy</option>
+              <option value="low">Low stock</option>
+              <option value="out">Out of stock</option>
+            </select>
           </div>
         </div>
 
@@ -111,7 +141,7 @@ const ReorderLevelView: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => {
+                pagedItems.map((item) => {
                   const isEditing = editingId === item.id;
                   const isLow = item.stock <= item.reorderLevel;
 
@@ -199,6 +229,14 @@ const ReorderLevelView: React.FC = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

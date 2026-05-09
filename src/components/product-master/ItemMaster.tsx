@@ -63,6 +63,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import Pagination from "@/components/common/Pagination";
+import { useListControls } from "@/hooks/useListControls";
 
 const ITEM_TYPES = [
   "Trading",
@@ -221,25 +223,36 @@ const ItemMaster: React.FC = () => {
     }
   }, [selectedHsn]);
 
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      const s = search.toLowerCase();
-      const matchesSearch =
-        item.name.toLowerCase().includes(s) ||
-        (item.sku || "").toLowerCase().includes(s) ||
-        (item.itemCode || "").toLowerCase().includes(s) ||
-        (item.barcode || "").toLowerCase().includes(s);
-
+  const {
+    filteredItems,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items,
+    searchTerm: search,
+    filters,
+    initialPageSize: 10,
+    searchFn: (item, term) =>
+      item.name.toLowerCase().includes(term) ||
+      (item.sku || "").toLowerCase().includes(term) ||
+      (item.itemCode || "").toLowerCase().includes(term) ||
+      (item.barcode || "").toLowerCase().includes(term),
+    filterFn: (item, activeFilters) => {
       const matchesCategory =
-        filters.category === "all" || item.category === filters.category;
+        activeFilters.category === "all" || item.category === activeFilters.category;
       const matchesBrand =
-        filters.brand === "all" || item.brand === filters.brand;
+        activeFilters.brand === "all" || item.brand === activeFilters.brand;
       const matchesType =
-        filters.itemType === "all" || item.itemType === filters.itemType;
+        activeFilters.itemType === "all" || item.itemType === activeFilters.itemType;
 
-      return matchesSearch && matchesCategory && matchesBrand && matchesType;
-    });
-  }, [items, search, filters]);
+      return matchesCategory && matchesBrand && matchesType;
+    },
+  });
 
   const setField = <K extends keyof InventoryItem>(
     field: K,
@@ -694,7 +707,7 @@ const ItemMaster: React.FC = () => {
                 </td>
               </tr>
             ) : (
-              filteredItems.map((item) => {
+              pagedItems.map((item) => {
                 const status = stockStatus(item);
                 return (
                   <tr
@@ -854,6 +867,18 @@ const ItemMaster: React.FC = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="px-8">
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 20, 50, 100]}
+        />
       </div>
 
       {/* ── Dialog ── */}

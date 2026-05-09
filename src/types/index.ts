@@ -723,10 +723,21 @@ export interface DocumentAttachment {
   size: string;
   uploadDate: string;
   uploadedBy: string;
-  referenceType: 'Item' | 'Order' | 'Invoice' | 'General';
+  referenceType: 'Item' | 'Order' | 'Invoice' | 'General' | 'CustomerStock';
   referenceId?: string;
+  referenceLabel?: string;
   version: number;
   url?: string;
+  versions?: {
+    version: number;
+    uploadedBy: string;
+    uploadedOn: string;
+    size: string;
+    notes?: string;
+    fileUrl: string;
+    mimeType?: string;
+    originalName?: string;
+  }[];
 }
 
 // --- Report Types ---

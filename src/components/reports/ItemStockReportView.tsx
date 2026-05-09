@@ -3,11 +3,14 @@ import { reportService } from '@/services/reportService';
 import { InventoryItem } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Search, Download, Loader2, Package, DollarSign, TrendingUp } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const ItemStockReportView: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [stockFilter, setStockFilter] = useState('all');
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
 
@@ -46,10 +49,31 @@ const ItemStockReportView: React.FC = () => {
     setLoading(false);
   };
 
-  const filtered = items.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
-    i.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filteredItems: filtered,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items,
+    searchTerm: search,
+    filters: { stock: stockFilter },
+    initialPageSize: 10,
+    searchFn: (i, term) =>
+      i.name.toLowerCase().includes(term) ||
+      i.sku.toLowerCase().includes(term) ||
+      (i.category || '').toLowerCase().includes(term),
+    filterFn: (i, filters) => {
+      if (filters.stock === 'low') return i.stock <= i.reorderLevel && i.stock > 0;
+      if (filters.stock === 'out') return i.stock === 0;
+      if (filters.stock === 'healthy') return i.stock > i.reorderLevel;
+      return true;
+    },
+  });
 
   if (loading) return (
     <div className="flex h-screen justify-center items-center">
@@ -159,6 +183,16 @@ const ItemStockReportView: React.FC = () => {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
+              <select
+                value={stockFilter}
+                onChange={(e) => setStockFilter(e.target.value)}
+                className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All stock</option>
+                <option value="healthy">Healthy</option>
+                <option value="low">Low stock</option>
+                <option value="out">Out of stock</option>
+              </select>
               <button className="inline-flex items-center gap-2 border border-slate-300 px-4 py-2.5 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors">
                 <Download size={18} /> Export
               </button>
@@ -179,7 +213,7 @@ const ItemStockReportView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((item, index) => {
+              {pagedItems.map((item, index) => {
                 const isLowStock = item.stock <= item.reorderLevel;
                 return (
                   <tr
@@ -206,6 +240,16 @@ const ItemStockReportView: React.FC = () => {
               })}
             </tbody>
           </table>
+        </div>
+        <div className="px-6 border-t border-slate-100">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
     </div>

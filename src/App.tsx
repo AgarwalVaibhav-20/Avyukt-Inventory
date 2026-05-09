@@ -95,6 +95,8 @@ import LabelPrintingView from "@/components/barcode/LabelPrintingView";
 import RfidIntegrationView from "@/components/barcode/RfidIntegrationView";
 import PurchaseRequisitionView from "@/components/inward/PurchaseRequisitionView";
 import AiAssistantModal from "@/components/common/AiAssistantModal";
+import SearchResultsPage from "@/components/common/SearchResultsPage";
+import GlobalSearch from "@/components/common/GlobalSearch";
 
 // Master Data Views
 import CategoryView from "@/components/admin/master/CategoryView";
@@ -494,6 +496,12 @@ const App: React.FC = () => {
       case "vm-approved":
         return <ApprovedVendorListView />;
 
+      // --- Customer Stock ---
+      case "cs-consign":
+      case "cs-loc":
+      case "cs-ret":
+        return <ConsignmentStockView />;
+
       // --- Approvals & Controls ---
       case "app-pur":
         return <PurchaseApprovalView />;
@@ -577,21 +585,25 @@ const App: React.FC = () => {
       >
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1 max-w-3xl">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-slate-500 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-all active:scale-95"
+              className="text-slate-500 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-all active:scale-95 flex-shrink-0"
               title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
             >
               <ChevronRight size={24} />
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-slate-800 truncate">
                 {activeLabel}
               </h1>
-              <p className="text-xs text-slate-500 hidden sm:block">
+              <p className="text-xs text-slate-500 hidden sm:block truncate">
                 ACT Business Solution / {parentLabel} / {activeLabel}
               </p>
+            </div>
+            {/* Global Search */}
+            <div className="hidden lg:block ml-auto">
+              <GlobalSearch className="w-64" />
             </div>
           </div>
 
@@ -1102,6 +1114,20 @@ const App: React.FC = () => {
                 element={<DebitCreditNotesView />}
               />
 
+              {/* Customer Stock */}
+              <Route
+                path="/customer/cs-consign"
+                element={<ConsignmentStockView />}
+              />
+              <Route
+                path="/customer/cs-loc"
+                element={<ConsignmentStockView />}
+              />
+              <Route
+                path="/customer/cs-ret"
+                element={<ConsignmentStockView />}
+              />
+
               {/* Vendor Management */}
               <Route path="/vendor/vm-master" element={<VendorMasterView />} />
               <Route
@@ -1212,6 +1238,9 @@ const App: React.FC = () => {
 
               {/* Profile */}
               <Route path="/profile" element={<ProfileView />} />
+
+              {/* Global Search */}
+              <Route path="/search" element={<SearchResultsPage />} />
 
               {/* Fallback */}
               <Route

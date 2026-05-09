@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { productService } from '@/services/productService';
 import { InventoryItem } from '@/types';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const ItemVariantPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -95,12 +97,29 @@ const ItemVariantPage: React.FC = () => {
   };
 
   const linkedItemId = searchParams.get('item');
-  const filteredVariants = variants.filter(v => {
-    const matchesLinkedItem = linkedItemId ? v.productId?._id === linkedItemId || v.productId === linkedItemId : true;
-    const matchesSearch = linkedItemId ? true :
-      v.variantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesLinkedItem && matchesSearch;
+  const {
+    filteredItems: filteredVariants,
+    pagedItems: pagedVariants,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: variants,
+    searchTerm: linkedItemId ? "" : searchTerm,
+    filters: { linkedItemId },
+    initialPageSize: 10,
+    searchFn: (v, term) =>
+      v.variantName.toLowerCase().includes(term) ||
+      v.sku.toLowerCase().includes(term) ||
+      (v.barcode || '').toLowerCase().includes(term),
+    filterFn: (v, filters) => {
+      return filters.linkedItemId
+        ? v.productId?._id === filters.linkedItemId || v.productId === filters.linkedItemId
+        : true;
+    },
   });
 
   return (
@@ -300,7 +319,7 @@ const ItemVariantPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredVariants.map((variant) => (
+                  pagedVariants.map((variant) => (
                     <tr key={variant._id} className="group hover:bg-slate-50/80 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -361,6 +380,16 @@ const ItemVariantPage: React.FC = () => {
             </table>
           </div>
         </CardContent>
+        <div className="px-6 border-t border-slate-100">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
       </Card>
     </div>
   );

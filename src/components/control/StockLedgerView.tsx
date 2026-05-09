@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchStockControlData } from '@/store/slices/stockControlSlice';
 import { 
@@ -6,6 +6,8 @@ import {
     Filter, Download, Calendar, Box, MapPin, DollarSign,
     TrendingDown, TrendingUp, ChevronRight, Hash, Activity
 } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const StockLedgerView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -17,20 +19,29 @@ const StockLedgerView: React.FC = () => {
     dispatch(fetchStockControlData());
   }, [dispatch]);
 
-  const filtered = useMemo(
-    () =>
-      ledger.filter(
-        (entry) => {
-          const matchesSearch = entry.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                entry.reference.toLowerCase().includes(searchTerm.toLowerCase());
-          const matchesType = typeFilter === 'all' || 
-                              (typeFilter === 'out' && entry.quantityChange < 0) ||
-                              (typeFilter === 'in' && entry.quantityChange > 0);
-          return matchesSearch && matchesType;
-        }
-      ),
-    [ledger, searchTerm, typeFilter]
-  );
+  const {
+    filteredItems: filtered,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: ledger,
+    searchTerm,
+    filters: { type: typeFilter },
+    initialPageSize: 10,
+    searchFn: (entry, term) =>
+      entry.itemName.toLowerCase().includes(term) ||
+      entry.reference.toLowerCase().includes(term) ||
+      (entry.sku || '').toLowerCase().includes(term),
+    filterFn: (entry, filters) =>
+      filters.type === 'all' ||
+      (filters.type === 'out' && entry.quantityChange < 0) ||
+      (filters.type === 'in' && entry.quantityChange > 0),
+  });
 
   const handleExport = () => {
     if (filtered.length === 0) return;
@@ -154,7 +165,7 @@ const StockLedgerView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    filtered.map(entry => (
+                                    pagedItems.map(entry => (
                                         <tr key={entry.id} className="group hover:bg-slate-50/50 transition-all duration-300">
                                             <td className="px-8 py-7">
                                                 <div className="flex flex-col">
@@ -214,6 +225,16 @@ const StockLedgerView: React.FC = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                    <div className="px-2">
+                        <Pagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            pageSize={pageSize}
+                            totalItems={totalItems}
+                            onPageChange={setPage}
+                            onPageSizeChange={setPageSize}
+                        />
                     </div>
                 </div>
             </div>

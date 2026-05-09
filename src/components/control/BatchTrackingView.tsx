@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createBatchRecord, fetchStockControlData } from '@/store/slices/stockControlSlice';
 import { Package, Calendar, Plus, Loader2, Search, Filter, Hash, Archive, AlertCircle, CheckCircle2, Clock, Info, ShieldAlert, BarChart3, Tag } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const BatchTrackingView: React.FC = () => {
   const dispatch = useAppDispatch();
   const { batches, items, loading, actionLoading, error } = useAppSelector((state) => state.stockControl);
   const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   
   // Form State
   const [formData, setFormData] = useState({
@@ -41,10 +44,25 @@ const BatchTrackingView: React.FC = () => {
       }
   };
 
-  const filteredBatches = batches.filter(b => 
-    b.batchNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.itemName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    filteredItems: filteredBatches,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: batches,
+    searchTerm,
+    filters: { status: statusFilter },
+    initialPageSize: 9,
+    searchFn: (b, term) =>
+      b.batchNumber.toLowerCase().includes(term) ||
+      b.itemName.toLowerCase().includes(term),
+    filterFn: (b, filters) => filters.status === 'all' || b.status === filters.status,
+  });
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
@@ -185,6 +203,16 @@ const BatchTrackingView: React.FC = () => {
                                     onChange={e => setSearchTerm(e.target.value)}
                                 />
                             </div>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="w-full md:w-48 px-4 py-3.5 bg-slate-50 border-2 border-slate-50 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-purple-500/5 focus:border-purple-500/20 focus:bg-white outline-none"
+                            >
+                                <option value="all">All statuses</option>
+                                <option value="Active">Active</option>
+                                <option value="Expired">Expired</option>
+                                <option value="Depleted">Depleted</option>
+                            </select>
                             <div className="flex gap-8">
                                 <div className="text-right">
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Total Lots</p>
@@ -224,7 +252,7 @@ const BatchTrackingView: React.FC = () => {
                                     </div>
                                 </div>
                             ) : (
-                                filteredBatches.map(b => (
+                                pagedItems.map(b => (
                                     <div key={b.id} className="group bg-white border border-slate-200 rounded-[2.5rem] p-8 hover:shadow-2xl hover:shadow-purple-100 transition-all duration-500 hover:-translate-y-2 relative overflow-hidden">
                                         <div className={`absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full opacity-5 group-hover:opacity-10 transition-opacity ${b.status === 'Active' ? 'bg-emerald-600' : 'bg-red-600'}`}></div>
                                         
@@ -278,6 +306,15 @@ const BatchTrackingView: React.FC = () => {
                                 ))
                             )}
                         </div>
+                        <Pagination
+                            currentPage={page}
+                            totalPages={totalPages}
+                            pageSize={pageSize}
+                            totalItems={totalItems}
+                            onPageChange={setPage}
+                            onPageSizeChange={setPageSize}
+                            pageSizeOptions={[6, 9, 18, 36]}
+                        />
                     </div>
                 )}
             </div>

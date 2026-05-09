@@ -1,26 +1,34 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownLeft,
   ArrowUpRight,
   Briefcase,
+  Download,
   Loader2,
+  Paperclip,
   Package,
   RefreshCcw,
   Search,
+  Upload,
 } from 'lucide-react';
-import { InventoryItem, ConsignmentEntry } from '@/types';
+import { InventoryItem, ConsignmentEntry, DocumentAttachment } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createConsignmentEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 import { ConsignmentCustomerOption, movementService } from '@/services/movementService';
+import { documentService } from '@/services/documentService';
 
 const ConsignmentStockView: React.FC = () => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { consignments, items, actionLoading, error, loading } = useAppSelector((state) => state.stockMovement);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Outward' | 'Inward'>('All');
   const [customers, setCustomers] = useState<ConsignmentCustomerOption[]>([]);
+  const [attachments, setAttachments] = useState<DocumentAttachment[]>([]);
   const [supportLoading, setSupportLoading] = useState(true);
+  const [documentLoading, setDocumentLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: 'Outward' as 'Outward' | 'Inward',
     partyId: '',
@@ -37,8 +45,12 @@ const ConsignmentStockView: React.FC = () => {
   useEffect(() => {
     const loadCustomers = async () => {
       setSupportLoading(true);
-      const options = await movementService.getConsignmentCustomers();
+      const [options, linkedDocuments] = await Promise.all([
+        movementService.getConsignmentCustomers(),
+        documentService.getAttachments({ referenceType: 'CustomerStock', limit: 200 }),
+      ]);
       setCustomers(options);
+      setAttachments(linkedDocuments);
       setSupportLoading(false);
     };
 
@@ -47,6 +59,13 @@ const ConsignmentStockView: React.FC = () => {
 
   const typedItems = items as InventoryItem[];
   const typedConsignments = consignments as ConsignmentEntry[];
+  const attachmentsByConsignment = useMemo(() => {
+    return attachments.reduce<Record<string, DocumentAttachment[]>>((acc, attachment) => {
+      if (!attachment.referenceId) return acc;
+      acc[attachment.referenceId] = [...(acc[attachment.referenceId] || []), attachment];
+      return acc;
+    }, {});
+  }, [attachments]);
 
   const filteredConsignments = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -134,6 +153,37 @@ const ConsignmentStockView: React.FC = () => {
       setCustomers(refreshedCustomers);
     } catch (submitError) {
       console.error('Consignment creation failed', submitError);
+    }
+  };
+
+  const refreshCustomerStockDocuments = async () => {
+    const linkedDocuments = await documentService.getAttachments({
+      referenceType: 'CustomerStock',
+      limit: 200,
+    });
+    setAttachments(linkedDocuments);
+  };
+
+  const handleDocumentUpload = async (entry: ConsignmentEntry, file?: File | null) => {
+    if (!file) return;
+
+    setDocumentLoading(true);
+    try {
+      await documentService.uploadAttachment(file, {
+        name: file.name,
+        category: 'Document',
+        tag: entry.type === 'Outward' ? 'Contract' : 'Report',
+        uploadedBy: 'Admin User',
+        referenceType: 'CustomerStock',
+        referenceId: entry.id,
+        referenceLabel: `${entry.reference} / ${entry.partyName}`,
+        notes: `Linked to customer stock ${entry.reference}`,
+      });
+      await refreshCustomerStockDocuments();
+    } catch (uploadError: any) {
+      alert(uploadError?.response?.data?.message || uploadError?.message || 'Document upload failed.');
+    } finally {
+      setDocumentLoading(false);
     }
   };
 
@@ -431,19 +481,20 @@ const ConsignmentStockView: React.FC = () => {
                     <th className="px-6 py-4 font-semibold text-slate-700">Type</th>
                     <th className="px-6 py-4 text-right font-semibold text-slate-700">Quantity</th>
                     <th className="px-6 py-4 font-semibold text-slate-700">Status</th>
+                    <th className="px-6 py-4 font-semibold text-slate-700">Documents</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {pageLoading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-16 text-center">
+                      <td colSpan={8} className="px-6 py-16 text-center">
                         <Loader2 size={24} className="mx-auto mb-2 animate-spin text-blue-600" />
                         <p className="text-slate-500 font-medium">Loading customer stock...</p>
                       </td>
                     </tr>
                   ) : filteredConsignments.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-16 text-center">
+                      <td colSpan={8} className="px-6 py-16 text-center">
                         <Package size={32} className="mx-auto mb-3 text-slate-300" />
                         <p className="text-slate-500 font-medium">No customer stock records found.</p>
                       </td>
@@ -489,6 +540,49 @@ const ConsignmentStockView: React.FC = () => {
                           >
                             {entry.status}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {(attachmentsByConsignment[entry.id] || []).slice(0, 2).map((attachment) => (
+                              <a
+                                key={attachment.id}
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                              >
+                                <Download size={12} />
+                                v{attachment.version}
+                              </a>
+                            ))}
+                            {(attachmentsByConsignment[entry.id] || []).length === 0 && (
+                              <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                                <Paperclip size={12} /> None
+                              </span>
+                            )}
+                            {(attachmentsByConsignment[entry.id] || []).length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/documents/doc-ver?referenceType=CustomerStock&referenceId=${entry.id}`,
+                                  )
+                                }
+                                className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                              >
+                                View all
+                              </button>
+                            )}
+                            <label className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100">
+                              {documentLoading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                              Upload
+                              <input
+                                type="file"
+                                className="hidden"
+                                onChange={(event) => handleDocumentUpload(entry, event.target.files?.[0])}
+                              />
+                            </label>
+                          </div>
                         </td>
                       </tr>
                     ))

@@ -12,6 +12,15 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   const organisationId = localStorage.getItem("organisationId");
 
+  // For FormData, do not force JSON content type.
+  // Let the browser set multipart/form-data with boundary.
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    if (config.headers) {
+      delete (config.headers as any)["Content-Type"];
+      delete (config.headers as any)["content-type"];
+    }
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

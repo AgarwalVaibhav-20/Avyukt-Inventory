@@ -3,12 +3,15 @@ import { useSearchParams } from 'react-router-dom';
 import { productService } from '@/services/productService';
 import { InventoryItem } from '@/types';
 import { DollarSign, Save, Search, Loader2 } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const ItemPricingView: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [marginFilter, setMarginFilter] = useState('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   
   // Local state for editing row
@@ -45,10 +48,30 @@ const ItemPricingView: React.FC = () => {
     loadData();
   };
 
-  const filteredItems = items.filter(i => 
-    i.name.toLowerCase().includes(search.toLowerCase()) || 
-    i.sku.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filteredItems,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items,
+    searchTerm: search,
+    filters: { margin: marginFilter },
+    initialPageSize: 10,
+    searchFn: (i, term) =>
+      i.name.toLowerCase().includes(term) ||
+      i.sku.toLowerCase().includes(term),
+    filterFn: (i, filters) => {
+      const margin = i.salePrice > 0 ? ((i.salePrice - i.unitPrice) / i.salePrice) * 100 : 0;
+      if (filters.margin === 'low') return margin < 20;
+      if (filters.margin === 'healthy') return margin >= 20;
+      return true;
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -57,7 +80,8 @@ const ItemPricingView: React.FC = () => {
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                 <DollarSign className="text-green-600" size={20}/> Item Pricing Master
             </h2>
-            <div className="relative w-64">
+            <div className="flex gap-3">
+              <div className="relative w-64">
                 <Search className="absolute left-3 top-2.5 text-slate-400" size={16}/>
                 <input 
                     type="text" 
@@ -66,6 +90,16 @@ const ItemPricingView: React.FC = () => {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                 />
+              </div>
+              <select
+                value={marginFilter}
+                onChange={(e) => setMarginFilter(e.target.value)}
+                className="w-40 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+              >
+                <option value="all">All margins</option>
+                <option value="healthy">Healthy</option>
+                <option value="low">Low margin</option>
+              </select>
             </div>
         </div>
 
@@ -87,7 +121,7 @@ const ItemPricingView: React.FC = () => {
                     ) : filteredItems.length === 0 ? (
                         <tr><td colSpan={6} className="py-8 text-center text-slate-500">No items found.</td></tr>
                     ) : (
-                        filteredItems.map(item => {
+                        pagedItems.map(item => {
                             const isEditing = editingId === item.id;
                             const margin = item.salePrice > 0 ? ((item.salePrice - item.unitPrice) / item.salePrice) * 100 : 0;
                             
@@ -154,6 +188,14 @@ const ItemPricingView: React.FC = () => {
                 </tbody>
             </table>
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

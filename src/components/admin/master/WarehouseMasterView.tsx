@@ -57,6 +57,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import Pagination from "@/components/common/Pagination";
+import { useListControls } from "@/hooks/useListControls";
 
 const WarehouseMasterView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -64,6 +66,7 @@ const WarehouseMasterView: React.FC = () => {
   
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   
   // Modal States
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -134,11 +137,26 @@ const WarehouseMasterView: React.FC = () => {
     }
   };
 
-  const filteredWarehouses = warehouses.filter(
-    (w) =>
-      w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      w.location.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const {
+    filteredItems: filteredWarehouses,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: warehouses,
+    searchTerm,
+    filters: { type: typeFilter },
+    initialPageSize: 9,
+    searchFn: (w, term) =>
+      w.name.toLowerCase().includes(term) ||
+      w.location.toLowerCase().includes(term) ||
+      w.contactPerson.toLowerCase().includes(term),
+    filterFn: (w, filters) => filters.type === "all" || w.type === filters.type,
+  });
 
   const stats = [
     { label: "Total Warehouses", value: warehouses.length, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
@@ -204,6 +222,18 @@ const WarehouseMasterView: React.FC = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-56 h-11 bg-slate-50/50 border-none">
+            <SelectValue placeholder="Warehouse type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="General">General</SelectItem>
+            <SelectItem value="Distribution Center">Distribution Center</SelectItem>
+            <SelectItem value="Cold Storage">Cold Storage</SelectItem>
+            <SelectItem value="Retail Store">Retail Store</SelectItem>
+          </SelectContent>
+        </Select>
         <div className="flex items-center gap-2 bg-slate-100/50 p-1 rounded-lg border border-slate-100">
           <Button
             variant={viewMode === "grid" ? "white" : "ghost"}
@@ -227,7 +257,7 @@ const WarehouseMasterView: React.FC = () => {
       {/* Content Area */}
       {viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredWarehouses.map((w) => (
+          {pagedItems.map((w) => (
             <Card key={w.id} className="group border-slate-100 hover:border-blue-200 shadow-sm hover:shadow-xl transition-all duration-300">
                <div className="h-1.5 bg-blue-600 w-full rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                <CardHeader className="pb-3">
@@ -296,7 +326,7 @@ const WarehouseMasterView: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredWarehouses.map((w) => (
+              {pagedItems.map((w) => (
                 <TableRow key={w.id} className="group cursor-pointer hover:bg-slate-50/50" onClick={() => handleOpenDetails(w)}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -334,6 +364,16 @@ const WarehouseMasterView: React.FC = () => {
           </Table>
         </Card>
       )}
+
+      <Pagination
+        currentPage={page}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={totalItems}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[6, 9, 18, 36]}
+      />
 
       {/* Add/Edit Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>

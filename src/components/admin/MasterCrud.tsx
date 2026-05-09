@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Search, Save, X, Loader2 } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import Pagination from "@/components/common/Pagination";
+import { useListControls } from "@/hooks/useListControls";
 import {
   fetchMasterData,
   addMasterData,
@@ -138,11 +140,20 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     }
   };
 
-  const filteredData = Array.isArray(data) ? data.filter((item) =>
-    Object.values(item).some((val) =>
-      String(val).toLowerCase().includes(searchTerm.toLowerCase()),
-    ),
-  ) : [];
+  const {
+    filteredItems: filteredData,
+    pagedItems,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: Array.isArray(data) ? data : [],
+    searchTerm,
+    initialPageSize: 10,
+  });
 
   return (
     <div className="space-y-6">
@@ -277,7 +288,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredData.map((item) => (
+                pagedItems.map((item) => (
                   <tr
                     key={item.id}
                     className="hover:bg-slate-50 transition-colors"
@@ -303,6 +314,16 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+        <div className="px-4 border-t border-slate-100">
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
     </div>

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchVendors, createVendor, updateVendor, deleteVendor } from '@/store/slices/procurementSlice';
 import { Vendor } from '@/types';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 import { Users, Plus, Search, Edit, Trash2, Star, Loader2, Save, X, Phone, Mail, User, MapPin, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const VendorMasterView: React.FC = () => {
@@ -11,6 +13,7 @@ const VendorMasterView: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentVendor, setCurrentVendor] = useState<Partial<Vendor>>({});
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
 
   useEffect(() => {
@@ -67,10 +70,27 @@ const VendorMasterView: React.FC = () => {
       }
   };
 
-  const filteredVendors = vendors.filter(v => 
-      v.name.toLowerCase().includes(search.toLowerCase()) || 
-      v.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+    filteredItems: filteredVendors,
+    pagedItems: pagedVendors,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+      items: vendors,
+      searchTerm: search,
+      filters: { status: statusFilter },
+      initialPageSize: 9,
+      searchFn: (v, term) =>
+          v.name.toLowerCase().includes(term) ||
+          v.code.toLowerCase().includes(term) ||
+          (v.phone || '').toLowerCase().includes(term) ||
+          (v.email || '').toLowerCase().includes(term),
+      filterFn: (v, filters) => !filters.status || v.status === filters.status,
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -101,8 +121,19 @@ const VendorMasterView: React.FC = () => {
                     onChange={e => setSearch(e.target.value)}
                 />
             </div>
+            <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full md:w-56 px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 outline-none"
+            >
+                <option value="">All statuses</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Pending Approval">Pending Approval</option>
+                <option value="Blacklisted">Blacklisted</option>
+            </select>
             <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest px-2">
-                Total: <span className="text-slate-800 text-sm">{vendors.length}</span>
+                Showing: <span className="text-slate-800 text-sm">{filteredVendors.length}</span>
             </div>
         </div>
 
@@ -202,7 +233,7 @@ const VendorMasterView: React.FC = () => {
             </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredVendors.map(v => (
+                {pagedVendors.map(v => (
                     <div key={v.id} className="group bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-2xl hover:border-blue-200 transition-all duration-300 relative overflow-hidden">
                         <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
                             <Users size={80} />
@@ -257,6 +288,15 @@ const VendorMasterView: React.FC = () => {
                 ))}
             </div>
         )}
+        <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={totalItems}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[6, 9, 18, 36]}
+        />
     </div>
   );
 };
