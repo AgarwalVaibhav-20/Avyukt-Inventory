@@ -124,7 +124,11 @@ const ExpiryAnalysisReportView: React.FC = () => {
         <div className="group overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-md hover:shadow-xl transition-all">
           <div className="flex items-start justify-between">
             <div>
+<<<<<<< Updated upstream
               <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Safe ({">"}30d)</p>
+=======
+              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Safe (&gt;30d)</p>
+>>>>>>> Stashed changes
               <p className="text-4xl font-bold text-emerald-900 mt-3">{stats.safe}</p>
             </div>
             <div className="rounded-xl bg-white p-3 text-emerald-600 shadow-md group-hover:shadow-lg transition-shadow">

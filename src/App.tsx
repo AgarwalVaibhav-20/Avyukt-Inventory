@@ -70,6 +70,7 @@ import GRNApprovalView from "@/components/approvals/GRNApprovalView";
 import StockAdjustmentApprovalView from "@/components/approvals/StockAdjustmentApprovalView";
 import TransferApprovalView from "@/components/approvals/TransferApprovalView";
 import ReturnApprovalView from "@/components/approvals/ReturnApprovalView";
+import SettingsView from "@/components/settings/SettingsView";
 import InventorySettingsView from "@/components/settings/InventorySettingsView";
 import AutoReorderRulesView from "@/components/settings/AutoReorderRulesView";
 import TaxConfigurationView from "@/components/settings/TaxConfigurationView";
@@ -95,8 +96,13 @@ import LabelPrintingView from "@/components/barcode/LabelPrintingView";
 import RfidIntegrationView from "@/components/barcode/RfidIntegrationView";
 import PurchaseRequisitionView from "@/components/inward/PurchaseRequisitionView";
 import AiAssistantModal from "@/components/common/AiAssistantModal";
+<<<<<<< Updated upstream
 import SearchResultsPage from "@/components/common/SearchResultsPage";
 import GlobalSearch from "@/components/common/GlobalSearch";
+=======
+import UserManagementView from "@/components/users/UserManagementView";
+import SessionBanner from "@/components/users/SessionBanner";
+>>>>>>> Stashed changes
 
 // Master Data Views
 import CategoryView from "@/components/admin/master/CategoryView";
@@ -117,7 +123,7 @@ import { Toaster } from 'react-hot-toast';
 import { fetchProfile } from '@/store/slices/authSlice';
 import Login from "@/components/common/Login";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { logout } from "@/store/slices/authSlice";
+import { logout, endDelegatedSession } from "@/store/slices/authSlice";
 import {
   Routes,
   Route,
@@ -146,7 +152,7 @@ const App: React.FC = () => {
   // Socket ref
   const socketRef = React.useRef<any>(null);
 
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isDelegatedSession } = useAppSelector((state) => state.auth);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -284,6 +290,7 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    console.log('📍 renderContent called with activeMenuId:', activeMenuId);
     switch (activeMenuId) {
       // --- Dashboard Sub-Menus ---
       case "dash-overview":
@@ -516,17 +523,17 @@ const App: React.FC = () => {
 
       // --- Settings & Configuration ---
       case "set-inv":
-        return <InventorySettingsView />;
+        return <SettingsView defaultTab="inventory" />;
       case "set-rule":
-        return <AutoReorderRulesView />;
+        return <SettingsView defaultTab="autoreorder" />;
       case "set-tax":
-        return <TaxConfigurationView />;
+        return <SettingsView defaultTab="tax" />;
       case "set-num":
-        return <NumberSeriesView />;
+        return <SettingsView defaultTab="number" />;
       case "set-field":
-        return <CustomFieldsView />;
+        return <SettingsView defaultTab="custom" />;
       case "set-flow":
-        return <WorkflowRulesView />;
+        return <SettingsView defaultTab="workflow" />;
 
       // --- Audit & Logs ---
       case "aud-stock":
@@ -564,6 +571,11 @@ const App: React.FC = () => {
         return <GstTaxReportView />;
       case "rep-audit":
         return <AuditReportView />;
+
+      // --- User & Access ---
+      case "usr-mgmt":
+        console.log('🎯 Rendering UserManagementView');
+        return <UserManagementView />;
 
       // Reusing Generic for others
       default:
@@ -791,6 +803,17 @@ const App: React.FC = () => {
              </div>
           </div>
         </header>
+
+        {/* Session Banner */}
+        {isDelegatedSession && user?.email && (
+          <SessionBanner
+            delegatedUserEmail={user.email}
+            onReturnToOriginal={() => {
+              dispatch(endDelegatedSession());
+              navigate('/dashboard/dash-overview');
+            }}
+          />
+        )}
 
         {/* Main Content Scrollable Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
@@ -1169,24 +1192,24 @@ const App: React.FC = () => {
               {/* Settings */}
               <Route
                 path="/settings/set-inv"
-                element={<InventorySettingsView />}
+                element={<SettingsView defaultTab="inventory" />}
               />
               <Route
                 path="/settings/set-rule"
-                element={<AutoReorderRulesView />}
+                element={<SettingsView defaultTab="autoreorder" />}
               />
               <Route
                 path="/settings/set-tax"
-                element={<TaxConfigurationView />}
+                element={<SettingsView defaultTab="tax" />}
               />
-              <Route path="/settings/set-num" element={<NumberSeriesView />} />
+              <Route path="/settings/set-num" element={<SettingsView defaultTab="number" />} />
               <Route
                 path="/settings/set-field"
-                element={<CustomFieldsView />}
+                element={<SettingsView defaultTab="custom" />}
               />
               <Route
                 path="/settings/set-flow"
-                element={<WorkflowRulesView />}
+                element={<SettingsView defaultTab="workflow" />}
               />
 
               {/* Audit */}
@@ -1235,6 +1258,9 @@ const App: React.FC = () => {
               />
               <Route path="/reports/rep-gst" element={<GstTaxReportView />} />
               <Route path="/reports/rep-audit" element={<AuditReportView />} />
+
+              {/* Users & Access */}
+              <Route path="/users/usr-mgmt" element={<UserManagementView />} />
 
               {/* Profile */}
               <Route path="/profile" element={<ProfileView />} />

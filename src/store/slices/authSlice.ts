@@ -9,6 +9,12 @@ interface AuthState {
   profileLoading: boolean;
   updateLoading: boolean;
   error: string | null;
+  // Delegated session fields
+  isDelegatedSession: boolean;
+  originalUser: any | null;
+  originalToken: string | null;
+  delegatedAccessRequestId: string | null;
+  delegatedPermissionLevel: 'view' | 'edit' | 'delete' | null;
 }
 
 const initialState: AuthState = {
@@ -19,6 +25,11 @@ const initialState: AuthState = {
   profileLoading: false,
   updateLoading: false,
   error: null,
+  isDelegatedSession: false,
+  originalUser: null,
+  originalToken: null,
+  delegatedAccessRequestId: null,
+  delegatedPermissionLevel: null,
 };
 
 export const login = createAsyncThunk(
@@ -101,13 +112,64 @@ const authSlice = createSlice({
   reducers: {
     logout: (state) => {
       authService.logout();
+      try { localStorage.removeItem('originalToken'); } catch {}
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.isDelegatedSession = false;
+      state.originalUser = null;
+      state.originalToken = null;
+      state.delegatedAccessRequestId = null;
+      state.delegatedPermissionLevel = null;
     },
     clearError: (state) => {
       state.error = null;
     },
+    startDelegatedSession: (state, action) => {
+      const { delegatedUser, token, requestId, permissionLevel } = action.payload;
+
+      // Store original user/token if not already in a delegated session
+      if (!state.isDelegatedSession) {
+        state.originalUser = { ...state.user };
+        state.originalToken = state.token;
+        try {
+          if (state.token) localStorage.setItem('originalToken', state.token);
+        } catch {}
+      }
+
+      // Switch to delegated user (and token, if provided)
+      state.user = delegatedUser;
+      if (token) {
+        state.token = token;
+        try { localStorage.setItem('token', token); } catch {}
+      }
+      state.isDelegatedSession = true;
+      state.delegatedAccessRequestId = requestId || null;
+      state.delegatedPermissionLevel = permissionLevel || null;
+    },
+    endDelegatedSession: (state) => {
+      // Restore original user
+      if (state.originalUser) {
+        state.user = state.originalUser;
+      }
+
+      // Restore original token (from state or fallback to localStorage)
+      let restoredToken: string | null = state.originalToken;
+      if (!restoredToken) {
+        try { restoredToken = localStorage.getItem('originalToken'); } catch { restoredToken = null; }
+      }
+      if (restoredToken) {
+        state.token = restoredToken;
+        try { localStorage.setItem('token', restoredToken); } catch {}
+      }
+      try { localStorage.removeItem('originalToken'); } catch {}
+
+      state.isDelegatedSession = false;
+      state.originalUser = null;
+      state.originalToken = null;
+      state.delegatedAccessRequestId = null;
+      state.delegatedPermissionLevel = null;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -120,6 +182,8 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.user = action.payload.user;
         state.token = action.payload.token;
+        state.isDelegatedSession = false;
+        state.originalUser = null;
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
@@ -146,6 +210,8 @@ const authSlice = createSlice({
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
+        state.isDelegatedSession = false;
+        state.originalUser = null;
       })
       .addCase(verifyOtp.rejected, (state, action) => {
         state.loading = false;
@@ -166,7 +232,16 @@ const authSlice = createSlice({
         state.profileLoading = true;
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
+<<<<<<< Updated upstream
         state.profileLoading = false;
+=======
+        state.loading = false;
+        // In a delegated session the profile call runs under the delegated
+        // token, so action.payload.user is the *delegated* user, not the
+        // original. Update state.user (the active identity) but never
+        // overwrite originalUser — that must remain the admin we'll
+        // return to via endDelegatedSession.
+>>>>>>> Stashed changes
         state.user = action.payload.user;
       })
       .addCase(fetchProfile.rejected, (state, action) => {
@@ -187,5 +262,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, startDelegatedSession, endDelegatedSession } = authSlice.actions;
 export default authSlice.reducer;
