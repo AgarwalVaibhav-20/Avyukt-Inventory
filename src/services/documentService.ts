@@ -1,5 +1,8 @@
 import api from './api';
 import { Invoice, EWayBill, InspectionReport, DocumentAttachment } from '@/types';
+import { mockDb } from './mockDb';
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const unwrapList = <T>(response: any): T[] => {
   if (response.data && Array.isArray(response.data)) return response.data;
@@ -21,6 +24,16 @@ export const documentService = {
     } catch (err) {
       console.error('Error fetching invoices:', err);
       return [];
+    }
+  },
+
+  createInvoice: async (data: any): Promise<Invoice> => {
+    try {
+      const response = await api.post('/api/invoice-mappings', data);
+      return mapId(response.data.data || response.data);
+    } catch (err: any) {
+      console.error('Error creating invoice:', err);
+      throw new Error(err.response?.data?.message || 'Failed to create invoice');
     }
   },
 

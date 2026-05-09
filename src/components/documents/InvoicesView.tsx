@@ -33,7 +33,8 @@ const InvoicesView: React.FC = () => {
       const so = pendingSOs.find(s => s.id === selectedSOId);
       if(!so) return;
 
-      const tax = so.totalAmount * 0.18; // Mock 18% Tax
+      const baseAmount = so.totalAmount || 0;
+      const tax = baseAmount * 0.18; // Mock 18% Tax
       
       await documentService.createInvoice({
           soId: so.id,
@@ -41,7 +42,7 @@ const InvoicesView: React.FC = () => {
           customerName: so.customerName,
           date: new Date().toISOString().split('T')[0],
           dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0], // +30 days
-          totalAmount: so.totalAmount + tax,
+          totalAmount: baseAmount + tax,
           taxAmount: tax,
           status: 'Sent',
           items: so.items
@@ -103,7 +104,7 @@ const InvoicesView: React.FC = () => {
                                 <td className="px-6 py-4 text-slate-500">{inv.date}</td>
                                 <td className="px-6 py-4">{inv.customerName}</td>
                                 <td className="px-6 py-4 text-slate-500 text-xs">{inv.soNumber}</td>
-                                <td className="px-6 py-4 text-right font-medium">${inv.totalAmount.toFixed(2)}</td>
+                                <td className="px-6 py-4 text-right font-medium">${(inv.totalAmount || 0).toFixed(2)}</td>
                                 <td className="px-6 py-4 text-center">
                                     <span className={`px-2 py-1 rounded text-xs font-medium ${inv.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                         {inv.status}
