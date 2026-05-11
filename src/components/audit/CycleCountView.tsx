@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { auditService } from '@/services/auditService';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchAuditSessions, createAuditSession, startAuditSession } from '@/store/slices/auditSlice';
 import { warehouseService } from '@/services/warehouseService';
 import { productService } from '@/services/productService';
 import { AuditSession, Warehouse, Category } from '@/types';
@@ -7,7 +8,9 @@ import { RotateCw, Play, CheckCircle, Loader2, Plus } from 'lucide-react';
 import PhysicalVerificationView from './PhysicalVerificationView';
 
 const CycleCountView: React.FC = () => {
-  const [audits, setAudits] = useState<AuditSession[]>([]);
+  const dispatch = useAppDispatch();
+  const { sessions, loading: auditLoading, actionLoading } = useAppSelector(state => state.audit);
+  
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,12 +25,11 @@ const CycleCountView: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const [aData, wData, cData] = await Promise.all([
-        auditService.getAuditSessions(),
+    await dispatch(fetchAuditSessions());
+    const [wData, cData] = await Promise.all([
         warehouseService.getAllWarehouses(),
         productService.getCategories()
     ]);
-    setAudits(aData.filter(a => a.type === 'Cycle'));
     setWarehouses(wData);
     setCategories(cData);
     setLoading(false);
@@ -35,20 +37,18 @@ const CycleCountView: React.FC = () => {
 
   const handleCreate = async () => {
       if(!form.warehouseId) return alert("Select Warehouse");
-      // Find category name if needed, but mock service supports ID filtering simulation or Name
       const cat = categories.find(c => c.id === form.categoryId);
-      
-      await auditService.createAuditSession('Cycle', form.warehouseId, cat?.name); // Using category name as filter for mock
+      await dispatch(createAuditSession({ type: 'Cycle', warehouseId: form.warehouseId, categoryFilter: cat?.name }));
       setIsCreating(false);
       setForm({ warehouseId: '', categoryId: '' });
-      loadData();
   };
 
   const handleStart = async (id: string) => {
-      await auditService.startAudit(id);
-      loadData();
+      await dispatch(startAuditSession(id));
       setVerificationSessionId(id);
   };
+
+  const audits = sessions.filter(a => a.type === 'Cycle');
 
   if(verificationSessionId) {
       return <PhysicalVerificationView sessionId={verificationSessionId} onBack={() => { setVerificationSessionId(null); loadData(); }} />;
@@ -82,7 +82,9 @@ const CycleCountView: React.FC = () => {
                             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                     </div>
-                    <button onClick={handleCreate} className="bg-purple-600 text-white px-6 py-2 rounded text-sm hover:bg-purple-700 h-10">Create Schedule</button>
+                    <button onClick={handleCreate} disabled={actionLoading} className="bg-purple-600 text-white px-6 py-2 rounded text-sm hover:bg-purple-700 h-10 disabled:opacity-50">
+                        {actionLoading ? 'Creating...' : 'Create Schedule'}
+                    </button>
                 </div>
             )}
 
@@ -99,7 +101,7 @@ const CycleCountView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
+                        {(loading || auditLoading) ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
                          audits.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No cycle counts recorded.</td></tr> :
                          audits.map(a => (
                             <tr key={a.id} className="hover:bg-slate-50">
@@ -119,17 +121,17 @@ const CycleCountView: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     {a.status === 'Planned' && (
-                                        <button onClick={() => handleStart(a.id)} className="text-purple-600 hover:underline text-xs flex items-center justify-end gap-1 ml-auto">
+                                        <button onClick={() => handleStart(a.id || a._id)} disabled={actionLoading} className="text-purple-600 hover:underline text-xs flex items-center justify-end gap-1 ml-auto disabled:opacity-50">
                                             <Play size={12}/> Start
                                         </button>
                                     )}
                                     {a.status === 'In Progress' && (
-                                        <button onClick={() => setVerificationSessionId(a.id)} className="text-orange-600 hover:underline text-xs font-medium">
+                                        <button onClick={() => setVerificationSessionId(a.id || a._id)} className="text-orange-600 hover:underline text-xs font-medium">
                                             Enter Counts
                                         </button>
                                     )}
                                     {a.status === 'Completed' && (
-                                        <button onClick={() => setVerificationSessionId(a.id)} className="text-green-600 hover:underline text-xs flex items-center justify-end gap-1 ml-auto">
+                                        <button onClick={() => setVerificationSessionId(a.id || a._id)} className="text-green-600 hover:underline text-xs flex items-center justify-end gap-1 ml-auto">
                                             <CheckCircle size={12}/> Review
                                         </button>
                                     )}

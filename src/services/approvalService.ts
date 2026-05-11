@@ -179,12 +179,43 @@ export const approvalService = {
 
   // --- Stock Adjustments ---
   getPendingAdjustments: async (): Promise<StockAdjustment[]> => {
-    await delay(200);
-    return mockDb.getAdjustments().filter(a => a.status === 'Pending');
+    try {
+      const response = await api.get('/api/stock-adjustments', {
+        params: { status: 'Pending', page: 1, limit: 200 },
+      });
+      const data = response.data.data ?? [];
+      return data.map((adjustment: any) => {
+        const delta = Number(adjustment.delta || 0);
+        const quantity = Math.abs(delta || adjustment.quantity || adjustment.adjustedQty || 0);
+        return {
+          id: String(adjustment._id || adjustment.id || ''),
+          reference: `ADJ-${String(adjustment._id || adjustment.id || '').slice(-6).toUpperCase()}`,
+          date: adjustment.createdAt
+            ? new Date(adjustment.createdAt).toISOString().split('T')[0]
+            : '',
+          itemId: String(adjustment.itemId || ''),
+          itemName: adjustment.itemName || 'Inventory Item',
+          warehouseId: String(adjustment.warehouseId || ''),
+          type: adjustment.type || adjustment.notes || 'Correction',
+          quantity,
+          impact: adjustment.impact || (delta < 0 ? 'Deduct' : 'Add'),
+          reason: adjustment.reason || adjustment.notes || '',
+          status: adjustment.status || 'Pending',
+        };
+      });
+    } catch (e) {
+      await delay(200);
+      return mockDb.getAdjustments().filter(a => a.status === 'Pending');
+    }
   },
 
   approveAdjustment: async (id: string): Promise<void> => {
-    await delay(300);
+    try {
+      await api.patch(`/api/stock-adjustments/${id}/status`, { status: 'Approved' });
+      return;
+    } catch (e) {
+      await delay(300);
+    }
     const adjustments = mockDb.getAdjustments();
     const idx = adjustments.findIndex(a => a.id === id);
     if(idx !== -1) {
@@ -208,7 +239,12 @@ export const approvalService = {
   },
 
   rejectAdjustment: async (id: string): Promise<void> => {
-    await delay(300);
+    try {
+      await api.patch(`/api/stock-adjustments/${id}/status`, { status: 'Rejected' });
+      return;
+    } catch (e) {
+      await delay(300);
+    }
     const adjustments = mockDb.getAdjustments();
     const idx = adjustments.findIndex(a => a.id === id);
     if(idx !== -1) {

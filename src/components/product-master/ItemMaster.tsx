@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   InventoryItem,
   Category,
@@ -123,6 +124,7 @@ const emptyForm: Partial<InventoryItem> = {
 };
 
 const ItemMaster: React.FC = () => {
+  const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { items, loading } = useAppSelector((state) => state.inventory);
   const { warehouses, bins: globalBins } = useAppSelector(
@@ -279,8 +281,16 @@ const ItemMaster: React.FC = () => {
   };
 
   const openConnectedPage = (path: string, item: InventoryItem) => {
-    console.log(`Navigating to ${path} for item ${item.id}`);
-    alert(`This would open the ${path} module for ${item.name}`);
+    const params = new URLSearchParams();
+
+    if (item.id) params.set("item", item.id);
+    if (item.sku) params.set("sku", item.sku);
+    if (item.warehouseId) params.set("warehouseId", item.warehouseId);
+
+    navigate({
+      pathname: path,
+      search: params.toString() ? `?${params.toString()}` : "",
+    });
   };
 
   const addAttribute = () => {

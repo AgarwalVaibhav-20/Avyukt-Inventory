@@ -96,13 +96,10 @@ import LabelPrintingView from "@/components/barcode/LabelPrintingView";
 import RfidIntegrationView from "@/components/barcode/RfidIntegrationView";
 import PurchaseRequisitionView from "@/components/inward/PurchaseRequisitionView";
 import AiAssistantModal from "@/components/common/AiAssistantModal";
-<<<<<<< Updated upstream
 import SearchResultsPage from "@/components/common/SearchResultsPage";
 import GlobalSearch from "@/components/common/GlobalSearch";
-=======
 import UserManagementView from "@/components/users/UserManagementView";
 import SessionBanner from "@/components/users/SessionBanner";
->>>>>>> Stashed changes
 
 // Master Data Views
 import CategoryView from "@/components/admin/master/CategoryView";
@@ -116,11 +113,21 @@ import MultiWarehouseView from "@/components/admin/master/MultiWarehouseView";
 import { productService } from "@/services/productService";
 import { warehouseService } from "@/services/warehouseService";
 import { procurementService } from "@/services/procurementService";
-import { Bell, Menu, User, Rocket, Settings, LogOut, ChevronDown, Camera, ChevronRight } from 'lucide-react';
-import ProfileView from '@/components/common/ProfileView';
-import { notificationService } from '@/services/notificationService';
-import { Toaster } from 'react-hot-toast';
-import { fetchProfile } from '@/store/slices/authSlice';
+import {
+  Bell,
+  Menu,
+  User,
+  Rocket,
+  Settings,
+  LogOut,
+  ChevronDown,
+  Camera,
+  ChevronRight,
+} from "lucide-react";
+import ProfileView from "@/components/common/ProfileView";
+import { notificationService } from "@/services/notificationService";
+import { Toaster } from "react-hot-toast";
+import { fetchProfile } from "@/store/slices/authSlice";
 import Login from "@/components/common/Login";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout, endDelegatedSession } from "@/store/slices/authSlice";
@@ -161,45 +168,64 @@ const App: React.FC = () => {
 
     // Setup Socket.IO client for real-time notifications
     // Dynamically import socket.io-client to avoid Vite import-resolution issues
-    import('socket.io-client')
+    import("socket.io-client")
       .then(({ io }) => {
         try {
-          const socket = io(import.meta.env.VITE_SOCKET_URL || "https://inventory-backend-alpha-eight.vercel.app", { transports: ["websocket", "polling"] });
+          const socket = io(
+            import.meta.env.VITE_SOCKET_URL ||
+              "https://inventory-backend-alpha-eight.vercel.app",
+            { transports: ["websocket", "polling"] },
+          );
           socketRef.current = socket;
 
-          socket.on('connect', () => {
-            console.log('Socket connected', socket.id);
+          socket.on("connect", () => {
+            console.log("Socket connected", socket.id);
           });
 
-          socket.on('notification', (payload: any) => {
+          socket.on("notification", (payload: any) => {
             setNotifications((prev) => [payload, ...prev]);
           });
 
-          socket.on('notification:updated', (payload: any) => {
+          socket.on("notification:updated", (payload: any) => {
             // payload: { id, status }
-            setNotifications((prev) => prev.map((n) => (n._id === payload.id || n.id === payload.id ? { ...n, status: payload.status, read: payload.status === 'read' } : n)));
+            setNotifications((prev) =>
+              prev.map((n) =>
+                n._id === payload.id || n.id === payload.id
+                  ? {
+                      ...n,
+                      status: payload.status,
+                      read: payload.status === "read",
+                    }
+                  : n,
+              ),
+            );
           });
 
-          socket.on('notifications:markedAll', (payload: any) => {
+          socket.on("notifications:markedAll", (payload: any) => {
             // Mark all matching notifications as read locally
             setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
           });
 
-          socket.on('inventory:update', () => {
-            notificationService.getNotifications().then((data) => {
-              setNotifications(Array.isArray(data) ? data : data.notifications || []);
-            }).catch(() => {});
+          socket.on("inventory:update", () => {
+            notificationService
+              .getNotifications()
+              .then((data) => {
+                setNotifications(
+                  Array.isArray(data) ? data : data.notifications || [],
+                );
+              })
+              .catch(() => {});
           });
 
-          socket.on('disconnect', () => {
-            console.log('Socket disconnected');
+          socket.on("disconnect", () => {
+            console.log("Socket disconnected");
           });
         } catch (err) {
-          console.warn('Socket initialization failed', err);
+          console.warn("Socket initialization failed", err);
         }
       })
       .catch((err) => {
-        console.warn('Failed dynamic import of socket.io-client', err);
+        console.warn("Failed dynamic import of socket.io-client", err);
       });
 
     return () => {
@@ -222,7 +248,7 @@ const App: React.FC = () => {
         if (!mounted) return;
         setNotifications(Array.isArray(data) ? data : data.notifications || []);
       } catch (err) {
-        console.error('Failed to poll notifications', err);
+        console.error("Failed to poll notifications", err);
       } finally {
         setNotificationsLoading(false);
       }
@@ -232,15 +258,15 @@ const App: React.FC = () => {
     const interval = setInterval(fetchList, 60000);
 
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') fetchList();
+      if (document.visibilityState === "visible") fetchList();
     };
 
-    document.addEventListener('visibilitychange', onVisibility);
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       mounted = false;
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [isAuthenticated]);
 
@@ -290,7 +316,7 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    console.log('📍 renderContent called with activeMenuId:', activeMenuId);
+    console.log("📍 renderContent called with activeMenuId:", activeMenuId);
     switch (activeMenuId) {
       // --- Dashboard Sub-Menus ---
       case "dash-overview":
@@ -541,12 +567,7 @@ const App: React.FC = () => {
       case "aud-cycle":
         return <CycleCountView />;
       case "aud-phy":
-        return (
-          <PhysicalVerificationView
-            sessionId={""}
-            onBack={() => {}}
-          />
-        );
+        return <PhysicalVerificationView sessionId={""} onBack={() => {}} />;
       case "aud-hist":
         return <AdjustmentHistoryView />;
       case "aud-log":
@@ -574,7 +595,7 @@ const App: React.FC = () => {
 
       // --- User & Access ---
       case "usr-mgmt":
-        console.log('🎯 Rendering UserManagementView');
+        console.log("🎯 Rendering UserManagementView");
         return <UserManagementView />;
 
       // Reusing Generic for others
@@ -636,7 +657,9 @@ const App: React.FC = () => {
                   setNotificationsLoading(true);
                   try {
                     const data = await notificationService.getNotifications();
-                    setNotifications(Array.isArray(data) ? data : data.notifications || []);
+                    setNotifications(
+                      Array.isArray(data) ? data : data.notifications || [],
+                    );
                   } catch (err) {
                     console.error("Failed to load notifications", err);
                   } finally {
@@ -652,7 +675,10 @@ const App: React.FC = () => {
 
             {showNotifications && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)}></div>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowNotifications(false)}
+                ></div>
                 <div className="fixed top-20 right-8 w-96 max-h-96 bg-white rounded-xl shadow-2xl border border-slate-100 z-20 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="px-4 py-3 flex items-center justify-between border-b border-slate-50 bg-white rounded-t-xl sticky top-0">
                     <p className="text-sm font-semibold">Notifications</p>
@@ -660,7 +686,9 @@ const App: React.FC = () => {
                       onClick={async () => {
                         try {
                           await notificationService.markAllAsRead();
-                          setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+                          setNotifications((prev) =>
+                            prev.map((n) => ({ ...n, read: true })),
+                          );
                         } catch (err) {
                           console.error(err);
                         }
@@ -671,136 +699,186 @@ const App: React.FC = () => {
                     </button>
                   </div>
                   <div className="flex-1 overflow-y-auto">
-                    {notificationsLoading && <p className="p-3 text-sm text-slate-500">Loading...</p>}
-                    {!notificationsLoading && notifications.length === 0 && (
-                      <p className="p-3 text-sm text-slate-500">No notifications</p>
+                    {notificationsLoading && (
+                      <p className="p-3 text-sm text-slate-500">Loading...</p>
                     )}
-                    {!notificationsLoading && notifications.map((n) => (
-                      <div
-                        key={n._id || n.id}
-                        onClick={() => {
-                          // if notification contains a route, navigate
-                          const route = n.route || n.link || n.url;
-                          if (route) {
-                            navigate(route);
-                            setShowNotifications(false);
-                          }
-                        }}
-                        className={`px-4 py-3 border-b border-slate-50 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors ${n.read ? 'bg-white' : 'bg-indigo-50'}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-700 break-words">{n.title || n.subject}</p>
-                          <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap break-words line-clamp-3">{n.body || n.message || n.remark || (n.materialData && JSON.stringify(n.materialData, null, 2))}</p>
-                          <div className="text-[11px] text-slate-400 mt-2">{new Date(n.createdAt || n.created).toLocaleString()}</div>
-                        </div>
-                        {!n.read && (
-                          <div className="flex flex-col items-end gap-2">
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await notificationService.markAsRead(n._id || n.id);
-                                setNotifications((prev) => prev.map((x) => ((x._id === n._id || x.id === n.id) ? { ...x, read: true } : x)));
-                              } catch (err) {
-                                console.error(err);
-                              }
-                            }}
-                            className="text-xs text-blue-600"
-                          >
-                            Mark
-                          </button>
-                          <button
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                const detail = await notificationService.getNotificationById(n._id || n.id);
-                                // Show full details in a new tab or route - for now navigate if route present else alert
-                                if (detail && (detail.route || detail.url || detail.link)) {
-                                  navigate(detail.route || detail.url || detail.link);
-                                  setShowNotifications(false);
-                                } else {
-                                  // simple modal fallback
-                                  alert(JSON.stringify(detail, null, 2));
-                                }
-                              } catch (err) {
-                                console.error(err);
-                              }
-                            }}
-                            className="text-xs text-slate-600"
-                          >
-                            Details
-                          </button>
+                    {!notificationsLoading && notifications.length === 0 && (
+                      <p className="p-3 text-sm text-slate-500">
+                        No notifications
+                      </p>
+                    )}
+                    {!notificationsLoading &&
+                      notifications.map((n) => (
+                        <div
+                          key={n._id || n.id}
+                          onClick={() => {
+                            // if notification contains a route, navigate
+                            const route = n.route || n.link || n.url;
+                            if (route) {
+                              navigate(route);
+                              setShowNotifications(false);
+                            }
+                          }}
+                          className={`px-4 py-3 border-b border-slate-50 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors ${n.read ? "bg-white" : "bg-indigo-50"}`}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700 break-words">
+                              {n.title || n.subject}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap break-words line-clamp-3">
+                              {n.body ||
+                                n.message ||
+                                n.remark ||
+                                (n.materialData &&
+                                  JSON.stringify(n.materialData, null, 2))}
+                            </p>
+                            <div className="text-[11px] text-slate-400 mt-2">
+                              {new Date(
+                                n.createdAt || n.created,
+                              ).toLocaleString()}
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                          {!n.read && (
+                            <div className="flex flex-col items-end gap-2">
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await notificationService.markAsRead(
+                                      n._id || n.id,
+                                    );
+                                    setNotifications((prev) =>
+                                      prev.map((x) =>
+                                        x._id === n._id || x.id === n.id
+                                          ? { ...x, read: true }
+                                          : x,
+                                      ),
+                                    );
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="text-xs text-blue-600"
+                              >
+                                Mark
+                              </button>
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const detail =
+                                      await notificationService.getNotificationById(
+                                        n._id || n.id,
+                                      );
+                                    // Show full details in a new tab or route - for now navigate if route present else alert
+                                    if (
+                                      detail &&
+                                      (detail.route ||
+                                        detail.url ||
+                                        detail.link)
+                                    ) {
+                                      navigate(
+                                        detail.route ||
+                                          detail.url ||
+                                          detail.link,
+                                      );
+                                      setShowNotifications(false);
+                                    } else {
+                                      // simple modal fallback
+                                      alert(JSON.stringify(detail, null, 2));
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                  }
+                                }}
+                                className="text-xs text-slate-600"
+                              >
+                                Details
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                   </div>
                 </div>
               </>
             )}
 
-             {/* Profile Dropdown */}
-             <div className="relative">
-                <button 
-                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                   className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
-                >
-                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border border-blue-200">
-                      {user?.profileImage ? (
-                         <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                         <User size={18} />
-                      )}
-                   </div>
-                   <div className="hidden md:block text-left">
-                      <p className="text-xs font-bold text-slate-700 leading-none">{user?.fullname || 'Admin User'}</p>
-                      <p className="text-[10px] text-slate-500 mt-1">{user?.role || 'Administrator'}</p>
-                   </div>
-                   <ChevronDown size={14} className={`text-slate-400 transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
-                </button>
+            {/* Profile Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200"
+              >
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border border-blue-200">
+                  {user?.profileImage ? (
+                    <img
+                      src={user.profileImage}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User size={18} />
+                  )}
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className="text-xs font-bold text-slate-700 leading-none">
+                    {user?.fullname || "Admin User"}
+                  </p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {user?.role || "Administrator"}
+                  </p>
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`}
+                />
+              </button>
 
-                {showProfileDropdown && (
-                   <>
-                      <div 
-                         className="fixed inset-0 z-10" 
-                         onClick={() => setShowProfileDropdown(false)}
-                      ></div>
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
-                         <div className="px-4 py-2 border-b border-slate-50 mb-1">
-                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">User Account</p>
-                         </div>
-                         <button 
-                            onClick={() => {
-                               navigate('/profile');
-                               setShowProfileDropdown(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
-                         >
-                            <User size={16} /> My Profile
-                         </button>
-                         <button 
-                            onClick={() => {
-                               navigate('/settings/set-inv');
-                               setShowProfileDropdown(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
-                         >
-                            <Settings size={16} /> Settings
-                         </button>
-                         <div className="h-px bg-slate-50 my-1"></div>
-                         <button 
-                            onClick={() => {
-                               handleLogout();
-                               setShowProfileDropdown(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                         >
-                            <LogOut size={16} /> Logout
-                         </button>
-                      </div>
-                   </>
-                )}
-             </div>
+              {showProfileDropdown && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowProfileDropdown(false)}
+                  ></div>
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-2 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="px-4 py-2 border-b border-slate-50 mb-1">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                        User Account
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigate("/profile");
+                        setShowProfileDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+                    >
+                      <User size={16} /> My Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate("/settings/set-inv");
+                        setShowProfileDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 transition-colors"
+                    >
+                      <Settings size={16} /> Settings
+                    </button>
+                    <div className="h-px bg-slate-50 my-1"></div>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setShowProfileDropdown(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut size={16} /> Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
@@ -810,7 +888,7 @@ const App: React.FC = () => {
             delegatedUserEmail={user.email}
             onReturnToOriginal={() => {
               dispatch(endDelegatedSession());
-              navigate('/dashboard/dash-overview');
+              navigate("/dashboard/dash-overview");
             }}
           />
         )}
@@ -947,10 +1025,7 @@ const App: React.FC = () => {
                 path="/outward/out-dispatch"
                 element={<OutwardOpsView stage="dispatch" />}
               />
-              <Route
-                path="/outward/out-eway"
-                element={<EWayBillsView />}
-              />
+              <Route path="/outward/out-eway" element={<EWayBillsView />} />
               <Route path="/outward/out-return" element={<SalesReturnView />} />
               <Route
                 path="/outward/out-invoice"
@@ -989,18 +1064,12 @@ const App: React.FC = () => {
                 path="/compliance/comp-deduct"
                 element={<StockLedgerView />}
               />
-              <Route
-                path="/compliance/comp-cogs"
-                element={<COGSView />}
-              />
+              <Route path="/compliance/comp-cogs" element={<COGSView />} />
               <Route
                 path="/compliance/comp-invoice"
                 element={<CustomerInvoiceView />}
               />
-              <Route
-                path="/compliance/comp-eway"
-                element={<EWayBillsView />}
-              />
+              <Route path="/compliance/comp-eway" element={<EWayBillsView />} />
 
               {/* Stock Control */}
               <Route
@@ -1057,10 +1126,7 @@ const App: React.FC = () => {
                 path="/valuation/val-recalc"
                 element={<CostRecalculationView />}
               />
-              <Route
-                path="/valuation/val-cogs"
-                element={<COGSView />}
-              />
+              <Route path="/valuation/val-cogs" element={<COGSView />} />
 
               {/* Barcode & Automation */}
               <Route
@@ -1202,7 +1268,10 @@ const App: React.FC = () => {
                 path="/settings/set-tax"
                 element={<SettingsView defaultTab="tax" />}
               />
-              <Route path="/settings/set-num" element={<SettingsView defaultTab="number" />} />
+              <Route
+                path="/settings/set-num"
+                element={<SettingsView defaultTab="number" />}
+              />
               <Route
                 path="/settings/set-field"
                 element={<SettingsView defaultTab="custom" />}

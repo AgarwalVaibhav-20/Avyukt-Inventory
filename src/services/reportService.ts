@@ -3,6 +3,7 @@ import { InventoryItem, WarehouseStockReport, AgingAnalysisItem, GstReportItem, 
 import { dashboardService } from './dashboardService';
 import { stockControlService } from './stockControlService';
 import axios from 'axios';
+import api from './api';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://inventory-backend-alpha-eight.vercel.app") + "/api";
 const REPORTS_API = `${API_BASE_URL}/reports`;
@@ -153,9 +154,10 @@ export const reportService = {
 
   // 9. Audit Reports
   getAuditLogs: async (): Promise<AuditLog[]> => {
-    return callReportAPI('/audit-logs', () => {
-      return mockDb.getAuditLogs().sort((a,b) => new Date(b.date + 'T' + b.timestamp).getTime() - new Date(a.date + 'T' + a.timestamp).getTime());
+    const response = await api.get('/api/reports/audit-logs', {
+      params: { limit: 500 },
     });
+    return response.data || [];
   },
 
   // 10. Low Stock Report

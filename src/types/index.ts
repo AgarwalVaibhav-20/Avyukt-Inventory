@@ -121,6 +121,44 @@ export interface Warehouse {
   type: 'Distribution Center' | 'Retail Store' | 'Cold Storage' | 'General';
   capacity: number; // e.g. in sq ft or units
   contactPerson: string;
+  stockItems?: WarehouseStockItem[];
+  liveProducts?: WarehouseStockItem[];
+  liveRawMaterials?: WarehouseStockItem[];
+  stockSummary?: WarehouseStockSummary;
+}
+
+export interface WarehouseStockItem {
+  itemId: string;
+  itemName: string;
+  itemCode?: string;
+  sku?: string;
+  category?: string;
+  unit?: string;
+  itemKind: 'product' | 'rawMaterial';
+  valuationMethod?: 'FIFO' | 'LIFO' | 'Weighted Average' | 'Standard Cost';
+  unitCost?: number;
+  salePrice?: number;
+  totalQty: number;
+  availableQty: number;
+  usedQty: number;
+  totalValue?: number;
+  batchCount?: number;
+  oldestBatch?: {
+    batchId?: string;
+    purchaseDate?: string;
+    unitCost?: number;
+    availableQty?: number;
+  } | null;
+}
+
+export interface WarehouseStockSummary {
+  totalSkus: number;
+  productCount: number;
+  rawMaterialCount: number;
+  totalQty: number;
+  availableQty: number;
+  usedQty: number;
+  totalValue: number;
 }
 
 export interface Zone {
@@ -747,10 +785,14 @@ export interface AuditLog {
   date: string;
   timestamp: string;
   user: string;
-  action: 'Create' | 'Update' | 'Delete' | 'Approve' | 'Reject' | 'Login';
+  userId?: string;
+  userEmail?: string;
+  action: 'Create' | 'Update' | 'Delete' | 'Approve' | 'Reject' | 'Login' | 'Logout' | 'View' | 'Export' | 'Access Requested' | 'Access Revoked';
   module: string;
   description: string;
   ipAddress?: string;
+  userAgent?: string;
+  sessionType?: string;
 }
 
 export interface AgingBucket {
@@ -869,6 +911,7 @@ export interface WorkflowRule {
 
 export interface AuditSession {
   id: string;
+  _id?: string;
   reference: string; // AUD-2024-001
   type: 'Full' | 'Cycle';
   status: 'Planned' | 'In Progress' | 'Completed' | 'Cancelled';
@@ -883,11 +926,17 @@ export interface AuditSession {
 
 export interface AuditItem {
   itemId: string;
+  itemType?: 'product' | 'raw-material';
   itemName: string;
   sku: string;
+  warehouseId?: string;
+  warehouseName?: string;
+  bin?: string;
   systemQty: number; // Snapshot at start
   physicalQty?: number;
   variance: number; // physical - system
+  unitCost?: number;
+  varianceValue?: number;
   status: 'Pending' | 'Counted' | 'Verified';
   notes?: string;
 }

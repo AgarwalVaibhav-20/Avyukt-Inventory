@@ -22,7 +22,7 @@ const getOrganisationId = () => authService.getOrganisationId();
 
 export const warehouseService = {
   // --- Warehouse Master ---
-  getAllWarehouses: async (): Promise<Warehouse[]> => {
+  getAllWarehouses: async (_organisationId?: string): Promise<Warehouse[]> => {
     const response = await api.get("/getall/warehouse");
     const data = response.data;
     const warehouses = Array.isArray(data)

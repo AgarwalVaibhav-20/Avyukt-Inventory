@@ -9,6 +9,7 @@ import stockMovementReducer from "./slices/stockMovementSlice";
 import stockControlReducer from "./slices/stockControlSlice";
 import procurementReducer from "./slices/procurementSlice";
 import barcodeReducer from "./slices/barcodeSlice";
+import auditReducer from "./slices/auditSlice";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     stockControl: stockControlReducer,
     procurement: procurementReducer,
     barcode: barcodeReducer,
+    audit: auditReducer,
   },
 });
 

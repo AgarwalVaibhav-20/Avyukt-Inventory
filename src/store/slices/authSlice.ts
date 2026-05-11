@@ -232,16 +232,12 @@ const authSlice = createSlice({
         state.profileLoading = true;
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
-<<<<<<< Updated upstream
         state.profileLoading = false;
-=======
-        state.loading = false;
         // In a delegated session the profile call runs under the delegated
         // token, so action.payload.user is the *delegated* user, not the
         // original. Update state.user (the active identity) but never
         // overwrite originalUser — that must remain the admin we'll
         // return to via endDelegatedSession.
->>>>>>> Stashed changes
         state.user = action.payload.user;
       })
       .addCase(fetchProfile.rejected, (state, action) => {

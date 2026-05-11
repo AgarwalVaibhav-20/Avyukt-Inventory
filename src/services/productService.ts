@@ -124,6 +124,18 @@ export const productService = {
       salesTax: item.taxRate,
       purchaseTax: item.taxRate,
     };
+    
+    // Add warehouse stock allocation if specified
+    if (item.warehouseId && item.quantity !== undefined) {
+      payload.stocks = [
+        {
+          warehouseId: item.warehouseId,
+          quantity: item.quantity,
+          unitCost: item.unitCost || item.unitPrice || 0,
+        }
+      ];
+    }
+
     const response = await api.post("/inventory/product/create", payload);
     return response.data.product;
   },

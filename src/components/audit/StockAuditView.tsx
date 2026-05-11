@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { auditService } from '@/services/auditService';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { fetchAuditSessions, createAuditSession, startAuditSession } from '@/store/slices/auditSlice';
 import { warehouseService } from '@/services/warehouseService';
 import { AuditSession, Warehouse } from '@/types';
 import { ClipboardCheck, Play, CheckCircle, Loader2, Plus } from 'lucide-react';
 import PhysicalVerificationView from './PhysicalVerificationView';
 
 const StockAuditView: React.FC = () => {
-  const [audits, setAudits] = useState<AuditSession[]>([]);
+  const dispatch = useAppDispatch();
+  const { sessions, loading: auditLoading, actionLoading, error } = useAppSelector(state => state.audit);
+
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -20,29 +23,29 @@ const StockAuditView: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    setLoading(true);
-    const [aData, wData] = await Promise.all([
-        auditService.getAuditSessions(),
-        warehouseService.getAllWarehouses()
-    ]);
-    setAudits(aData.filter(a => a.type === 'Full'));
-    setWarehouses(wData);
-    setLoading(false);
+    try {
+      setLoading(true);
+      await dispatch(fetchAuditSessions());
+      const wData = await warehouseService.getAllWarehouses();
+      setWarehouses(wData);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreate = async () => {
       if(!newAuditWh) return alert("Select Warehouse");
-      await auditService.createAuditSession('Full', newAuditWh);
+      await dispatch(createAuditSession({ type: 'Full', warehouseId: newAuditWh }));
       setIsCreating(false);
       setNewAuditWh('');
-      loadData();
   };
 
   const handleStart = async (id: string) => {
-      await auditService.startAudit(id);
-      loadData();
+      await dispatch(startAuditSession(id));
       setVerificationSessionId(id); // Auto open verification
   };
+
+  const audits = sessions.filter(a => a.type === 'Full');
 
   if(verificationSessionId) {
       return <PhysicalVerificationView sessionId={verificationSessionId} onBack={() => { setVerificationSessionId(null); loadData(); }} />;
@@ -69,7 +72,15 @@ const StockAuditView: React.FC = () => {
                             {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                         </select>
                     </div>
-                    <button onClick={handleCreate} className="bg-blue-600 text-white px-6 py-2 rounded text-sm hover:bg-blue-700 h-10">Initialize Audit</button>
+                    <button onClick={handleCreate} disabled={actionLoading} className="bg-blue-600 text-white px-6 py-2 rounded text-sm hover:bg-blue-700 h-10 disabled:opacity-50">
+                        {actionLoading ? 'Initializing...' : 'Initialize Audit'}
+                    </button>
+                </div>
+            )}
+
+            {error && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
                 </div>
             )}
 
@@ -86,7 +97,7 @@ const StockAuditView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
+                        {(loading || auditLoading) ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
                          audits.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No audits recorded.</td></tr> :
                          audits.map(a => (
                             <tr key={a.id} className="hover:bg-slate-50">
@@ -106,7 +117,7 @@ const StockAuditView: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     {a.status === 'Planned' && (
-                                        <button onClick={() => handleStart(a.id)} className="text-blue-600 hover:underline text-xs flex items-center justify-end gap-1 ml-auto">
+                                        <button onClick={() => handleStart(a.id)} disabled={actionLoading} className="text-blue-600 hover:underline text-xs flex items-center justify-end gap-1 ml-auto disabled:opacity-50">
                                             <Play size={12}/> Start
                                         </button>
                                     )}

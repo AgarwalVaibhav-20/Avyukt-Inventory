@@ -260,8 +260,13 @@ const MultiWarehouseView: React.FC = () => {
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Capacity</p>
-                      <p className="text-sm font-semibold text-slate-700 mt-1">{w.capacity.toLocaleString()} sq ft</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Capacity / Stock</p>
+                      <p className="text-sm font-semibold text-slate-700 mt-1">
+                        {w.capacity.toLocaleString()} sq ft 
+                        <span className="text-blue-600 font-bold ml-1">
+                          • {((w as any).products || []).reduce((a: any, b: any) => a + (b.quantity || 0), 0)} items
+                        </span>
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
@@ -291,7 +296,7 @@ const MultiWarehouseView: React.FC = () => {
                 <TableHead className="font-bold text-blue-600">Warehouse Name</TableHead>
                 <TableHead className="font-bold">Location</TableHead>
                 <TableHead className="font-bold">Type</TableHead>
-                <TableHead className="font-bold">Capacity</TableHead>
+                <TableHead className="font-bold">Capacity & Stock</TableHead>
                 <TableHead className="font-bold">Contact Person</TableHead>
                 <TableHead className="text-right font-bold">Actions</TableHead>
               </TableRow>
@@ -314,7 +319,10 @@ const MultiWarehouseView: React.FC = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium text-slate-700">
-                    {w.capacity.toLocaleString()} sq ft
+                    <div>{w.capacity.toLocaleString()} sq ft</div>
+                    <div className="text-xs text-blue-600 mt-0.5">
+                      {((w as any).products || []).reduce((a: any, b: any) => a + (b.quantity || 0), 0)} items in stock
+                    </div>
                   </TableCell>
                   <TableCell className="text-slate-600">{w.contactPerson}</TableCell>
                   <TableCell className="text-right">
@@ -453,6 +461,17 @@ const MultiWarehouseView: React.FC = () => {
                       <div>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Assigned Manager</p>
                         <p className="text-lg font-semibold text-slate-800 mt-0.5">{selectedWarehouse.contactPerson}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 bg-slate-50 text-slate-400 rounded-lg">
+                        <Package size={18} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Stock</p>
+                        <p className="text-lg font-semibold text-blue-600 mt-0.5">
+                          {((selectedWarehouse as any).products || []).reduce((a: any, b: any) => a + (b.quantity || 0), 0)} Items
+                        </p>
                       </div>
                     </div>
                   </div>
