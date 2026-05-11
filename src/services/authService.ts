@@ -66,6 +66,9 @@ export const authService = {
     const response = await api.get('/auth/profile');
     if (response.data.user) {
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (response.data.user.organisationId) {
+        localStorage.setItem('organisationId', response.data.user.organisationId);
+      }
     }
     return response.data;
   },

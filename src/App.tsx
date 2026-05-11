@@ -123,10 +123,13 @@ import {
   ChevronDown,
   Camera,
   ChevronRight,
+  Check,
+  X,
 } from "lucide-react";
 import ProfileView from "@/components/common/ProfileView";
 import { notificationService } from "@/services/notificationService";
-import { Toaster } from "react-hot-toast";
+import { delegatedAccessService } from "@/services/delegatedAccessService";
+import toast, { Toaster } from "react-hot-toast";
 import { fetchProfile } from "@/store/slices/authSlice";
 import Login from "@/components/common/Login";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
@@ -155,11 +158,140 @@ const App: React.FC = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
+  const [pendingAccessRequests, setPendingAccessRequests] = useState<any[]>([]);
+  const [respondingAccessId, setRespondingAccessId] = useState<string | null>(null);
 
   // Socket ref
   const socketRef = React.useRef<any>(null);
 
   const { user, isDelegatedSession } = useAppSelector((state) => state.auth);
+  const currentUserId = String(user?._id || user?.id || "");
+  const normalizeNotificationList = (data: any) =>
+    Array.isArray(data) ? data : data?.notifications || [];
+  const mergeNotifications = (base: any[], incoming: any[]) => {
+    const seen = new Set<string>();
+    return [...incoming, ...base].filter((notification) => {
+      const id = String(notification._id || notification.id || "");
+      if (!id) return true;
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  };
+  const pendingInvites = notifications.filter((notification) => {
+    const receiverId =
+      typeof notification.receiverId === "object"
+        ? notification.receiverId?._id
+        : notification.receiverId;
+    return (
+      notification.type === "invite" &&
+      notification.inviteResponse === "pending" &&
+      (!receiverId || String(receiverId) === currentUserId)
+    );
+  });
+  const pendingAccessNotifications = notifications.filter(
+    (notification) => {
+      const receiverId =
+        typeof notification.receiverId === "object"
+          ? notification.receiverId?._id
+          : notification.receiverId;
+      return (
+        notification.type === "access_request" &&
+        (notification.status === "unread" || notification.read === false) &&
+        (!receiverId || String(receiverId) === currentUserId)
+      );
+    },
+  );
+  const activeInvite = pendingInvites[0];
+  const activeAccessRequest = pendingAccessRequests[0];
+  const activeAccessNotification = pendingAccessNotifications[0];
+  const headerRequestCount =
+    pendingInvites.length +
+    Math.max(pendingAccessRequests.length, pendingAccessNotifications.length);
+
+  const handleInviteResponse = async (
+    notificationId: string,
+    response: "accepted" | "rejected",
+  ) => {
+    try {
+      setRespondingInviteId(notificationId);
+      const result = await notificationService.respondToInvite(
+        notificationId,
+        response,
+      );
+      setNotifications((prev) =>
+        prev.map((notification) =>
+          notification._id === notificationId || notification.id === notificationId
+            ? {
+                ...notification,
+                status: "read",
+                read: true,
+                inviteResponse: response,
+              }
+            : notification,
+        ),
+      );
+
+      if (response === "accepted") {
+        const updatedUser = result?.updatedUser;
+        if (updatedUser) {
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          if (updatedUser.organisationId) {
+            localStorage.setItem("organisationId", updatedUser.organisationId);
+          }
+        }
+        await dispatch(fetchProfile());
+        toast.success("Invitation accepted");
+      } else {
+        toast.success("Invitation rejected");
+      }
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message || `Failed to ${response} invitation`;
+      toast.error(message);
+    } finally {
+      setRespondingInviteId(null);
+    }
+  };
+
+  const handleAccessRequestResponse = async (
+    requestId: string,
+    response: "approved" | "rejected",
+  ) => {
+    try {
+      setRespondingAccessId(requestId);
+      if (response === "approved") {
+        await delegatedAccessService.approveAccess(requestId);
+        toast.success("Access request approved");
+      } else {
+        await delegatedAccessService.rejectAccess(requestId, "Request rejected");
+        toast.success("Access request rejected");
+      }
+      setPendingAccessRequests((prev) =>
+        prev.filter((request) => request._id !== requestId),
+      );
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+          `Failed to ${response === "approved" ? "approve" : "reject"} access request`,
+      );
+    } finally {
+      setRespondingAccessId(null);
+    }
+  };
+
+  const openAccessRequestCenter = () => {
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification._id === activeAccessNotification?._id ||
+        notification.id === activeAccessNotification?.id
+          ? { ...notification, status: "read", read: true }
+          : notification,
+      ),
+    );
+    navigate("/users/usr-mgmt");
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -183,6 +315,13 @@ const App: React.FC = () => {
           });
 
           socket.on("notification", (payload: any) => {
+            if (payload?.type === "invite") {
+              const receiverId =
+                typeof payload.receiverId === "object"
+                  ? payload.receiverId?._id
+                  : payload.receiverId;
+              if (receiverId && String(receiverId) !== currentUserId) return;
+            }
             setNotifications((prev) => [payload, ...prev]);
           });
 
@@ -210,9 +349,7 @@ const App: React.FC = () => {
             notificationService
               .getNotifications()
               .then((data) => {
-                setNotifications(
-                  Array.isArray(data) ? data : data.notifications || [],
-                );
+                setNotifications(normalizeNotificationList(data));
               })
               .catch(() => {});
           });
@@ -234,7 +371,7 @@ const App: React.FC = () => {
         socketRef.current = null;
       }
     };
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, isAuthenticated, currentUserId]);
 
   // Lazy polling: refresh notifications every 60s and when tab becomes visible
   useEffect(() => {
@@ -244,9 +381,19 @@ const App: React.FC = () => {
     const fetchList = async () => {
       setNotificationsLoading(true);
       try {
-        const data = await notificationService.getNotifications();
+        const [data, inviteData, accessData] = await Promise.all([
+          notificationService.getNotifications(),
+          notificationService.getPendingInvites(),
+          delegatedAccessService.getReceivedRequests("pending", 1, 20),
+        ]);
         if (!mounted) return;
-        setNotifications(Array.isArray(data) ? data : data.notifications || []);
+        setPendingAccessRequests(accessData?.requests || []);
+        setNotifications(
+          mergeNotifications(
+            normalizeNotificationList(data),
+            normalizeNotificationList(inviteData),
+          ),
+        );
       } catch (err) {
         console.error("Failed to poll notifications", err);
       } finally {
@@ -649,6 +796,20 @@ const App: React.FC = () => {
               <Rocket size={14} /> AI Analyst
             </button>
 
+            {headerRequestCount > 0 && (
+              <button
+                onClick={() => setShowNotifications(true)}
+                className="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                title="Pending invitations and access requests"
+              >
+                <Bell size={14} />
+                Invitation
+                <span className="rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
+                  {headerRequestCount}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={async () => {
                 const next = !showNotifications;
@@ -656,9 +817,17 @@ const App: React.FC = () => {
                 if (next && notifications.length === 0) {
                   setNotificationsLoading(true);
                   try {
-                    const data = await notificationService.getNotifications();
+                    const [data, inviteData, accessData] = await Promise.all([
+                      notificationService.getNotifications(),
+                      notificationService.getPendingInvites(),
+                      delegatedAccessService.getReceivedRequests("pending", 1, 20),
+                    ]);
+                    setPendingAccessRequests(accessData?.requests || []);
                     setNotifications(
-                      Array.isArray(data) ? data : data.notifications || [],
+                      mergeNotifications(
+                        normalizeNotificationList(data),
+                        normalizeNotificationList(inviteData),
+                      ),
                     );
                   } catch (err) {
                     console.error("Failed to load notifications", err);
@@ -670,7 +839,12 @@ const App: React.FC = () => {
               className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+              {notifications.some(
+                (notification) =>
+                  notification.status === "unread" || notification.read === false,
+              ) && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+              )}
             </button>
 
             {showNotifications && (
@@ -881,6 +1055,153 @@ const App: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {(activeAccessRequest || activeAccessNotification) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+            <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-slate-200">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                    Access Request
+                  </p>
+                  <h2 className="mt-1 text-lg font-bold text-slate-900">
+                    You have an invitation
+                  </h2>
+                </div>
+                <button
+                  onClick={() => {
+                    if (activeAccessRequest) {
+                      handleAccessRequestResponse(activeAccessRequest._id, "rejected");
+                    } else {
+                      openAccessRequestCenter();
+                    }
+                  }}
+                  disabled={activeAccessRequest && respondingAccessId === activeAccessRequest._id}
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                  title="Reject request"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="px-5 py-4">
+                <p className="text-sm text-slate-700">
+                  {activeAccessRequest
+                    ? `${
+                        activeAccessRequest.requesterId?.fullname ||
+                        activeAccessRequest.requesterEmail
+                      } is requesting ${activeAccessRequest.permissionLevel} access to your account.`
+                    : activeAccessNotification?.message ||
+                      activeAccessNotification?.remark ||
+                      "Someone is requesting access to your account."}
+                </p>
+                {activeAccessRequest?.reason && (
+                  <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    {activeAccessRequest.reason}
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                {activeAccessRequest ? (
+                  <>
+                    <button
+                      onClick={() =>
+                        handleAccessRequestResponse(activeAccessRequest._id, "rejected")
+                      }
+                      disabled={respondingAccessId === activeAccessRequest._id}
+                      className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleAccessRequestResponse(activeAccessRequest._id, "approved")
+                      }
+                      disabled={respondingAccessId === activeAccessRequest._id}
+                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <Check size={16} />
+                      Approve
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={openAccessRequestCenter}
+                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg"
+                  >
+                    Open Request Center
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!activeAccessRequest && !activeAccessNotification && activeInvite && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4">
+            <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-slate-200">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+                    Organisation Invite
+                  </p>
+                  <h2 className="mt-1 text-lg font-bold text-slate-900">
+                    You have an invite
+                  </h2>
+                </div>
+                <button
+                  onClick={() =>
+                    handleInviteResponse(
+                      activeInvite._id || activeInvite.id,
+                      "rejected",
+                    )
+                  }
+                  disabled={respondingInviteId === (activeInvite._id || activeInvite.id)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                  title="Reject invitation"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="px-5 py-4">
+                <p className="text-sm text-slate-700">
+                  {activeInvite.message ||
+                    activeInvite.remark ||
+                    "You have been invited to join another organisation."}
+                </p>
+                <p className="mt-3 text-xs text-slate-500">
+                  Accepting will switch your account to the invited organisation.
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
+                <button
+                  onClick={() =>
+                    handleInviteResponse(
+                      activeInvite._id || activeInvite.id,
+                      "rejected",
+                    )
+                  }
+                  disabled={respondingInviteId === (activeInvite._id || activeInvite.id)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() =>
+                    handleInviteResponse(
+                      activeInvite._id || activeInvite.id,
+                      "accepted",
+                    )
+                  }
+                  disabled={respondingInviteId === (activeInvite._id || activeInvite.id)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Check size={16} />
+                  Accept Invite
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Session Banner */}
         {isDelegatedSession && user?.email && (

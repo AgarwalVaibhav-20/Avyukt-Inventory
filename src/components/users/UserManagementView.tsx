@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { delegatedAccessService } from '@/services/delegatedAccessService';
 import DelegatedAccessSection from './DelegatedAccessSection';
+import { notificationService } from '@/services/notificationService';
 
 type PermissionLevel = 'view' | 'edit' | 'delete';
 
@@ -27,7 +28,9 @@ const UserManagementView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [requestModal, setRequestModal] = useState<{
     email: string;
@@ -134,6 +137,28 @@ const UserManagementView: React.FC = () => {
     }
   };
 
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) {
+      toast.error('Email is required');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await notificationService.sendInvite(email);
+      toast.success(`Invitation sent to ${email}`);
+      setInviteEmail('');
+      setShowInviteModal(false);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to send invitation';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'users') {
       loadUsers();
@@ -218,6 +243,14 @@ const UserManagementView: React.FC = () => {
               >
                 <Plus size={16} />
                 Add User
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(true)}
+                className="px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg flex items-center gap-2"
+              >
+                <Share2 size={16} />
+                Send Invite
               </button>
             </form>
           </div>
@@ -377,6 +410,62 @@ const UserManagementView: React.FC = () => {
                 >
                   {submitting && <Loader2 size={14} className="animate-spin" />}
                   Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite User Modal */}
+      {showInviteModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-bold text-slate-900">Send Invitation</h3>
+              <button
+                onClick={() => {
+                  setShowInviteModal(false);
+                  setInviteEmail('');
+                }}
+                className="p-1 hover:bg-slate-100 rounded"
+              >
+                <X size={18} className="text-slate-500" />
+              </button>
+            </div>
+            <form onSubmit={handleSendInvite} className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">User email *</label>
+                <input
+                  type="email"
+                  required
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  The user will see this invite globally in their header after they sign in.
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInviteModal(false);
+                    setInviteEmail('');
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-2"
+                >
+                  {submitting && <Loader2 size={14} className="animate-spin" />}
+                  Send Invite
                 </button>
               </div>
             </form>
