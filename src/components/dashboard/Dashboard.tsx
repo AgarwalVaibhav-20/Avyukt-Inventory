@@ -19,80 +19,148 @@ import {
   Activity,
   Sparkles,
   DollarSign,
+  Loader2,
 } from "lucide-react";
-import { MOCK_INVENTORY } from "@/constants";
+import { dashboardService } from "@/services/dashboardService";
 import { getInventoryInsights } from "@/services/geminiService";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
 
-const statCards = [
-  {
-    label: "Total Inventory Value",
-    value: "$1.2M",
-    sub: "+2.5% vs last month",
-    subColor: "text-emerald-500",
-    icon: DollarSign,
-    iconBg: "bg-blue-50",
-    iconColor: "text-blue-500",
-  },
-  {
-    label: "Low Stock Items",
-    value: "12",
-    sub: "Action Required",
-    subColor: "text-red-500",
-    icon: AlertTriangle,
-    iconBg: "bg-red-50",
-    iconColor: "text-red-500",
-  },
-  {
-    label: "Active Purchase Orders",
-    value: "8",
-    sub: "3 Pending Approval",
-    subColor: "text-slate-400",
-    icon: Package,
-    iconBg: "bg-orange-50",
-    iconColor: "text-orange-500",
-  },
-  {
-    label: "Stock Turnover Rate",
-    value: "4.2x",
-    sub: "Healthy",
-    subColor: "text-emerald-500",
-    icon: RefreshCcw,
-    iconBg: "bg-purple-50",
-    iconColor: "text-purple-500",
-  },
-];
-
-const stockData = [
-  { name: "Jan", stock: 4000 },
-  { name: "Feb", stock: 3500 },
-  { name: "Mar", stock: 5000 },
-  { name: "Apr", stock: 4800 },
-  { name: "May", stock: 6000 },
-];
-
-const categoryData = [
-  { name: "Components", value: 400 },
-  { name: "Machinery", value: 300 },
-  { name: "Safety", value: 300 },
-  { name: "Raw Mat", value: 200 },
-];
+interface StatCard {
+  label: string;
+  value: string | number;
+  sub: string;
+  subColor: string;
+  icon: any;
+  iconBg: string;
+  iconColor: string;
+}
 
 const Dashboard: React.FC = () => {
+  const [statCards, setStatCards] = useState<StatCard[]>([]);
+  const [stockData, setStockData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    handleGenerateInsight();
+    loadDashboardData();
   }, []);
 
-  const handleGenerateInsight = async () => {
-    setLoadingAi(true);
-    const result = await getInventoryInsights(MOCK_INVENTORY);
-    setAiInsight(result);
-    setLoadingAi(false);
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      console.log('📊 Loading dashboard data from backend...');
+
+      // Fetch all dashboard data in parallel
+      const [approvals, expiryAlerts, movements, warehouse, inOut] = await Promise.all([
+        dashboardService.getPendingApprovals(),
+        dashboardService.getExpiryAlerts(),
+        dashboardService.getMovementAnalysis(),
+        dashboardService.getWarehouseStockReport(),
+        dashboardService.getInOutSummary(),
+      ]);
+
+      // Calculate stats from backend data
+      const approvalCount = approvals.length;
+      const expiryCount = expiryAlerts.length;
+      const lowStockCount = expiryCount; // Items with low stock/expiry issues
+      const totalValue = warehouse.reduce((sum: number, w: any) => sum + (Number(w.totalValue) || 0), 0);
+      
+      // Calculate category distribution
+      const categoryMap: Record<string, number> = {};
+      movements.forEach((item: any) => {
+        const cat = item.category || 'Other';
+        categoryMap[cat] = (categoryMap[cat] || 0) + (item.turnoverRate || 0);
+      });
+      
+      const categoryDistribution = Object.entries(categoryMap).map(([name, value]) => ({
+        name,
+        value: Math.round(Number(value))
+      }));
+
+      // Update stat cards with real data
+      const newStatCards: StatCard[] = [
+        {
+          label: "Total Inventory Value",
+          value: `$${(totalValue / 1000000).toFixed(2)}M`,
+          sub: `${warehouse.length} warehouses`,
+          subColor: "text-slate-500",
+          icon: DollarSign,
+          iconBg: "bg-blue-50",
+          iconColor: "text-blue-500",
+        },
+        {
+          label: "Low Stock Items",
+          value: lowStockCount,
+          sub: "Requires Attention",
+          subColor: "text-red-500",
+          icon: AlertTriangle,
+          iconBg: "bg-red-50",
+          iconColor: "text-red-500",
+        },
+        {
+          label: "Pending Approvals",
+          value: approvalCount,
+          sub: approvalCount > 0 ? "Action Required" : "All Clear",
+          subColor: approvalCount > 0 ? "text-orange-500" : "text-emerald-500",
+          icon: Package,
+          iconBg: "bg-orange-50",
+          iconColor: "text-orange-500",
+        },
+        {
+          label: "Fast Moving Items",
+          value: movements.filter((m: any) => m.classification === 'Fast Moving').length,
+          sub: "Healthy Turnover",
+          subColor: "text-emerald-500",
+          icon: RefreshCcw,
+          iconBg: "bg-purple-50",
+          iconColor: "text-purple-500",
+        },
+      ];
+
+      setStatCards(newStatCards);
+      setStockData(inOut.map((item: any) => ({
+        name: item.period?.split(' ')[0] || item.period || 'N/A',
+        stock: Math.round(Number(item.inwardValue || 0) + Number(item.outwardValue || 0))
+      })));
+      setCategoryData(categoryDistribution.slice(0, 4));
+
+      console.log('✅ Dashboard data loaded successfully');
+      
+      // Load AI insights with real inventory data
+      await handleGenerateInsight(movements);
+    } catch (error) {
+      console.error('❌ Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleGenerateInsight = async (inventoryData: any = []) => {
+    setLoadingAi(true);
+    try {
+      const result = await getInventoryInsights(inventoryData);
+      setAiInsight(result);
+    } catch (error) {
+      console.error('Error generating AI insight:', error);
+      setAiInsight('Unable to generate insights at this moment.');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96 p-1">
+        <div className="text-center">
+          <Loader2 size={40} className="animate-spin text-blue-500 mx-auto mb-4" />
+          <p className="text-slate-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 p-1">
@@ -135,7 +203,7 @@ const Dashboard: React.FC = () => {
             </span>
           </div>
           <button
-            onClick={handleGenerateInsight}
+            onClick={() => loadDashboardData()}
             disabled={loadingAi}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
           >
@@ -167,12 +235,12 @@ const Dashboard: React.FC = () => {
               Stock Value Trend
             </span>
             <span className="ml-auto text-xs text-slate-400">
-              Last 5 months
+              Last 6 months
             </span>
           </div>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stockData}>
+              <LineChart data={stockData.length > 0 ? stockData : [{ name: 'No Data', stock: 0 }]}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
@@ -222,7 +290,7 @@ const Dashboard: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={categoryData.length > 0 ? categoryData : [{ name: 'No Data', value: 100 }]}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
@@ -230,7 +298,7 @@ const Dashboard: React.FC = () => {
                     paddingAngle={4}
                     dataKey="value"
                   >
-                    {categoryData.map((_, i) => (
+                    {(categoryData.length > 0 ? categoryData : [{ name: 'No Data', value: 100 }]).map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
@@ -246,7 +314,7 @@ const Dashboard: React.FC = () => {
               </ResponsiveContainer>
             </div>
             <div className="space-y-2 shrink-0">
-              {categoryData.map((entry, i) => (
+              {(categoryData.length > 0 ? categoryData : [{ name: 'No Data', value: 100 }]).map((entry, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-2 text-xs text-slate-600"

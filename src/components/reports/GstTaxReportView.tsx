@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { reportService } from '@/services/reportService';
+import { exportService } from '@/services/exportService';
+import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
 import { GstReportItem } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Receipt, Download, Loader2, DollarSign, TrendingUp, FileText } from 'lucide-react';
@@ -11,6 +13,7 @@ const GstTaxReportView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -50,10 +53,28 @@ const GstTaxReportView: React.FC = () => {
     setLoading(false);
   };
 
+  const handleExport = async (period: ExportPeriod, format: ExportFormat) => {
+    await exportService.exportGst(period, format);
+  };
+
   if (loading) return <div className="flex h-64 justify-center items-center"><Loader2 className="animate-spin text-slate-400"/></div>;
 
   return (
     <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold text-slate-900 mb-2">GST & Tax Report</h1>
+            <p className="text-slate-600">Monitor GST compliance and tax calculations</p>
+          </div>
+          <button
+            onClick={() => setShowExportDialog(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+          >
+            <Download size={20} />
+            Export
+          </button>
+        </div>
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -204,6 +225,14 @@ const GstTaxReportView: React.FC = () => {
                 </table>
             </div>
         </div>
+
+        {/* Export Dialog */}
+        <ExportDialog
+          isOpen={showExportDialog}
+          onClose={() => setShowExportDialog(false)}
+          onExport={handleExport}
+          reportName="GST & Tax Report"
+        />
     </div>
   );
 };

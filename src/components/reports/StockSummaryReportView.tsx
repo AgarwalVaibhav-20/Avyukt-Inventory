@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { reportService } from '@/services/reportService';
+import { exportService } from '@/services/exportService';
+import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { BarChart3, Package, DollarSign, AlertTriangle, Loader2, TrendingUp } from 'lucide-react';
+import { BarChart3, Package, DollarSign, AlertTriangle, Loader2, TrendingUp, Download } from 'lucide-react';
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
 
@@ -9,6 +11,7 @@ const StockSummaryReportView: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -50,6 +53,10 @@ const StockSummaryReportView: React.FC = () => {
     setLoading(false);
   };
 
+  const handleExport = async (period: ExportPeriod, format: ExportFormat) => {
+    await exportService.exportStockSummary(period, format);
+  };
+
   if (loading) return (
     <div className="flex h-screen justify-center items-center">
       <div className="text-center">
@@ -62,9 +69,18 @@ const StockSummaryReportView: React.FC = () => {
   return (
     <div className="space-y-8 pb-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Stock Summary Report</h1>
-        <p className="text-slate-600">Real-time inventory valuation and stock analysis</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Stock Summary Report</h1>
+          <p className="text-slate-600">Real-time inventory valuation and stock analysis</p>
+        </div>
+        <button
+          onClick={() => setShowExportDialog(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+        >
+          <Download size={20} />
+          Export
+        </button>
       </div>
 
       {/* Summary Stats Cards */}
@@ -201,6 +217,14 @@ const StockSummaryReportView: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        onExport={handleExport}
+        reportName="Stock Summary Report"
+      />
     </div>
   );
 };

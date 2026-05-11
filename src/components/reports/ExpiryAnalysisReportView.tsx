@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { reportService } from '@/services/reportService';
+import { exportService } from '@/services/exportService';
+import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
 import { Batch } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CalendarX, Loader2, AlertTriangle, Clock, CheckCircle } from 'lucide-react';
+import { CalendarX, Loader2, AlertTriangle, Clock, CheckCircle, Download } from 'lucide-react';
 
 const ExpiryAnalysisReportView: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -64,6 +67,10 @@ const ExpiryAnalysisReportView: React.FC = () => {
     setLoading(false);
   };
 
+  const handleExport = async (period: ExportPeriod, format: ExportFormat) => {
+    await exportService.exportExpiryAnalysis(period, format);
+  };
+
   if (loading) return (
     <div className="flex h-screen justify-center items-center">
       <div className="text-center">
@@ -76,9 +83,18 @@ const ExpiryAnalysisReportView: React.FC = () => {
   return (
     <div className="space-y-8 pb-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Expiry Analysis Report</h1>
-        <p className="text-slate-600">Monitor batch expiry dates and manage stock lifecycle</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Expiry Analysis Report</h1>
+          <p className="text-slate-600">Monitor batch expiry dates and manage stock lifecycle</p>
+        </div>
+        <button
+          onClick={() => setShowExportDialog(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+        >
+          <Download size={20} />
+          Export
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -206,6 +222,14 @@ const ExpiryAnalysisReportView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        onExport={handleExport}
+        reportName="Expiry Analysis Report"
+      />
     </div>
   );
 };

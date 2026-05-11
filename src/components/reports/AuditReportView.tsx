@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { reportService } from '@/services/reportService';
+import { exportService } from '@/services/exportService';
+import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
 import { AuditLog } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Shield, Search, Loader2, Activity } from 'lucide-react';
+import { Shield, Search, Loader2, Activity, Download } from 'lucide-react';
 
 const AuditReportView: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -10,6 +12,7 @@ const AuditReportView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -45,6 +48,10 @@ const AuditReportView: React.FC = () => {
     setLoading(false);
   };
 
+  const handleExport = async (period: ExportPeriod, format: ExportFormat) => {
+    await exportService.exportAudit(period, format);
+  };
+
   const filtered = logs.filter(l => 
       l.user.toLowerCase().includes(search.toLowerCase()) || 
       l.action.toLowerCase().includes(search.toLowerCase()) ||
@@ -63,9 +70,18 @@ const AuditReportView: React.FC = () => {
   return (
     <div className="space-y-8 pb-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">System Audit Report</h1>
-        <p className="text-slate-600">Track all system activities and user actions for compliance</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">System Audit Report</h1>
+          <p className="text-slate-600">Track all system activities and user actions for compliance</p>
+        </div>
+        <button
+          onClick={() => setShowExportDialog(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+        >
+          <Download size={20} />
+          Export
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -200,6 +216,14 @@ const AuditReportView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        onExport={handleExport}
+        reportName="System Audit Report"
+      />
     </div>
   );
 };

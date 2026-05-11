@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { reportService } from '@/services/reportService';
+import { exportService } from '@/services/exportService';
+import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
 import { InventoryItem } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Search, Download, Loader2, Package, DollarSign, TrendingUp } from 'lucide-react';
@@ -13,6 +15,7 @@ const ItemStockReportView: React.FC = () => {
   const [stockFilter, setStockFilter] = useState('all');
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -75,6 +78,10 @@ const ItemStockReportView: React.FC = () => {
     },
   });
 
+  const handleExport = async (period: ExportPeriod, format: ExportFormat) => {
+    await exportService.exportItemStock(period, format);
+  };
+
   if (loading) return (
     <div className="flex h-screen justify-center items-center">
       <div className="text-center">
@@ -87,9 +94,18 @@ const ItemStockReportView: React.FC = () => {
   return (
     <div className="space-y-8 pb-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-900 mb-2">Item Stock Report</h1>
-        <p className="text-slate-600">Detailed inventory analysis with stock valuations</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-slate-900 mb-2">Item Stock Report</h1>
+          <p className="text-slate-600">Detailed inventory analysis with stock valuations</p>
+        </div>
+        <button
+          onClick={() => setShowExportDialog(true)}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+        >
+          <Download size={20} />
+          Export
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -193,9 +209,6 @@ const ItemStockReportView: React.FC = () => {
                 <option value="low">Low stock</option>
                 <option value="out">Out of stock</option>
               </select>
-              <button className="inline-flex items-center gap-2 border border-slate-300 px-4 py-2.5 rounded-lg hover:bg-slate-50 text-sm font-medium transition-colors">
-                <Download size={18} /> Export
-              </button>
             </div>
           </div>
         </div>
@@ -252,6 +265,14 @@ const ItemStockReportView: React.FC = () => {
           />
         </div>
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        onExport={handleExport}
+        reportName="Item Stock Report"
+      />
     </div>
   );
 };
