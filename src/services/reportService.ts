@@ -13,7 +13,8 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // Helper function to call backend API with fallback to mock data
 const callReportAPI = async (endpoint: string, fallbackFn: () => any) => {
   try {
-    const response = await axios.get(`${REPORTS_API}${endpoint}`);
+    // Use the configured api instance which has interceptors for auth headers
+    const response = await api.get(`/api/reports${endpoint.startsWith('/') ? '' : '/'}${endpoint}`);
     return response.data;
   } catch (error) {
     console.warn(`API call failed for ${endpoint}, using mock data:`, error);
@@ -43,11 +44,22 @@ export const reportService = {
   },
 
   // 2. Item-wise Stock
-  getItemStockReport: async (): Promise<InventoryItem[]> => {
-    return callReportAPI('/item-stock', async () => {
+  getItemStockReport: async (params?: any): Promise<any> => {
+    try {
+      const response = await api.get('/api/reports/item-stock', { params });
+      return response.data;
+    } catch (error) {
+      console.warn(`API call failed for item-stock, using mock data:`, error);
       await delay(300);
-      return mockDb.getItems();
-    });
+      const items = mockDb.getItems();
+      return { 
+        data: items, 
+        total: items.length, 
+        page: 1, 
+        limit: 10, 
+        pages: 1 
+      };
+    }
   },
 
   // 3. Warehouse-wise (Reuse dashboard logic but can extend)
@@ -126,8 +138,19 @@ export const reportService = {
 
   // 7. Valuation Report
   getValuationReport: async () => {
-    return callReportAPI('/valuation', () => {
-      return stockControlService.getValuationReport();
+    return callReportAPI('/valuation', async () => {
+      const items = await stockControlService.getValuationReport();
+      const totalValue = items.reduce((sum: number, item: any) => sum + item.totalValuation, 0);
+      return {
+        items: items.map((item: any) => ({
+          ...item,
+          quantity: item.stock,
+          unitPrice: item.unitValuation,
+          totalValue: item.totalValuation
+        })),
+        totalValue,
+        timestamp: new Date()
+      };
     });
   },
 
@@ -189,4 +212,3 @@ export const reportService = {
     });
   }
 };
-

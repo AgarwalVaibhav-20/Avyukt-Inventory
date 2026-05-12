@@ -110,7 +110,7 @@ export const dashboardService = {
     try {
       console.log('🔔 Fetching expiry alerts from backend...');
       const response = await api.get('/inventory/batches/expiring', {
-        params: { days: 30, organisationId: orgId }
+        params: { days: 90, organisationId: orgId }
       }).catch(() => api.get(`/stockcontrol/expiry-tracking/${orgId}`).catch(() => ({ data: { data: [] } })));
 
       const batches = response.data.data || response.data.batches || [];
@@ -118,11 +118,16 @@ export const dashboardService = {
       
       return batches.map((batch: any) => ({
         id: String(batch._id || batch.id),
-        itemId: String(batch.materialId || batch.productId || ''),
+        batchNumber: batch.batchNumber || batch.batchNo || batch.batch || '',
+        itemId: String(batch.materialId || batch.productId || batch.itemId || ''),
         itemName: batch.itemName || batch.name || '',
         expiryDate: batch.expiryDate || batch.expDate || '',
         quantity: Number(batch.quantity || batch.remainingQuantity || 0),
-        warehouse: batch.warehouse || batch.location || '',
+        mfgDate: batch.mfgDate || batch.manufacturingDate || '',
+        costPrice: Number(batch.costPrice || batch.unitCost || 0),
+        warehouseId: batch.warehouseId || batch.warehouse?._id || batch.locationId || '',
+        warehouse: batch.warehouse?.name || batch.warehouseName || batch.warehouse || batch.location || '',
+        location: batch.locationName || batch.location || batch.binCode || batch.bin || '',
         status: batch.status || 'Active'
       })).sort((a: any, b: any) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
     } catch (error: any) {
@@ -135,7 +140,7 @@ export const dashboardService = {
         if (b.status === 'Depleted') return false;
         const expDate = new Date(b.expiryDate);
         const diffDays = (expDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
-        return diffDays < 30;
+        return diffDays < 90;
       }).sort((a,b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
     }
   },

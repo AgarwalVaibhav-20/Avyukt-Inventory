@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MENU_ITEMS } from "@/constants";
 import {
   ChevronDown,
@@ -10,8 +10,15 @@ import {
 } from "lucide-react";
 import { MenuItem } from "@/types";
 import { Link } from "react-router-dom";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { User as UserIcon } from "lucide-react";
+import { fetchItems } from "@/store/slices/inventorySlice";
+import { fetchStockControlData } from "@/store/slices/stockControlSlice";
+import {
+  fetchPRs,
+  fetchPOs,
+  fetchQCQueue,
+} from "@/store/slices/procurementSlice";
 
 interface SidebarProps {
   activeMenuId: string;
@@ -26,7 +33,34 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen,
 }) => {
+  const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
+  const { items } = useAppSelector((state) => state.inventory);
+  const { expiryBatches } = useAppSelector((state) => state.stockControl);
+  const { prs, pos, qcQueue } = useAppSelector((state) => state.procurement);
+
+  const alertCounts = {
+    "dash-low-stock": items.filter(
+      (item) => item.stock < (item.reorderLevel || 0),
+    ).length,
+    "dash-overstock": items.filter(
+      (item) => item.maximumStockLevel && item.stock > item.maximumStockLevel,
+    ).length,
+    "dash-expiry": expiryBatches.length,
+    "dash-approvals":
+      prs.filter((p) => p.status === "Pending Approval").length +
+      pos.filter((p) => p.status === "Pending Approval").length +
+      qcQueue.length,
+  };
+
+  useEffect(() => {
+    dispatch(fetchItems());
+    dispatch(fetchStockControlData());
+    dispatch(fetchPRs());
+    dispatch(fetchPOs());
+    dispatch(fetchQCQueue());
+  }, [dispatch]);
+
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(
     new Set(["dashboard"]),
   );
@@ -127,6 +161,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             const isActiveParent = item.subMenus?.some(
               (sub) => sub.id === activeMenuId,
             );
+            const hasAlert = item.subMenus?.some(
+              (sub) => (alertCounts as any)[sub.id] > 0,
+            );
 
             return (
               <div key={item.id} className="mb-1">
@@ -150,12 +187,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                     />
                     <span>{item.label}</span>
                   </div>
-                  {item.subMenus &&
-                    (isExpanded ? (
-                      <ChevronDown size={14} />
-                    ) : (
-                      <ChevronRight size={14} />
-                    ))}
+                  <div className="flex items-center gap-2">
+                    {hasAlert && !isExpanded && (
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    )}
+                    {item.subMenus &&
+                      (isExpanded ? (
+                        <ChevronDown size={14} />
+                      ) : (
+                        <ChevronRight size={14} />
+                      ))}
+                  </div>
                 </a>
 
                 {/* Submenus */}
@@ -174,15 +216,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                             if (window.innerWidth < 768) setIsOpen(false);
                           }}
                           className={`
-                            block w-full text-left py-2 px-3 rounded-md text-sm transition-colors
+                            block w-full text-left py-2 px-3 rounded-md text-sm transition-colors relative
                             ${
                               isSubActive
                                 ? "bg-blue-600/10 text-blue-400 font-medium"
                                 : "text-slate-400 hover:text-slate-200"
                             }
+                            ${(alertCounts as any)[sub.id] > 0 ? "" : ""}
                           `}
                         >
-                          {sub.label}
+                          <div className="flex items-center justify-between">
+                            <span>{sub.label}</span>
+                            {(alertCounts as any)[sub.id] > 0 && (
+                              <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold animate-pulse">
+                                {(alertCounts as any)[sub.id]}
+                              </span>
+                            )}
+                          </div>
                         </Link>
                       );
                     })}

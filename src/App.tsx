@@ -142,6 +142,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { MENU_ITEMS } from "@/constants";
+import LowStockAlerts from "./components/dashboard/Lowstockalerts";
+import OverstockAlerts from "./components/dashboard/OverStockAlert";
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -1247,13 +1249,13 @@ const App: React.FC = () => {
               <Route
                 path="/dashboard/dash-low-stock"
                 element={
-                  <GenericView title="Low Stock Alerts" parent="Dashboard" />
+                  <LowStockAlerts />
                 }
               />
               <Route
                 path="/dashboard/dash-overstock"
                 element={
-                  <GenericView title="Overstock Alerts" parent="Dashboard" />
+                  <OverstockAlerts />
                 }
               />
 
