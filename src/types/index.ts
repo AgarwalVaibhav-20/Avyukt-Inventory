@@ -309,7 +309,9 @@ export interface PurchaseOrder {
 
 export interface POItem {
   itemId: string;
+  itemVariantId?: string;
   itemName: string;
+  variantName?: string;
   quantity: number;
   unitPrice: number;
   receivedQty: number;
@@ -331,7 +333,9 @@ export interface GRN {
 
 export interface GRNItem {
   itemId: string;
+  itemVariantId?: string;
   itemName: string;
+  variantName?: string;
   poQty: number;
   receivedQty: number;
   acceptedQty: number;

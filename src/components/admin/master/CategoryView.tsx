@@ -9,7 +9,7 @@ const CategoryView: React.FC = () => {
       type="category"
       columns={[
         { key: 'name', label: 'Category Name' },
-        { key: 'description', label: 'Description' }
+        { key: 'description', label: 'Description', optional: true }
       ]}
     />
   );

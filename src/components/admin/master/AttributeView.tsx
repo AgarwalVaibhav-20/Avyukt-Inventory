@@ -16,4 +16,3 @@ const AttributeView: React.FC = () => {
 };
 
 export default AttributeView;
-export { };

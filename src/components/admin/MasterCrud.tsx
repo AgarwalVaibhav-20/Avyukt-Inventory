@@ -6,14 +6,17 @@ import { useListControls } from "@/hooks/useListControls";
 import {
   fetchMasterData,
   addMasterData,
+  updateMasterData,
   deleteMasterData,
 } from "@/store/slices/masterSlice";
+import { Edit2 } from "lucide-react";
 
 interface ColumnDef {
   key: string;
   label: string;
   type?: "text" | "number" | "array" | "select";
   options?: string[];
+  optional?: boolean;
 }
 
 interface MasterCrudProps {
@@ -23,6 +26,7 @@ interface MasterCrudProps {
   type: string; // e.g. 'category', 'uom', 'brand', 'hsn'
   fetchData?: (orgId?: string) => Promise<any[]>;
   addData?: (data: any) => Promise<any>;
+  updateData?: (id: string, data: any) => Promise<any>;
   deleteData?: (id: string) => Promise<void>;
 }
 
@@ -33,6 +37,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   type,
   fetchData,
   addData,
+  updateData,
   deleteData,
 }) => {
   const dispatch = useAppDispatch();
@@ -44,7 +49,9 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   const [localData, setLocalData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newData, setNewData] = useState<any>({});
+  const [editDataForm, setEditDataForm] = useState<any>({});
   const [searchTerm, setSearchTerm] = useState("");
 
   const organisationId =
@@ -84,7 +91,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   const handleSave = async () => {
     // Basic validation
     for (const col of columns) {
-      if (!newData[col.key]) {
+      if (!col.optional && !newData[col.key]) {
         alert(`${col.label} is required`);
         return;
       }
@@ -125,6 +132,54 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
         "Failed to save record";
       alert(`Error: ${errorMessage}`);
     }
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId) return;
+
+    // Basic validation
+    for (const col of columns) {
+      if (!col.optional && !editDataForm[col.key]) {
+        alert(`${col.label} is required`);
+        return;
+      }
+    }
+
+    const formattedData = { ...editDataForm };
+    columns.forEach((col) => {
+      if (col.type === "array" && typeof formattedData[col.key] === "string") {
+        formattedData[col.key] = formattedData[col.key]
+          .split(",")
+          .map((s: string) => s.trim());
+      }
+    });
+
+    try {
+      if (type && !updateData) {
+        await dispatch(updateMasterData({ id: editingId, payload: formattedData })).unwrap();
+      } else if (updateData) {
+        await updateData(editingId, formattedData);
+        await loadData();
+      }
+      setEditingId(null);
+      setEditDataForm({});
+      alert("Record updated successfully!");
+    } catch (e) {
+      console.error("Update error:", e);
+      alert(`Error: ${(e as any)?.message || "Failed to update record"}`);
+    }
+  };
+
+  const startEdit = (item: any) => {
+    setEditingId(item._id || item.id);
+    const initialForm = { ...item };
+    // Convert arrays back to comma separated strings for editing
+    columns.forEach(col => {
+      if (col.type === "array" && Array.isArray(initialForm[col.key])) {
+        initialForm[col.key] = initialForm[col.key].join(", ");
+      }
+    });
+    setEditDataForm(initialForm);
   };
 
   const handleDelete = async (id: string) => {
@@ -288,29 +343,98 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                   </td>
                 </tr>
               ) : (
-                pagedItems.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
-                    {columns.map((col) => (
-                      <td key={col.key} className="px-6 py-4 text-slate-700">
-                        {Array.isArray(item[col.key])
-                          ? item[col.key].join(", ")
-                          : item[col.key]}
+                pagedItems.map((item) => {
+                  const itemId = item._id || item.id;
+                  const isEditing = editingId === itemId;
+
+                  return (
+                    <tr
+                      key={itemId}
+                      className={`hover:bg-slate-50 transition-colors ${isEditing ? 'bg-blue-50/30' : ''}`}
+                    >
+                      {columns.map((col) => (
+                        <td key={col.key} className="px-6 py-4 text-slate-700">
+                          {isEditing ? (
+                            col.type === "select" && col.options ? (
+                              <select
+                                className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                value={editDataForm[col.key] || ""}
+                                onChange={(e) =>
+                                  setEditDataForm({
+                                    ...editDataForm,
+                                    [col.key]: e.target.value,
+                                  })
+                                }
+                              >
+                                <option value="">Select {col.label}</option>
+                                {col.options.map((opt) => (
+                                  <option key={opt} value={opt}>
+                                    {opt}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <input
+                                type={col.type === "number" ? "number" : "text"}
+                                className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                value={editDataForm[col.key] || ""}
+                                onChange={(e) =>
+                                  setEditDataForm({
+                                    ...editDataForm,
+                                    [col.key]: e.target.value,
+                                  })
+                                }
+                              />
+                            )
+                          ) : (
+                            Array.isArray(item[col.key])
+                              ? item[col.key].join(", ")
+                              : item[col.key]
+                          )}
+                        </td>
+                      ))}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {isEditing ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={handleUpdate}
+                                className="text-green-600 hover:bg-green-100 p-1.5 rounded transition-colors"
+                              >
+                                <Save size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingId(null)}
+                                className="text-slate-500 hover:bg-slate-100 p-1.5 rounded transition-colors"
+                              >
+                                <X size={16} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => startEdit(item)}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(itemId)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
-                    ))}
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

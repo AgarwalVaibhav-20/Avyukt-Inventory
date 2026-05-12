@@ -9,7 +9,7 @@ const HsnView: React.FC = () => {
       type="hsn"
       columns={[
         { key: 'hsnCode', label: 'HSN Code' },
-        { key: 'description', label: 'Description' },
+        { key: 'description', label: 'Description', optional: true },
         { key: 'taxPercentage', label: 'Tax Rate (%)', type: 'number' }
       ]}
     />

@@ -48,6 +48,14 @@ export const deleteMasterData = createAsyncThunk(
   }
 );
 
+export const updateMasterData = createAsyncThunk(
+  'master/update',
+  async ({ id, payload }: { id: string; payload: any }) => {
+    const response = await api.put(`/inventory/${id}`, payload);
+    return response.data;
+  }
+);
+
 const masterSlice = createSlice({
   name: 'master',
   initialState,
@@ -70,6 +78,16 @@ const masterSlice = createSlice({
         const type = item.type;
         if (!state.data[type]) state.data[type] = [];
         state.data[type].unshift(item);
+      })
+      .addCase(updateMasterData.fulfilled, (state, action) => {
+        const item = action.payload.data || action.payload;
+        const type = item.type;
+        if (state.data[type]) {
+          const index = state.data[type].findIndex(i => i._id === item._id);
+          if (index !== -1) {
+            state.data[type][index] = item;
+          }
+        }
       })
       .addCase(deleteMasterData.fulfilled, (state, action) => {
         const { id, type } = action.payload;

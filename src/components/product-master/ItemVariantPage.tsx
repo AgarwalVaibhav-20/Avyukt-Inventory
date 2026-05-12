@@ -14,7 +14,7 @@ import {
   Download
 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { fetchVariants, createVariant, deleteVariant } from '@/store/slices/itemVariantSlice';
+import { fetchVariants, createVariant, updateVariant, deleteVariant } from '@/store/slices/itemVariantSlice';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,8 @@ const ItemVariantPage: React.FC = () => {
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [newVariant, setNewVariant] = useState({
     productId: '',
     variantName: '',
@@ -67,25 +69,44 @@ const ItemVariantPage: React.FC = () => {
   }, [searchParams]);
 
   const handleAddAttribute = () => {
-    setNewVariant({
-      ...newVariant,
-      attributes: [...newVariant.attributes, { name: '', value: '' }]
-    });
+    setNewVariant(prev => ({
+      ...prev,
+      attributes: [...prev.attributes, { name: '', value: '' }]
+    }));
   };
 
   const handleAttributeChange = (index: number, field: 'name' | 'value', value: string) => {
-    const updatedAttributes = [...newVariant.attributes];
-    updatedAttributes[index][field] = value;
-    setNewVariant({ ...newVariant, attributes: updatedAttributes });
+    setNewVariant(prev => {
+      const updatedAttributes = [...prev.attributes];
+      updatedAttributes[index] = { ...updatedAttributes[index], [field]: value };
+      return { ...prev, attributes: updatedAttributes };
+    });
   };
 
-  const handleSave = async () => {
-    if (!newVariant.productId || !newVariant.sku || !newVariant.variantName) {
-      alert("Please fill in all required fields (Product, SKU, Variant Name)");
-      return;
-    }
-    await dispatch(createVariant(newVariant));
-    setIsAddDialogOpen(false);
+  const handleRemoveAttribute = (index: number) => {
+    setNewVariant(prev => ({
+      ...prev,
+      attributes: prev.attributes.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleEdit = (variant: any) => {
+    setIsEditing(true);
+    setEditingId(variant._id);
+    setNewVariant({
+      productId: variant.productId?._id || variant.productId,
+      variantName: variant.variantName,
+      sku: variant.sku,
+      barcode: variant.barcode || '',
+      price: variant.price || 0,
+      attributes: variant.attributes.length > 0 ? variant.attributes : [{ name: '', value: '' }]
+    });
+    setIsAddDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setIsEditing(false);
+    setEditingId(null);
     setNewVariant({
       productId: '',
       variantName: '',
@@ -94,6 +115,22 @@ const ItemVariantPage: React.FC = () => {
       price: 0,
       attributes: [{ name: '', value: '' }]
     });
+  };
+
+  const handleSave = async () => {
+    if (!newVariant.productId || !newVariant.sku || !newVariant.variantName) {
+      alert("Please fill in all required fields (Product, SKU, Variant Name)");
+      return;
+    }
+    
+    if (isEditing && editingId) {
+      await dispatch(updateVariant({ id: editingId, data: newVariant }));
+    } else {
+      await dispatch(createVariant(newVariant));
+    }
+    
+    setIsAddDialogOpen(false);
+    resetForm();
   };
 
   const linkedItemId = searchParams.get('item');
@@ -137,23 +174,28 @@ const ItemVariantPage: React.FC = () => {
           <Button variant="outline" className="gap-2 bg-white shadow-sm hover:bg-slate-50">
             <Download size={18} /> Export
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+            setIsAddDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-md">
+              <Button onClick={() => setIsEditing(false)} className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-md">
                 <Plus size={18} /> Create Variant
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl bg-white">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-bold">Add New Variant</DialogTitle>
-                <CardDescription>Configure specific variation details for a product.</CardDescription>
+                <DialogTitle className="text-2xl font-bold">{isEditing ? 'Edit Variant' : 'Add New Variant'}</DialogTitle>
+                <CardDescription>
+                  {isEditing ? 'Update the specific variation details for this product.' : 'Configure specific variation details for a product.'}
+                </CardDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-6 py-4">
                 <div className="space-y-2">
                   <Label>Parent Product</Label>
                   <Select 
                     value={newVariant.productId} 
-                    onValueChange={(val) => setNewVariant({...newVariant, productId: val})}
+                    onValueChange={(val) => setNewVariant(prev => ({...prev, productId: val}))}
                   >
                     <SelectTrigger className="bg-slate-50/50">
                       <SelectValue placeholder="Select Product" />
@@ -170,7 +212,7 @@ const ItemVariantPage: React.FC = () => {
                   <Input 
                     placeholder="e.g. Blue / Large" 
                     value={newVariant.variantName}
-                    onChange={(e) => setNewVariant({...newVariant, variantName: e.target.value})}
+                    onChange={(e) => setNewVariant(prev => ({...prev, variantName: e.target.value}))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -178,7 +220,7 @@ const ItemVariantPage: React.FC = () => {
                   <Input 
                     placeholder="Unique SKU" 
                     value={newVariant.sku}
-                    onChange={(e) => setNewVariant({...newVariant, sku: e.target.value})}
+                    onChange={(e) => setNewVariant(prev => ({...prev, sku: e.target.value}))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -186,7 +228,16 @@ const ItemVariantPage: React.FC = () => {
                   <Input 
                     placeholder="Universal Barcode" 
                     value={newVariant.barcode}
-                    onChange={(e) => setNewVariant({...newVariant, barcode: e.target.value})}
+                    onChange={(e) => setNewVariant(prev => ({...prev, barcode: e.target.value}))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Price (₹)</Label>
+                  <Input 
+                    type="number"
+                    placeholder="Unit Price" 
+                    value={newVariant.price || ''}
+                    onChange={(e) => setNewVariant(prev => ({...prev, price: parseFloat(e.target.value) || 0}))}
                   />
                 </div>
                 <div className="col-span-2">
@@ -210,7 +261,12 @@ const ItemVariantPage: React.FC = () => {
                           onChange={(e) => handleAttributeChange(idx, 'value', e.target.value)}
                         />
                         {idx > 0 && (
-                          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-slate-400 hover:text-red-500"
+                            onClick={() => handleRemoveAttribute(idx)}
+                          >
                             <Trash2 size={18} />
                           </Button>
                         )}
@@ -221,7 +277,9 @@ const ItemVariantPage: React.FC = () => {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">Save Variant</Button>
+                <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                  {isEditing ? 'Update Variant' : 'Save Variant'}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -360,7 +418,12 @@ const ItemVariantPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                            onClick={() => handleEdit(variant)}
+                          >
                             <Edit2 size={16} />
                           </Button>
                           <Button 
