@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { qualityService } from '@/services/qualityService';
 import { productService } from '@/services/productService';
 import { NCR, InventoryItem } from '@/types';
-import { AlertTriangle, Plus, FileText, Loader2 } from 'lucide-react';
+import { AlertTriangle, Plus, Loader2, Search } from 'lucide-react';
 
 const NCRView: React.FC = () => {
   const [ncrs, setNCRs] = useState<NCR[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState('All');
   const [form, setForm] = useState({ itemId: '', quantity: 1, refType: 'GRN' as const, refId: '', description: '' });
 
   useEffect(() => {
@@ -38,16 +41,43 @@ const NCRView: React.FC = () => {
       loadData();
   };
 
+  const filteredNCRs = ncrs.filter((ncr) => {
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+          !term ||
+          ncr.ncrNumber.toLowerCase().includes(term) ||
+          ncr.itemName.toLowerCase().includes(term) ||
+          ncr.refId.toLowerCase().includes(term) ||
+          ncr.description.toLowerCase().includes(term);
+      const matchesStatus = statusFilter === 'All' || ncr.status === statusFilter;
+      const matchesSource = sourceFilter === 'All' || ncr.refType === sourceFilter;
+      return matchesSearch && matchesStatus && matchesSource;
+  });
+
   return (
     <div className="space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <AlertTriangle className="text-red-600" size={20}/> Non-Conformance Reports (NCR)
                 </h2>
-                <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex gap-2">
-                    <Plus size={16}/> Raise NCR
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search NCR, item, ref..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-64" />
+                    </div>
+                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+                        <option value="All">All Statuses</option>
+                        {[...new Set(ncrs.map((ncr) => ncr.status).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}
+                    </select>
+                    <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+                        <option value="All">All Sources</option>
+                        {[...new Set(ncrs.map((ncr) => ncr.refType).filter(Boolean))].map((source) => <option key={source} value={source}>{source}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex gap-2">
+                        <Plus size={16}/> Raise NCR
+                    </button>
+                </div>
             </div>
 
             {isAdding && (
@@ -90,8 +120,8 @@ const NCRView: React.FC = () => {
 
             <div className="space-y-3">
                 {loading ? <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div> :
-                 ncrs.length === 0 ? <p className="text-center text-slate-500 py-4">No open NCRs.</p> :
-                 ncrs.map(ncr => (
+                 filteredNCRs.length === 0 ? <p className="text-center text-slate-500 py-4">No open NCRs.</p> :
+                 filteredNCRs.map(ncr => (
                     <div key={ncr.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50 hover:bg-white transition-colors">
                         <div className="flex justify-between mb-2">
                             <span className="font-bold text-slate-800">{ncr.ncrNumber}</span>

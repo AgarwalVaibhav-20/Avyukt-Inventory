@@ -21,6 +21,9 @@ const StockReservationView: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [expiryFilter, setExpiryFilter] = useState('');
   const [form, setForm] = useState({ itemId: '', quantity: 1, reference: '', expiryDate: '' });
 
   useEffect(() => {
@@ -102,10 +105,17 @@ const StockReservationView: React.FC = () => {
       }
   };
 
-  const filteredReservations = reservations.filter(r => 
-      r.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.itemName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredReservations = reservations.filter(r => {
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+          !term ||
+          r.reference.toLowerCase().includes(term) ||
+          r.itemName.toLowerCase().includes(term) ||
+          (r.sku || '').toLowerCase().includes(term);
+      const matchesStatus = statusFilter === 'All' || r.status === statusFilter;
+      const matchesExpiry = !expiryFilter || r.expiryDate === expiryFilter;
+      return matchesSearch && matchesStatus && matchesExpiry;
+  });
 
   return (
     <div className="space-y-8 max-w-[1400px] mx-auto animate-in fade-in duration-500">
@@ -246,10 +256,48 @@ const StockReservationView: React.FC = () => {
                     />
                 </div>
                 <div className="flex gap-4">
-                    <button className="p-4 bg-slate-50 rounded-2xl text-slate-500 hover:text-amber-600 transition-colors"><Filter size={20}/></button>
-                    <button className="p-4 bg-slate-50 rounded-2xl text-slate-500 hover:text-amber-600 transition-colors"><Calendar size={20}/></button>
+                    <button
+                        onClick={() => setShowFilters((current) => !current)}
+                        className={`p-4 rounded-2xl transition-colors ${showFilters ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-500 hover:text-amber-600'}`}
+                        title="Toggle filters"
+                    >
+                        <Filter size={20}/>
+                    </button>
                 </div>
             </div>
+            {showFilters && (
+                <div className="mb-8 grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-3">
+                    <select
+                        value={statusFilter}
+                        onChange={(event) => setStatusFilter(event.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 outline-none"
+                    >
+                        <option value="All">All Statuses</option>
+                        {[...new Set(reservations.map((res) => res.status).filter(Boolean))].map((status) => (
+                            <option key={status} value={status}>{status}</option>
+                        ))}
+                    </select>
+                    <div className="relative">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
+                        <input
+                            type="date"
+                            value={expiryFilter}
+                            onChange={(event) => setExpiryFilter(event.target.value)}
+                            className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-bold text-slate-600 outline-none"
+                        />
+                    </div>
+                    <button
+                        onClick={() => {
+                            setSearchTerm('');
+                            setStatusFilter('All');
+                            setExpiryFilter('');
+                        }}
+                        className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-500 hover:bg-slate-100"
+                    >
+                        Clear Filters
+                    </button>
+                </div>
+            )}
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-24">

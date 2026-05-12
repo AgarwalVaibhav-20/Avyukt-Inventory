@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { qualityService } from '@/services/qualityService';
 import { productService } from '@/services/productService';
 import { InspectionPlan, QualityParameter, InventoryItem } from '@/types';
-import { FileSearch, Plus, Trash2, Save, Loader2, X } from 'lucide-react';
+import { FileSearch, Plus, Trash2, Loader2, Search } from 'lucide-react';
 
 const InspectionPlansView: React.FC = () => {
   const [plans, setPlans] = useState<InspectionPlan[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [params, setParams] = useState<QualityParameter[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [itemFilter, setItemFilter] = useState('All');
   
   const [isAdding, setIsAdding] = useState(false);
   const [newPlan, setNewPlan] = useState<{
@@ -120,16 +122,37 @@ const InspectionPlansView: React.FC = () => {
       }
   };
 
+  const filteredPlans = plans.filter((plan) => {
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+          !term ||
+          plan.name.toLowerCase().includes(term) ||
+          plan.itemName.toLowerCase().includes(term) ||
+          plan.parameters.some((param) => param.parameterName.toLowerCase().includes(term));
+      const matchesItem = itemFilter === 'All' || plan.itemId === itemFilter;
+      return matchesSearch && matchesItem;
+  });
+
   return (
     <div className="space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                     <FileSearch className="text-blue-600" size={20}/> Inspection Plans
                 </h2>
-                <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2 items-center">
-                    <Plus size={16}/> Create Plan
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search plans, items, parameters..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-72" />
+                    </div>
+                    <select value={itemFilter} onChange={(e) => setItemFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+                        <option value="All">All Items</option>
+                        {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                    </select>
+                    <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2 items-center">
+                        <Plus size={16}/> Create Plan
+                    </button>
+                </div>
             </div>
 
             {isAdding && (
@@ -190,8 +213,8 @@ const InspectionPlansView: React.FC = () => {
 
             <div className="grid gap-4">
                 {loading ? <div className="text-center py-8"><Loader2 className="animate-spin inline"/></div> :
-                 plans.length === 0 ? <div className="text-center text-slate-500 py-8">No plans defined.</div> :
-                 plans.map(p => (
+                 filteredPlans.length === 0 ? <div className="text-center text-slate-500 py-8">No plans defined.</div> :
+                 filteredPlans.map(p => (
                     <div key={p.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50">
                         <div className="flex justify-between items-start mb-2">
                             <div>

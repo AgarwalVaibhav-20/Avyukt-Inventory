@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { vendorService } from '@/services/vendorService';
 import { Vendor } from '@/types';
-import { ShieldCheck, Loader2, Star, Phone, Mail } from 'lucide-react';
+import { ShieldCheck, Loader2, Star, Phone, Mail, Search } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const ApprovedVendorListView: React.FC = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     loadData();
@@ -14,17 +17,51 @@ const ApprovedVendorListView: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     const data = await vendorService.getVendors();
-    setVendors(data.filter(v => v.status === 'Active'));
+    setVendors(data);
     setLoading(false);
   };
+
+  const {
+    filteredItems: filteredVendors,
+    pagedItems: pagedVendors,
+    page,
+    totalItems,
+    totalPages,
+    setPage,
+  } = useListControls({
+    items: vendors,
+    searchTerm: search,
+    initialPageSize: 8,
+    searchFn: (vendor, term) =>
+      vendor.name.toLowerCase().includes(term) ||
+      vendor.code.toLowerCase().includes(term) ||
+      (vendor.contactPerson || '').toLowerCase().includes(term) ||
+      (vendor.email || '').toLowerCase().includes(term) ||
+      (vendor.phone || '').toLowerCase().includes(term),
+    filterFn: (vendor) => vendor.status === 'Active',
+  });
 
   return (
     <div className="space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
-                <ShieldCheck className="text-green-600" size={20}/> Approved Vendor List (AVL)
-            </h2>
-            <p className="text-sm text-slate-500 mb-6">List of vetted and active suppliers authorized for procurement.</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                    <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <ShieldCheck className="text-green-600" size={20}/> Approved Vendor List (AVL)
+                    </h2>
+                    <p className="text-sm text-slate-500">List of vetted and active suppliers authorized for procurement.</p>
+                </div>
+                <div className="relative w-full md:w-80">
+                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search vendor, code, contact, email..."
+                        className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-11 pr-4 text-sm outline-none focus:border-green-500"
+                    />
+                </div>
+            </div>
 
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -39,8 +76,8 @@ const ApprovedVendorListView: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
-                         vendors.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No active vendors.</td></tr> :
-                         vendors.map(v => (
+                         filteredVendors.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No active vendors.</td></tr> :
+                         pagedVendors.map(v => (
                             <tr key={v.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4">
                                     <p className="font-bold text-slate-800">{v.name}</p>
@@ -69,6 +106,11 @@ const ApprovedVendorListView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+            {totalItems > 0 && totalPages > 1 && (
+                <div className="mt-6">
+                    <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                </div>
+            )}
         </div>
     </div>
   );

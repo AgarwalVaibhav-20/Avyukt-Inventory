@@ -17,6 +17,7 @@ const mapAttachment = (item: any): DocumentAttachment => {
     id: item._id || item.id,
     fileName: item.name || latestVersion?.originalName || item.fileName || 'Untitled document',
     fileType: item.category || item.fileType || 'Document',
+    tag: item.tag || item.fileTag || 'Other',
     size: item.size || latestVersion?.size || '',
     uploadDate: item.uploadedOn
       ? new Date(item.uploadedOn).toISOString().split('T')[0]

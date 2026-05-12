@@ -67,4 +67,26 @@ api.interceptors.response.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+
+    if (status === 401 && typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("organisationId");
+        localStorage.removeItem("originalToken");
+      } catch {
+        // Ignore storage failures during session cleanup.
+      }
+
+      window.dispatchEvent(new Event("auth:expired"));
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export default api;

@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { documentService } from '@/services/documentService';
 import { movementService } from '@/services/movementService';
 import { ConsignmentEntry, DocumentAttachment } from '@/types';
+import { useListControls } from '@/hooks/useListControls';
+import Pagination from '@/components/common/Pagination';
 import {
   Download,
   File,
@@ -33,6 +35,9 @@ const DocumentVersionsView: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [search, setSearch] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [filterTag, setFilterTag] = useState('All');
+  const [filterReferenceType, setFilterReferenceType] = useState('All');
   const [referenceType, setReferenceType] =
     useState<DocumentAttachment['referenceType']>('General');
   const [referenceId, setReferenceId] = useState('');
@@ -68,19 +73,34 @@ const DocumentVersionsView: React.FC = () => {
     loadData();
   }, []);
 
-  const filteredFiles = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return files.filter((file) => {
-      const matchesSearch =
-        !term ||
-        file.fileName.toLowerCase().includes(term) ||
-        file.referenceLabel?.toLowerCase().includes(term) ||
-        file.referenceType.toLowerCase().includes(term);
-      const matchesReference = referenceType === 'General' ? true : file.referenceType === referenceType;
-      const matchesReferenceId = !referenceId || file.referenceId === referenceId;
-      return matchesSearch && matchesReference && matchesReferenceId;
-    });
-  }, [files, referenceId, referenceType, search]);
+  const {
+    filteredItems: filteredFiles,
+    pagedItems,
+    page,
+    pageSize,
+    totalPages,
+    totalItems,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: files,
+    initialPageSize: 12,
+    searchTerm: search,
+    filters: { filterCategory, filterTag, filterReferenceType, referenceId },
+    searchFn: (file, term) =>
+      file.fileName.toLowerCase().includes(term) ||
+      (file.referenceLabel || '').toLowerCase().includes(term) ||
+      file.referenceType.toLowerCase().includes(term) ||
+      (file.uploadedBy || '').toLowerCase().includes(term),
+    filterFn: (file, filters) => {
+      const matchesCategory = filters.filterCategory === 'All' || file.fileType === filters.filterCategory;
+      const matchesTag = filters.filterTag === 'All' || file.tag === filters.filterTag;
+      const matchesReferenceType =
+        filters.filterReferenceType === 'All' || file.referenceType === filters.filterReferenceType;
+      const matchesReferenceId = !filters.referenceId || file.referenceId === filters.referenceId;
+      return matchesCategory && matchesTag && matchesReferenceType && matchesReferenceId;
+    },
+  });
 
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -169,6 +189,52 @@ const DocumentVersionsView: React.FC = () => {
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
+        </div>
+
+        <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-4">
+          <select
+            value={filterCategory}
+            onChange={(event) => setFilterCategory(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="All">All Categories</option>
+            {categories.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </select>
+          <select
+            value={filterTag}
+            onChange={(event) => setFilterTag(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="All">All Tags</option>
+            {tags.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </select>
+          <select
+            value={filterReferenceType}
+            onChange={(event) => setFilterReferenceType(event.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="All">All Links</option>
+            {referenceTypes.map((value) => (
+              <option key={value} value={value}>{value === 'CustomerStock' ? 'Customer Stock' : value}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('');
+              setFilterCategory('All');
+              setFilterTag('All');
+              setFilterReferenceType('All');
+              setReferenceId('');
+            }}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Clear Filters
+          </button>
         </div>
 
         <div className="mb-8 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -300,7 +366,7 @@ const DocumentVersionsView: React.FC = () => {
           ) : filteredFiles.length === 0 ? (
             <div className="col-span-3 py-8 text-center text-slate-500">No files uploaded.</div>
           ) : (
-            filteredFiles.map((file) => (
+            pagedItems.map((file) => (
               <div
                 key={file.id}
                 className="rounded-lg border border-slate-200 p-4 transition-shadow hover:shadow-md"
@@ -380,6 +446,15 @@ const DocumentVersionsView: React.FC = () => {
             ))
           )}
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={totalItems}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[6, 12, 24, 48]}
+        />
       </div>
     </div>
   );

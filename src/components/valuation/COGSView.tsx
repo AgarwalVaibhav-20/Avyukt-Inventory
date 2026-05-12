@@ -21,6 +21,11 @@ const COGSView: React.FC = () => {
   const [cogsData, setCogsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [minCost, setMinCost] = useState("");
+  const [maxCost, setMaxCost] = useState("");
 
   useEffect(() => {
     fetchCOGS();
@@ -47,12 +52,20 @@ const COGSView: React.FC = () => {
     });
   };
 
-  const filteredData = cogsData.filter(
-    (entry) =>
-      entry.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.sku.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredData = cogsData.filter((entry) => {
+    const term = searchTerm.trim().toLowerCase();
+    const entryDate = entry.date ? new Date(entry.date) : null;
+    const matchesSearch =
+      !term ||
+      entry.reference.toLowerCase().includes(term) ||
+      entry.itemName.toLowerCase().includes(term) ||
+      entry.sku.toLowerCase().includes(term);
+    const matchesFrom = !fromDate || (entryDate && entryDate >= new Date(fromDate));
+    const matchesTo = !toDate || (entryDate && entryDate <= new Date(toDate));
+    const matchesMin = !minCost || Number(entry.totalCost || 0) >= Number(minCost);
+    const matchesMax = !maxCost || Number(entry.totalCost || 0) <= Number(maxCost);
+    return matchesSearch && matchesFrom && matchesTo && matchesMin && matchesMax;
+  });
 
   return (
     <div className="space-y-8 max-w-[1600px] mx-auto animate-in fade-in duration-700">
@@ -105,7 +118,11 @@ const COGSView: React.FC = () => {
               />
             </div>
             <div className="flex gap-4">
-              <button className="p-4 bg-slate-50 rounded-2xl text-slate-500 hover:text-emerald-600 transition-colors">
+              <button
+                onClick={() => setShowFilters((current) => !current)}
+                className={`p-4 rounded-2xl transition-colors ${showFilters ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-500 hover:text-emerald-600'}`}
+                title="Toggle filters"
+              >
                 <Filter size={20} />
               </button>
               <button
@@ -116,6 +133,27 @@ const COGSView: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {showFilters && (
+            <div className="mb-10 grid gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 md:grid-cols-5">
+              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none" />
+              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none" />
+              <input type="number" min="0" value={minCost} onChange={(e) => setMinCost(e.target.value)} placeholder="Min COGS" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none" />
+              <input type="number" min="0" value={maxCost} onChange={(e) => setMaxCost(e.target.value)} placeholder="Max COGS" className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none" />
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setFromDate("");
+                  setToDate("");
+                  setMinCost("");
+                  setMaxCost("");
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-500 hover:bg-slate-100"
+              >
+                Clear Filters
+              </button>
+            </div>
+          )}
 
           <div className="overflow-hidden rounded-[2rem] border-2 border-slate-100 shadow-sm">
             <div className="overflow-x-auto">

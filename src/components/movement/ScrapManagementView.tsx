@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { InventoryItem, ScrapEntry } from '@/types';
-import { Trash2, DollarSign, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createScrapMovementEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const ScrapManagementView: React.FC = () => {
   const dispatch = useAppDispatch();
   const { scrapEntries, items, actionLoading, error } = useAppSelector((state) => state.stockMovement);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [formData, setFormData] = useState({
       itemId: '',
@@ -34,6 +35,13 @@ const ScrapManagementView: React.FC = () => {
 
   const typedItems = items as InventoryItem[];
   const typedScrapEntries = scrapEntries as ScrapEntry[];
+  const filteredScrapEntries = typedScrapEntries.filter((entry) => {
+      const term = searchTerm.trim().toLowerCase();
+      return !term ||
+          entry.reference.toLowerCase().includes(term) ||
+          entry.itemName.toLowerCase().includes(term) ||
+          entry.reason.toLowerCase().includes(term);
+  });
 
   return (
     <div className="space-y-6">
@@ -76,9 +84,15 @@ const ScrapManagementView: React.FC = () => {
        {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-           <div className="p-4 border-b bg-slate-50 flex justify-between">
+           <div className="flex flex-col gap-3 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                <h3 className="font-semibold text-slate-800">Scrap Register</h3>
-               <span className="text-xs text-slate-500">Total Salvage Value: ${typedScrapEntries.reduce((acc, curr) => acc + curr.salvageValue, 0).toFixed(2)}</span>
+               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                   <div className="relative">
+                       <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                       <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search ref, item, reason..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-72" />
+                   </div>
+                   <span className="text-xs text-slate-500">Total Salvage Value: ${filteredScrapEntries.reduce((acc, curr) => acc + curr.salvageValue, 0).toFixed(2)}</span>
+               </div>
            </div>
            <table className="w-full text-sm text-left">
                <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
@@ -92,7 +106,8 @@ const ScrapManagementView: React.FC = () => {
                    </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                   {typedScrapEntries.map(s => (
+                   {filteredScrapEntries.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No scrap entries found.</td></tr> :
+                   filteredScrapEntries.map(s => (
                        <tr key={s.id}>
                            <td className="p-3 font-medium">{s.reference}</td>
                            <td className="p-3 text-slate-500">{s.date}</td>

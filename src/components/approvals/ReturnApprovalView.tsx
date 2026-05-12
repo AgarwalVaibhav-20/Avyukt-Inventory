@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
 import { PurchaseReturn, SalesReturn } from '@/types';
-import { Undo2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Search } from 'lucide-react';
 
 const ReturnApprovalView: React.FC = () => {
   const [purchaseReturns, setPurchaseReturns] = useState<PurchaseReturn[]>([]);
@@ -9,6 +9,7 @@ const ReturnApprovalView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [tab, setTab] = useState<'purchase' | 'sales'>('purchase');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadData();
@@ -39,6 +40,17 @@ const ReturnApprovalView: React.FC = () => {
       } catch (e) { alert("Error"); } finally { setProcessingId(null); }
   };
 
+  const activeReturns = tab === 'purchase' ? purchaseReturns : salesReturns;
+  const filteredReturns = activeReturns.filter((ret: any) => {
+      const term = searchTerm.trim().toLowerCase();
+      return !term ||
+          (ret.returnNumber || ret.returnNo || '').toLowerCase().includes(term) ||
+          (ret.vendorName || '').toLowerCase().includes(term) ||
+          (ret.customerName || '').toLowerCase().includes(term) ||
+          (ret.date || '').toLowerCase().includes(term) ||
+          (ret.items || []).some((item: any) => (item.itemName || '').toLowerCase().includes(term));
+  });
+
   return (
     <div className="space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -58,10 +70,16 @@ const ReturnApprovalView: React.FC = () => {
             </div>
 
             <div className="p-6">
+                <div className="mb-4 flex justify-end">
+                    <div className="relative w-full md:w-80">
+                        <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search return, party, item..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm" />
+                    </div>
+                </div>
                 {loading ? <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div> :
-                 (tab === 'purchase' ? purchaseReturns : salesReturns).length === 0 ? <p className="text-center text-slate-500 py-4">No pending approvals.</p> :
+                 filteredReturns.length === 0 ? <p className="text-center text-slate-500 py-4">No pending approvals.</p> :
                  <div className="space-y-4">
-                     {(tab === 'purchase' ? purchaseReturns : salesReturns).map((ret: any) => (
+                     {filteredReturns.map((ret: any) => (
                          <div key={ret.id} className="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-slate-50">
                              <div>
                                  <h4 className="font-bold text-slate-800">{ret.returnNumber}</h4>

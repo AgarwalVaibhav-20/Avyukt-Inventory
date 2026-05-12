@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Warehouse, StockTransfer as StockTransferType } from '@/types';
-import { ArrowRightLeft, Calendar, MapPin, Truck, CheckCircle2, Loader2, Package, Plus, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowRightLeft, Calendar, MapPin, Truck, CheckCircle2, Loader2, Package, Plus, Trash2, AlertCircle, Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createWarehouseTransfer, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 import api from '@/services/api';
@@ -29,6 +29,8 @@ const StockTransfer: React.FC = () => {
   
   // Transfer List
   const [transferItems, setTransferItems] = useState<TransferItemEntry[]>([]);
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyStatusFilter, setHistoryStatusFilter] = useState('All');
 
   useEffect(() => {
     dispatch(fetchStockMovementData());
@@ -126,6 +128,19 @@ const StockTransfer: React.FC = () => {
 
   const typedWarehouses = warehouses as Warehouse[];
   const typedTransfers = transfers as StockTransferType[];
+  const filteredTransfers = typedTransfers.filter((trf) => {
+    const term = historySearch.trim().toLowerCase();
+    const sourceName = getWarehouseName(trf.sourceWarehouseId);
+    const destinationName = getWarehouseName(trf.destinationWarehouseId);
+    const matchesSearch =
+      !term ||
+      trf.referenceNo.toLowerCase().includes(term) ||
+      sourceName.toLowerCase().includes(term) ||
+      destinationName.toLowerCase().includes(term) ||
+      trf.items.some((item) => item.itemName.toLowerCase().includes(term));
+    const matchesStatus = historyStatusFilter === 'All' || trf.status === historyStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -263,9 +278,19 @@ const StockTransfer: React.FC = () => {
 
        {/* History Table */}
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+          <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-6 py-4 md:flex-row md:items-center md:justify-between">
             <h3 className="font-bold text-slate-800">Transfer History</h3>
-            <button onClick={() => dispatch(fetchStockMovementData())} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Refresh</button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                <input value={historySearch} onChange={(e) => setHistorySearch(e.target.value)} placeholder="Search transfer history..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-72" />
+              </div>
+              <select value={historyStatusFilter} onChange={(e) => setHistoryStatusFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+                <option value="All">All Statuses</option>
+                {[...new Set(typedTransfers.map((transfer) => transfer.status).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+              <button onClick={() => dispatch(fetchStockMovementData())} className="text-blue-600 hover:text-blue-800 text-sm font-medium">Refresh</button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -281,10 +306,10 @@ const StockTransfer: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
                          <tr><td colSpan={5} className="py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2"/> Loading transfers...</td></tr>
-                    ) : typedTransfers.length === 0 ? (
+                    ) : filteredTransfers.length === 0 ? (
                          <tr><td colSpan={5} className="py-12 text-center text-slate-500 font-medium">No transfers recorded in the system.</td></tr>
                     ) : (
-                        typedTransfers.map((trf) => (
+                        filteredTransfers.map((trf) => (
                             <tr key={trf.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="px-6 py-4 font-bold text-slate-900">{trf.referenceNo}</td>
                                 <td className="px-6 py-4 text-slate-600">

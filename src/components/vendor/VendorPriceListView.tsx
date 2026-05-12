@@ -3,6 +3,8 @@ import { vendorService } from '@/services/vendorService';
 import { productService } from '@/services/productService';
 import { Vendor, InventoryItem, VendorItemMap } from '@/types';
 import { DollarSign, Search, Plus, Trash2, Save, Loader2, X } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const VendorPriceListView: React.FC = () => {
   const [maps, setMaps] = useState<VendorItemMap[]>([]);
@@ -65,10 +67,21 @@ const VendorPriceListView: React.FC = () => {
       }
   };
 
-  const filteredMaps = maps.filter(m => 
-      m.vendorName.toLowerCase().includes(search.toLowerCase()) || 
-      m.itemName.toLowerCase().includes(search.toLowerCase())
-  );
+  const {
+      filteredItems: filteredMaps,
+      pagedItems: pagedMaps,
+      page,
+      totalPages,
+      totalItems,
+      setPage,
+  } = useListControls({
+      items: maps,
+      searchTerm: search,
+      initialPageSize: 8,
+      searchFn: (map, term) =>
+          map.vendorName.toLowerCase().includes(term) ||
+          map.itemName.toLowerCase().includes(term),
+  });
 
   return (
     <div className="space-y-6">
@@ -154,7 +167,8 @@ const VendorPriceListView: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
-                         filteredMaps.map(m => (
+                         filteredMaps.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No vendor price records found.</td></tr> :
+                         pagedMaps.map(m => (
                             <tr key={m.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4">
                                     <p className="font-bold text-slate-800">{m.itemName}</p>
@@ -174,6 +188,11 @@ const VendorPriceListView: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+            {totalItems > 0 && totalPages > 1 && (
+                <div className="mt-6">
+                    <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                </div>
+            )}
         </div>
     </div>
   );

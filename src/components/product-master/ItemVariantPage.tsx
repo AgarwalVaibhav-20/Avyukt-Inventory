@@ -34,6 +34,12 @@ const ItemVariantPage: React.FC = () => {
   const { variants, loading } = useAppSelector((state) => state.itemVariants);
   const [products, setProducts] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [productFilter, setProductFilter] = useState('All');
+  const [stockFilter, setStockFilter] = useState('All');
+  const [attributeFilter, setAttributeFilter] = useState('');
+  const [minPriceFilter, setMinPriceFilter] = useState('');
+  const [maxPriceFilter, setMaxPriceFilter] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,6 +71,7 @@ const ItemVariantPage: React.FC = () => {
     }
     if (itemId) {
       setNewVariant((current) => ({ ...current, productId: itemId }));
+      setProductFilter(itemId);
     }
   }, [searchParams]);
 
@@ -134,6 +141,16 @@ const ItemVariantPage: React.FC = () => {
   };
 
   const linkedItemId = searchParams.get('item');
+  const getVariantProductId = (variant: any) => {
+    const productId = variant.productId;
+    if (!productId) return '';
+    if (typeof productId === 'string') return productId;
+    return productId._id || productId.id || '';
+  };
+
+  const getVariantStock = (variant: any) =>
+    (variant.stocks || []).reduce((acc: number, stock: any) => acc + Number(stock.quantity || 0), 0);
+
   const {
     filteredItems: filteredVariants,
     pagedItems: pagedVariants,
@@ -146,18 +163,57 @@ const ItemVariantPage: React.FC = () => {
   } = useListControls({
     items: variants,
     searchTerm: linkedItemId ? "" : searchTerm,
-    filters: { linkedItemId },
+    filters: {
+      linkedItemId,
+      productFilter,
+      stockFilter,
+      attributeFilter,
+      minPriceFilter,
+      maxPriceFilter,
+    },
     initialPageSize: 10,
     searchFn: (v, term) =>
-      v.variantName.toLowerCase().includes(term) ||
-      v.sku.toLowerCase().includes(term) ||
-      (v.barcode || '').toLowerCase().includes(term),
+      (v.variantName || '').toLowerCase().includes(term) ||
+      (v.sku || '').toLowerCase().includes(term) ||
+      (v.barcode || '').toLowerCase().includes(term) ||
+      (v.productId?.name || '').toLowerCase().includes(term) ||
+      (v.attributes || []).some((attr) =>
+        `${attr.name || ''} ${attr.value || ''}`.toLowerCase().includes(term),
+      ),
     filterFn: (v, filters) => {
-      return filters.linkedItemId
-        ? v.productId?._id === filters.linkedItemId || v.productId === filters.linkedItemId
-        : true;
+      const productId = getVariantProductId(v);
+      const activeProductFilter = filters.linkedItemId || filters.productFilter;
+      const stock = getVariantStock(v);
+      const price = Number(v.price || 0);
+      const attributeTerm = String(filters.attributeFilter || '').trim().toLowerCase();
+
+      const matchesProduct =
+        !activeProductFilter || activeProductFilter === 'All' || productId === activeProductFilter;
+      const matchesStock =
+        filters.stockFilter === 'All' ||
+        (filters.stockFilter === 'in-stock' && stock > 0) ||
+        (filters.stockFilter === 'low-stock' && stock > 0 && stock <= 10) ||
+        (filters.stockFilter === 'out-of-stock' && stock === 0);
+      const matchesAttribute =
+        !attributeTerm ||
+        (v.attributes || []).some((attr) =>
+          `${attr.name || ''} ${attr.value || ''}`.toLowerCase().includes(attributeTerm),
+        );
+      const matchesMinPrice = !filters.minPriceFilter || price >= Number(filters.minPriceFilter);
+      const matchesMaxPrice = !filters.maxPriceFilter || price <= Number(filters.maxPriceFilter);
+
+      return matchesProduct && matchesStock && matchesAttribute && matchesMinPrice && matchesMaxPrice;
     },
   });
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setProductFilter(linkedItemId || 'All');
+    setStockFilter('All');
+    setAttributeFilter('');
+    setMinPriceFilter('');
+    setMaxPriceFilter('');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 space-y-8">
@@ -335,7 +391,13 @@ const ItemVariantPage: React.FC = () => {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="text-slate-500 hover:bg-slate-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-slate-500 hover:bg-slate-100"
+              onClick={() => setShowFilters((current) => !current)}
+              title="Toggle filters"
+            >
               <Filter size={20} />
             </Button>
             <Separator orientation="vertical" className="h-8 mx-2" />
@@ -344,6 +406,61 @@ const ItemVariantPage: React.FC = () => {
             </div>
           </div>
         </div>
+        {showFilters && (
+          <div className="grid gap-3 border-b border-slate-100 bg-slate-50/60 px-6 py-4 md:grid-cols-5">
+            <Select value={productFilter} onValueChange={setProductFilter} disabled={!!linkedItemId}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Product" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="All">All Products</SelectItem>
+                {products.map((product) => (
+                  <SelectItem key={product.id} value={product.id}>
+                    {product.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={stockFilter} onValueChange={setStockFilter}>
+              <SelectTrigger className="bg-white">
+                <SelectValue placeholder="Stock" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="All">All Stock</SelectItem>
+                <SelectItem value="in-stock">In Stock</SelectItem>
+                <SelectItem value="low-stock">Low Stock</SelectItem>
+                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={attributeFilter}
+              onChange={(event) => setAttributeFilter(event.target.value)}
+              placeholder="Attribute name/value"
+              className="bg-white"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                min="0"
+                value={minPriceFilter}
+                onChange={(event) => setMinPriceFilter(event.target.value)}
+                placeholder="Min price"
+                className="bg-white"
+              />
+              <Input
+                type="number"
+                min="0"
+                value={maxPriceFilter}
+                onChange={(event) => setMaxPriceFilter(event.target.value)}
+                placeholder="Max price"
+                className="bg-white"
+              />
+            </div>
+            <Button variant="outline" onClick={clearFilters} className="bg-white">
+              Clear Filters
+            </Button>
+          </div>
+        )}
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -409,8 +526,8 @@ const ItemVariantPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                          <div className={`w-2 h-2 rounded-full ${variant.stocks?.reduce((acc, s) => acc + s.quantity, 0) > 10 ? 'bg-green-500' : 'bg-amber-500'}`}></div>
-                          {variant.stocks?.reduce((acc, s) => acc + s.quantity, 0) || 0} Units
+                          <div className={`w-2 h-2 rounded-full ${getVariantStock(variant) > 10 ? 'bg-green-500' : 'bg-amber-500'}`}></div>
+                          {getVariantStock(variant)} Units
                         </div>
                       </td>
                       <td className="px-6 py-4">

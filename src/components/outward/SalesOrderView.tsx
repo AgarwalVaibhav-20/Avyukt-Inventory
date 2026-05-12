@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, User, Loader2, Edit, Trash2 } from 'lucide-react';
+import { Plus, User, Loader2, Edit, Trash2, Search, Filter } from 'lucide-react';
 import { productService } from '@/services/productService';
 import { salesService } from '@/services/salesService';
 import { InventoryItem, Customer, SOItem } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createSalesOrder, fetchOutwardWorkflow, updateSalesOrder, deleteSalesOrder } from '@/store/slices/outwardSlice';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const SalesOrderView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -21,6 +23,8 @@ const SalesOrderView: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     items: [],
   });
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({ status: 'all' });
 
   const organisationId = localStorage.getItem('organisationId');
   
@@ -152,6 +156,27 @@ const SalesOrderView: React.FC = () => {
 
   const isPageLoading = loading || supportLoading;
 
+  const {
+    filteredItems: filteredSalesOrders,
+    pagedItems: pagedSalesOrders,
+    page,
+    totalItems,
+    totalPages,
+    setPage,
+  } = useListControls({
+    items: salesOrders,
+    searchTerm: search,
+    filters,
+    initialPageSize: 8,
+    searchFn: (salesOrder, term) =>
+      salesOrder.soNumber.toLowerCase().includes(term) ||
+      (salesOrder.customerName || '').toLowerCase().includes(term) ||
+      (salesOrder.status || '').toLowerCase().includes(term) ||
+      (salesOrder.date || '').toLowerCase().includes(term),
+    filterFn: (salesOrder, activeFilters) =>
+      activeFilters.status === 'all' || salesOrder.status === activeFilters.status,
+  });
+
   return (
     <div className="space-y-6">
       {isCreating ? (
@@ -277,6 +302,37 @@ const SalesOrderView: React.FC = () => {
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-6 border-b border-slate-200">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Sales Orders</h2>
+            <p className="text-sm text-slate-500">Search and filter order records.</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative w-full sm:w-72">
+              <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search order, customer, status..."
+                className="w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-11 pr-4 text-sm outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="relative w-full sm:w-56">
+              <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ status: e.target.value })}
+                className="w-full appearance-none rounded-lg border border-slate-300 bg-white py-2.5 pl-11 pr-4 text-sm outline-none focus:border-blue-500"
+              >
+                <option value="all">All statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Dispatched">Dispatched</option>
+              </select>
+            </div>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
@@ -296,14 +352,14 @@ const SalesOrderView: React.FC = () => {
                     <Loader2 className="animate-spin inline mr-2" /> Loading...
                   </td>
                 </tr>
-              ) : salesOrders.length === 0 ? (
+              ) : filteredSalesOrders.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-500">
                     No Sales Orders found.
                   </td>
                 </tr>
               ) : (
-                salesOrders.map((salesOrder) => (
+                pagedSalesOrders.map((salesOrder) => (
                   <tr key={salesOrder.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4 font-medium text-blue-600">{salesOrder.soNumber}</td>
                     <td className="px-6 py-4 flex items-center gap-2">
@@ -348,6 +404,11 @@ const SalesOrderView: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {totalItems > 0 && totalPages > 1 && (
+          <div className="px-6 pb-6">
+            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+          </div>
+        )}
       </div>
     </div>
   );

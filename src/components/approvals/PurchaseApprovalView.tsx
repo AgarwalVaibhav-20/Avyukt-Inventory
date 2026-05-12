@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
 import { PurchaseOrder, PurchaseRequisition } from '@/types';
-import { 
-  ShieldCheck, 
-  ClipboardList, 
-  ShoppingBag, 
-  CheckCircle2, 
-  XCircle, 
-  Loader2, 
-  FileText, 
-  Search, 
-  Filter, 
+import {
+  ShieldCheck,
+  ClipboardList,
+  ShoppingBag,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  FileText,
+  Search,
+  Filter,
   ArrowRight,
   User,
   Clock,
   Building2,
-  DollarSign
+  DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const PurchaseApprovalView: React.FC = () => {
   const [activeTab, setActiveTab] = useState('requisitions');
@@ -28,6 +30,10 @@ const PurchaseApprovalView: React.FC = () => {
   const [pos, setPOs] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [prSearch, setPRSearch] = useState('');
+  const [poSearch, setPOSearch] = useState('');
+  const [prFilters, setPRFilters] = useState({ status: 'all' });
+  const [poFilters, setPOFilters] = useState({ status: 'all' });
 
   useEffect(() => {
     loadData();
@@ -73,6 +79,47 @@ const PurchaseApprovalView: React.FC = () => {
     }
   };
 
+  const {
+    filteredItems: filteredPRs,
+    pagedItems: pagedPRs,
+    page: prPage,
+    totalItems: prTotalItems,
+    totalPages: prTotalPages,
+    setPage: setPRPage,
+  } = useListControls({
+    items: prs,
+    searchTerm: prSearch,
+    filters: prFilters,
+    initialPageSize: 4,
+    searchFn: (pr, term) =>
+      pr.prNumber.toLowerCase().includes(term) ||
+      (pr.requestedBy || '').toLowerCase().includes(term) ||
+      (pr.department || '').toLowerCase().includes(term) ||
+      (pr.justification || '').toLowerCase().includes(term),
+    filterFn: (pr, activeFilters) =>
+      activeFilters.status === 'all' || (pr as any).status === activeFilters.status,
+  });
+
+  const {
+    filteredItems: filteredPOs,
+    pagedItems: pagedPOs,
+    page: poPage,
+    totalItems: poTotalItems,
+    totalPages: poTotalPages,
+    setPage: setPOPage,
+  } = useListControls({
+    items: pos,
+    searchTerm: poSearch,
+    filters: poFilters,
+    initialPageSize: 4,
+    searchFn: (po, term) =>
+      po.poNumber.toLowerCase().includes(term) ||
+      (po.vendorName || '').toLowerCase().includes(term) ||
+      (po.status || '').toLowerCase().includes(term),
+    filterFn: (po, activeFilters) =>
+      activeFilters.status === 'all' || po.status === activeFilters.status,
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header */}
@@ -112,12 +159,43 @@ const PurchaseApprovalView: React.FC = () => {
         </TabsList>
 
         <TabsContent value="requisitions" className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-black text-slate-800">Purchase Requisitions</h2>
+                <p className="text-sm text-slate-500">Search and filter pending requisitions.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={prSearch}
+                    onChange={(e) => setPRSearch(e.target.value)}
+                    placeholder="Search requisition, requester, department..."
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
+                  />
+                </div>
+                <div className="relative w-full sm:w-56">
+                  <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={prFilters.status}
+                    onChange={(e) => setPRFilters({ status: e.target.value })}
+                    className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+           </div>
            {loading ? (
              <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[2.5rem] border border-slate-50">
                <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Synchronizing Requisition Queue...</p>
              </div>
-           ) : prs.length === 0 ? (
+           ) : filteredPRs.length === 0 ? (
              <Card className="border-none shadow-sm bg-white rounded-[2.5rem] py-20 text-center">
                 <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={64} />
                 <h3 className="text-2xl font-black text-slate-800">Queue is Empty</h3>
@@ -125,7 +203,7 @@ const PurchaseApprovalView: React.FC = () => {
              </Card>
            ) : (
              <div className="grid grid-cols-1 gap-6">
-                {prs.map(pr => (
+                {pagedPRs.map(pr => (
                   <Card key={pr.id} className="border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden hover:ring-4 hover:ring-indigo-500/5 transition-all">
                     <CardContent className="p-0 flex flex-col md:flex-row h-full">
                        <div className="md:w-1/4 bg-slate-50 p-8 border-r border-slate-100 flex flex-col justify-between">
@@ -208,21 +286,57 @@ const PurchaseApprovalView: React.FC = () => {
                 ))}
              </div>
            )}
+           {prTotalItems > 0 && prTotalPages > 1 && (
+             <Pagination page={prPage} totalPages={prTotalPages} onPageChange={setPRPage} />
+           )}
         </TabsContent>
 
         <TabsContent value="orders" className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-black text-slate-800">Purchase Orders</h2>
+                <p className="text-sm text-slate-500">Search and filter approval queue.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div className="relative w-full sm:w-72">
+                  <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={poSearch}
+                    onChange={(e) => setPOSearch(e.target.value)}
+                    placeholder="Search PO, vendor, status..."
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
+                  />
+                </div>
+                <div className="relative w-full sm:w-56">
+                  <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={poFilters.status}
+                    onChange={(e) => setPOFilters({ status: e.target.value })}
+                    className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="Draft">Draft</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+              </div>
+           </div>
            {loading ? (
              <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[2.5rem] border border-slate-50">
                <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
              </div>
-           ) : pos.length === 0 ? (
+           ) : filteredPOs.length === 0 ? (
              <Card className="border-none shadow-sm bg-white rounded-[2.5rem] py-20 text-center">
                 <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={64} />
                 <h3 className="text-2xl font-black text-slate-800">All Orders Approved</h3>
              </Card>
            ) : (
              <div className="grid grid-cols-1 gap-6">
-                {pos.map(po => (
+                {pagedPOs.map(po => (
                   <Card key={po.id} className="border-none shadow-xl bg-white rounded-[2.5rem] overflow-hidden hover:ring-4 hover:ring-indigo-500/5 transition-all">
                     <CardContent className="p-0 flex flex-col md:flex-row h-full">
                        <div className="md:w-1/4 bg-slate-900 p-8 text-white flex flex-col justify-between">
@@ -297,6 +411,9 @@ const PurchaseApprovalView: React.FC = () => {
                   </Card>
                 ))}
              </div>
+           )}
+           {poTotalItems > 0 && poTotalPages > 1 && (
+             <Pagination page={poPage} totalPages={poTotalPages} onPageChange={setPOPage} />
            )}
         </TabsContent>
       </Tabs>

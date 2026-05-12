@@ -4,7 +4,9 @@ import { fetchPOs, fetchVendors, fetchPRs } from '@/store/slices/procurementSlic
 import { procurementService } from '@/services/procurementService';
 import { productService } from '@/services/productService';
 import { PurchaseOrder, Vendor, InventoryItem, POItem, PurchaseRequisition } from '@/types';
-import { Plus, FileText, Calendar, User, Loader2, Check, AlertCircle, ShoppingCart, Tag, Package, Hash, ClipboardList } from 'lucide-react';
+import { Plus, FileText, Calendar, User, Loader2, Check, AlertCircle, ShoppingCart, Tag, Package, Hash, ClipboardList, Search, Filter } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const PurchaseOrderView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -23,6 +25,8 @@ const PurchaseOrderView: React.FC = () => {
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [updatingVendorId, setUpdatingVendorId] = useState('');
+    const [search, setSearch] = useState('');
+    const [filters, setFilters] = useState({ status: 'all' });
 
   useEffect(() => {
     dispatch(fetchPOs());
@@ -149,6 +153,27 @@ const PurchaseOrderView: React.FC = () => {
           setLocalLoading(false);
       }
   };
+
+    const {
+        filteredItems: filteredPos,
+        pagedItems: pagedPos,
+        page,
+        totalItems,
+        totalPages,
+        setPage,
+    } = useListControls({
+        items: pos,
+        searchTerm: search,
+        filters,
+        initialPageSize: 8,
+        searchFn: (po, term) =>
+            po.poNumber.toLowerCase().includes(term) ||
+            (po.vendorName || '').toLowerCase().includes(term) ||
+            (po.status || '').toLowerCase().includes(term) ||
+            (po.id || '').toLowerCase().includes(term),
+        filterFn: (po, activeFilters) =>
+            activeFilters.status === 'all' || po.status === activeFilters.status,
+    });
 
   return (
     <div className="space-y-6 animate-fade-in pb-10">
@@ -391,7 +416,35 @@ const PurchaseOrderView: React.FC = () => {
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Institutional Procurement Monitoring</p>
                 </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <div className="relative w-full sm:w-72">
+                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search PO, supplier, status..."
+                        className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
+                    />
+                </div>
+                <div className="relative w-full sm:w-56">
+                    <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <select
+                        value={filters.status}
+                        onChange={(e) => setFilters({ status: e.target.value })}
+                        className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
+                    >
+                        <option value="all">All statuses</option>
+                        <option value="Draft">Draft</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Pending Approval">Pending Approval</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Sent">Sent</option>
+                        <option value="Partial">Partial</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
                 <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
                     <button className="px-6 py-2 bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">Active Queue</button>
                     <button className="px-6 py-2 text-slate-400 hover:text-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors">History</button>
@@ -428,7 +481,7 @@ const PurchaseOrderView: React.FC = () => {
                             </div>
                         </td>
                     </tr>
-                ) : pos.length === 0 ? (
+                ) : filteredPos.length === 0 ? (
                     <tr><td colSpan={6} className="py-32 text-center">
                         <div className="flex flex-col items-center text-slate-200">
                             <div className="p-8 bg-slate-50 rounded-full mb-6">
@@ -438,7 +491,7 @@ const PurchaseOrderView: React.FC = () => {
                         </div>
                     </td></tr>
                 ) : (
-                    pos.map((po) => (
+                    pagedPos.map((po) => (
                         <tr key={po.id} onClick={() => handleOpenDetail(po)} className="hover:bg-slate-50/80 cursor-pointer transition-all group border-l-4 border-l-transparent hover:border-l-blue-600">
                             <td className="px-8 py-7">
                                 <div className="flex flex-col">
@@ -504,6 +557,11 @@ const PurchaseOrderView: React.FC = () => {
             </tbody>
           </table>
         </div>
+                {totalItems > 0 && totalPages > 1 && (
+                    <div className="px-8 pb-8 pt-4">
+                        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                    </div>
+                )}
       </div>
 
       {/* Detail Modal */}

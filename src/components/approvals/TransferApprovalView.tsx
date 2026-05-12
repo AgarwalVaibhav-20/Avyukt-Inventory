@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
 import { warehouseService } from '@/services/warehouseService';
 import { StockTransfer } from '@/types';
-import { ArrowRightLeft, CheckCircle, XCircle, Loader2, MapPin } from 'lucide-react';
+import { ArrowRightLeft, CheckCircle, XCircle, Loader2, MapPin, Search } from 'lucide-react';
 
 const TransferApprovalView: React.FC = () => {
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);
   const [warehouseNames, setWarehouseNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadData();
@@ -38,17 +39,36 @@ const TransferApprovalView: React.FC = () => {
       } catch (e) { alert("Error"); } finally { setProcessingId(null); }
   };
 
+  const filteredTransfers = transfers.filter((trf) => {
+      const term = searchTerm.trim().toLowerCase();
+      if (!term) return true;
+      const sourceName = warehouseNames[trf.sourceWarehouseId] || trf.sourceWarehouseId;
+      const destinationName = warehouseNames[trf.destinationWarehouseId] || trf.destinationWarehouseId;
+      return (
+          trf.referenceNo.toLowerCase().includes(term) ||
+          sourceName.toLowerCase().includes(term) ||
+          destinationName.toLowerCase().includes(term) ||
+          trf.items.some((item) => item.itemName.toLowerCase().includes(term))
+      );
+  });
+
   return (
     <div className="space-y-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <ArrowRightLeft className="text-blue-600" size={20}/> Transfer Requests
-            </h2>
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <ArrowRightLeft className="text-blue-600" size={20}/> Transfer Requests
+                </h2>
+                <div className="relative">
+                    <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                    <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search transfer, warehouse, item..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-80" />
+                </div>
+            </div>
 
             {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
-             transfers.length === 0 ? <p className="text-slate-500 text-center py-8">No active transfer requests.</p> :
+             filteredTransfers.length === 0 ? <p className="text-slate-500 text-center py-8">No active transfer requests.</p> :
              <div className="space-y-4">
-                 {transfers.map(trf => (
+                 {filteredTransfers.map(trf => (
                      <div key={trf.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-sm">
                          <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
                              <div>

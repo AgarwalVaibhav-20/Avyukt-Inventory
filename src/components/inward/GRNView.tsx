@@ -4,7 +4,9 @@ import { fetchPOs, fetchGRNs } from '@/store/slices/procurementSlice';
 import { procurementService } from '@/services/procurementService';
 import { warehouseService } from '@/services/warehouseService';
 import { PurchaseOrder, GRN, GRNItem, Warehouse } from '@/types';
-import { ArrowDownToLine, Loader2, CheckSquare, Search, Truck, Box, FileText, AlertCircle, RefreshCw, MapPin, ClipboardList, PackageCheck } from 'lucide-react';
+import { ArrowDownToLine, Loader2, CheckSquare, Search, Truck, Box, FileText, AlertCircle, RefreshCw, MapPin, ClipboardList, PackageCheck, Filter } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
+import { useListControls } from '@/hooks/useListControls';
 
 const GRNView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -17,6 +19,8 @@ const GRNView: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState('');
   const [receivedItems, setReceivedItems] = useState<GRNItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+    const [search, setSearch] = useState('');
+    const [filters, setFilters] = useState({ status: 'all' });
 
   useEffect(() => {
     dispatch(fetchPOs());
@@ -83,6 +87,27 @@ const GRNView: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+    const {
+        filteredItems: filteredGrns,
+        pagedItems: pagedGrns,
+        page,
+        totalPages,
+        totalItems,
+        setPage,
+    } = useListControls({
+        items: grns,
+        searchTerm: search,
+        filters,
+        initialPageSize: 8,
+        searchFn: (grn, term) =>
+            grn.grnNumber.toLowerCase().includes(term) ||
+            (grn.poNumber || '').toLowerCase().includes(term) ||
+            (grn.challanNumber || '').toLowerCase().includes(term) ||
+            (grn.status || '').toLowerCase().includes(term),
+        filterFn: (grn, activeFilters) =>
+            activeFilters.status === 'all' || grn.status === activeFilters.status,
+    });
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
@@ -227,7 +252,7 @@ const GRNView: React.FC = () => {
          {/* List Section */}
          <div className="lg:col-span-8 space-y-6">
              <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden min-h-[600px]">
-                 <div className="p-8 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center">
+                 <div className="p-8 border-b border-slate-100 bg-slate-50/30 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                      <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-blue-600">
                             <ClipboardList size={24}/>
@@ -242,14 +267,38 @@ const GRNView: React.FC = () => {
                      <div className="flex gap-6">
                          <div className="text-right">
                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Receipts</p>
-                             <p className="text-2xl font-black text-slate-800 tabular-nums">{grns.length}</p>
+                                                         <p className="text-2xl font-black text-slate-800 tabular-nums">{filteredGrns.length}</p>
                          </div>
                          <div className="w-px h-10 bg-slate-200"></div>
                          <div className="text-right">
                              <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Awaiting Inspection</p>
-                             <p className="text-2xl font-black text-slate-800 tabular-nums">{grns.filter(g => g.status === 'Pending QC').length}</p>
+                                                         <p className="text-2xl font-black text-slate-800 tabular-nums">{filteredGrns.filter(g => g.status === 'Pending QC').length}</p>
                          </div>
                      </div>
+                                         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                                                <div className="relative w-full sm:w-72">
+                                                    <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="text"
+                                                        value={search}
+                                                        onChange={(e) => setSearch(e.target.value)}
+                                                        placeholder="Search GRN, PO, challan..."
+                                                        className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
+                                                    />
+                                                </div>
+                                                <div className="relative w-full sm:w-56">
+                                                    <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <select
+                                                        value={filters.status}
+                                                        onChange={(e) => setFilters({ status: e.target.value })}
+                                                        className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
+                                                    >
+                                                        <option value="all">All statuses</option>
+                                                        <option value="Pending QC">Pending QC</option>
+                                                        <option value="QC Completed">QC Completed</option>
+                                                    </select>
+                                                </div>
+                                         </div>
                  </div>
                  <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left border-collapse">
@@ -278,7 +327,7 @@ const GRNView: React.FC = () => {
                                         </div>
                                     </td>
                                 </tr>
-                            ) : grns.length === 0 ? (
+                            ) : filteredGrns.length === 0 ? (
                                 <tr><td colSpan={5} className="py-40 text-center">
                                     <div className="flex flex-col items-center text-slate-200">
                                         <div className="p-10 bg-slate-50 rounded-full mb-6">
@@ -288,7 +337,7 @@ const GRNView: React.FC = () => {
                                     </div>
                                 </td></tr>
                             ) : (
-                                grns.map(grn => (
+                                pagedGrns.map(grn => (
                                     <tr key={grn.id} className="hover:bg-slate-50/80 transition-all group border-l-4 border-l-transparent hover:border-l-blue-600">
                                         <td className="px-8 py-7 font-black text-blue-600 font-mono text-base tracking-tighter">
                                             {grn.grnNumber}
@@ -329,7 +378,12 @@ const GRNView: React.FC = () => {
                             )}
                         </tbody>
                     </table>
-                 </div>
+                                 </div>
+                                 {totalItems > 0 && totalPages > 1 && (
+                                     <div className="p-8 border-t border-slate-100">
+                                         <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                                     </div>
+                                 )}
              </div>
          </div>
       </div>

@@ -10,6 +10,8 @@ const AcceptedRejectedStockView: React.FC = () => {
   const [grns, setGRNs] = useState<GRN[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ accepted: 0, rejected: 0, pending: 0 });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [resultFilter, setResultFilter] = useState('All');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,6 +41,23 @@ const AcceptedRejectedStockView: React.FC = () => {
       { name: 'Rejected', value: stats.rejected, color: '#ef4444' },
       { name: 'Pending', value: stats.pending, color: '#f59e0b' }
   ];
+
+  const inspectionRows = grns
+      .flatMap(g => g.items.map((i, idx) => ({...i, grnNo: g.grnNumber, date: g.date, key: `${g.id}-${idx}`})))
+      .filter(i => i.acceptedQty > 0 || i.rejectedQty > 0)
+      .filter((row) => {
+          const term = searchTerm.trim().toLowerCase();
+          const matchesSearch =
+              !term ||
+              row.grnNo.toLowerCase().includes(term) ||
+              (row.itemName || '').toLowerCase().includes(term) ||
+              (row.qcRemarks || '').toLowerCase().includes(term);
+          const matchesResult =
+              resultFilter === 'All' ||
+              (resultFilter === 'Accepted' && row.acceptedQty > 0) ||
+              (resultFilter === 'Rejected' && row.rejectedQty > 0);
+          return matchesSearch && matchesResult;
+      });
 
   const handleRaiseNCR = async (row: any) => {
       try {
@@ -112,8 +131,19 @@ const AcceptedRejectedStockView: React.FC = () => {
 
         {/* Detailed List */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-4 border-b bg-slate-50">
+            <div className="flex flex-col gap-4 border-b bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                 <h3 className="font-semibold text-slate-800">Inspection History Log</h3>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search GRN, item, remarks..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-72" />
+                    </div>
+                    <select value={resultFilter} onChange={(e) => setResultFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+                        <option value="All">All Results</option>
+                        <option value="Accepted">Accepted</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
@@ -130,10 +160,9 @@ const AcceptedRejectedStockView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={7} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
-                         grns.flatMap(g => g.items.map((i, idx) => ({...i, grnNo: g.grnNumber, date: g.date, key: `${g.id}-${idx}`})))
-                             .filter(i => i.acceptedQty > 0 || i.rejectedQty > 0)
-                             .map(row => (
+                        {loading ? <tr><td colSpan={8} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
+                         inspectionRows.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-500">No inspection records found.</td></tr> :
+                         inspectionRows.map(row => (
                                 <tr key={row.key} className="hover:bg-slate-50">
                                     <td className="px-6 py-4 font-medium">{row.grnNo}</td>
                                     <td className="px-6 py-4 text-slate-500">{row.date}</td>

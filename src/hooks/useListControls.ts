@@ -19,6 +19,7 @@ export const useListControls = <T,>({
 }: UseListControlsOptions<T>) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
+  const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
 
   const controlledItems = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -36,14 +37,14 @@ export const useListControls = <T,>({
 
       return matchesSearch && matchesFilters;
     });
-  }, [items, searchTerm, filters, searchFn, filterFn]);
+  }, [items, searchTerm, filtersKey, searchFn, filterFn]);
 
   const totalItems = controlledItems.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm, filters, pageSize]);
+  }, [searchTerm, filtersKey, pageSize]);
 
   useEffect(() => {
     if (page > totalPages) {

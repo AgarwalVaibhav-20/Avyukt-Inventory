@@ -167,6 +167,15 @@ const App: React.FC = () => {
   // Socket ref
   const socketRef = React.useRef<any>(null);
 
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      dispatch(logout());
+    };
+
+    window.addEventListener("auth:expired", handleSessionExpired);
+    return () => window.removeEventListener("auth:expired", handleSessionExpired);
+  }, [dispatch]);
+
   const { user, isDelegatedSession } = useAppSelector((state) => state.auth);
   const currentUserId = String(user?._id || user?.id || "");
   const normalizeNotificationList = (data: any) =>

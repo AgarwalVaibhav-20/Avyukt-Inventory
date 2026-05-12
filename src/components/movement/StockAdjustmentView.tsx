@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { InventoryItem, Warehouse, StockAdjustment, AdjustmentType } from '@/types';
-import { AlertOctagon, Settings2, Loader2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { AlertOctagon, Settings2, Loader2, ArrowUpCircle, ArrowDownCircle, Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createStockAdjustmentEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
 
 const StockAdjustmentView: React.FC = () => {
   const dispatch = useAppDispatch();
   const { adjustments, items, warehouses, actionLoading, error } = useAppSelector((state) => state.stockMovement);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('All');
 
   const [formData, setFormData] = useState({
       warehouseId: '',
@@ -39,6 +41,16 @@ const StockAdjustmentView: React.FC = () => {
   const typedItems = items as InventoryItem[];
   const typedWarehouses = warehouses as Warehouse[];
   const typedAdjustments = adjustments as StockAdjustment[];
+  const filteredAdjustments = typedAdjustments.filter((adjustment) => {
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch =
+          !term ||
+          adjustment.reference.toLowerCase().includes(term) ||
+          adjustment.itemName.toLowerCase().includes(term) ||
+          adjustment.reason.toLowerCase().includes(term);
+      const matchesType = typeFilter === 'All' || adjustment.type === typeFilter;
+      return matchesSearch && matchesType;
+  });
 
   return (
     <div className="space-y-6">
@@ -126,8 +138,18 @@ const StockAdjustmentView: React.FC = () => {
        {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-           <div className="p-4 border-b border-slate-200 bg-slate-50">
+           <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
                <h3 className="font-semibold text-slate-800">Adjustment Log</h3>
+               <div className="flex flex-col gap-2 sm:flex-row">
+                   <div className="relative">
+                       <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                       <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search ref, item, reason..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-72" />
+                   </div>
+                   <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+                       <option value="All">All Types</option>
+                       {[...new Set(typedAdjustments.map((adjustment) => adjustment.type).filter(Boolean))].map((type) => <option key={type} value={type}>{type}</option>)}
+                   </select>
+               </div>
            </div>
            <table className="w-full text-sm text-left">
                <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
@@ -141,8 +163,8 @@ const StockAdjustmentView: React.FC = () => {
                    </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
-                   {typedAdjustments.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No logs found</td></tr> : 
-                    typedAdjustments.map(a => (
+                   {filteredAdjustments.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No logs found</td></tr> : 
+                    filteredAdjustments.map(a => (
                        <tr key={a.id} className="hover:bg-slate-50">
                            <td className="p-3 font-medium">{a.reference}</td>
                            <td className="p-3 text-slate-500">{a.date}</td>

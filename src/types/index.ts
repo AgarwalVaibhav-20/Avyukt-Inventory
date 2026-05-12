@@ -762,6 +762,7 @@ export interface DocumentAttachment {
   id: string;
   fileName: string;
   fileType: string;
+  tag?: string;
   size: string;
   uploadDate: string;
   uploadedBy: string;
