@@ -1,5 +1,4 @@
 import axios from "axios";
-import { authService } from "./authService";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "https://inventory-backend-alpha-eight.vercel.app",
@@ -35,5 +34,37 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+let isRedirectingAfterAuthFailure = false;
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url: string = error?.config?.url || "";
+
+    const isAuthFailure = status === 401;
+    const isLoginCall =
+      url.includes("/auth/login") ||
+      url.includes("/auth/signup") ||
+      url.includes("/auth/verify-otp") ||
+      url.includes("/auth/resend-otp");
+
+    if (isAuthFailure && !isLoginCall && !isRedirectingAfterAuthFailure) {
+      isRedirectingAfterAuthFailure = true;
+      try {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("organisationId");
+        localStorage.removeItem("originalToken");
+      } catch {}
+      if (typeof window !== "undefined") {
+        window.location.reload();
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

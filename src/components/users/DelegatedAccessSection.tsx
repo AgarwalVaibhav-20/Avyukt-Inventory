@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Share2, Check, X, Trash2, AlertCircle, Clock, CheckCircle2,
@@ -7,7 +7,25 @@ import {
 import { delegatedAccessService } from '@/services/delegatedAccessService';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { startDelegatedSession } from '@/store/slices/authSlice';
+import { MENU_ITEMS } from '@/constants';
 import toast from 'react-hot-toast';
+
+// Flat lookup of submenu id -> "Group / Page" label, derived once from MENU_ITEMS.
+const PAGE_OPTIONS: { id: string; label: string; group: string }[] = MENU_ITEMS.flatMap(
+  (item) =>
+    (item.subMenus || []).map((sub) => ({
+      id: sub.id,
+      label: sub.label,
+      group: item.label,
+    }))
+);
+const PAGE_LABEL_BY_ID: Record<string, string> = PAGE_OPTIONS.reduce(
+  (acc, p) => {
+    acc[p.id] = `${p.group} / ${p.label}`;
+    return acc;
+  },
+  {} as Record<string, string>
+);
 
 interface AccessRequest {
   _id: string;
@@ -16,6 +34,7 @@ interface AccessRequest {
   targetUserId?: { fullname: string; email: string; profileImage?: string };
   targetUserEmail: string;
   permissionLevel: 'view' | 'edit' | 'delete';
+  pages?: string[];
   status: 'pending' | 'approved' | 'rejected' | 'revoked';
   reason?: string;
   createdAt: string;
@@ -28,6 +47,7 @@ interface ApprovedAccess {
   targetUserEmail: string;
   targetUserId: { fullname: string; email: string; profileImage?: string };
   permissionLevel: 'view' | 'edit' | 'delete';
+  pages?: string[];
   approvedAt: string;
   expiresAt: string;
 }
@@ -65,6 +85,91 @@ const DelegatedAccessSection: React.FC = () => {
   const [permissionLevel, setPermissionLevel] = useState<'view' | 'edit' | 'delete'>('view');
   const [reason, setReason] = useState('');
   const [requestLoading, setRequestLoading] = useState(false);
+  // [] means "all pages" (entire app).
+  const [selectedPages, setSelectedPages] = useState<string[]>([]);
+  const [pageMenuOpen, setPageMenuOpen] = useState(false);
+  const [pageSearch, setPageSearch] = useState('');
+  const pageMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the page dropdown when clicking outside.
+  useEffect(() => {
+    if (!pageMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (
+        pageMenuRef.current &&
+        !pageMenuRef.current.contains(e.target as Node)
+      ) {
+        setPageMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [pageMenuOpen]);
+
+  const filteredPageGroups = useMemo(() => {
+    const q = pageSearch.trim().toLowerCase();
+    const groups = new Map<string, { id: string; label: string }[]>();
+    PAGE_OPTIONS.forEach((p) => {
+      if (
+        q &&
+        !p.label.toLowerCase().includes(q) &&
+        !p.group.toLowerCase().includes(q)
+      ) {
+        return;
+      }
+      if (!groups.has(p.group)) groups.set(p.group, []);
+      groups.get(p.group)!.push({ id: p.id, label: p.label });
+    });
+    return Array.from(groups.entries());
+  }, [pageSearch]);
+
+  const togglePage = (id: string) => {
+    setSelectedPages((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  };
+
+  const isAllPages = selectedPages.length === 0;
+  const selectAllPages = () => setSelectedPages([]);
+
+  const pageSummary = isAllPages
+    ? 'All pages (entire app)'
+    : selectedPages.length === 1
+      ? PAGE_LABEL_BY_ID[selectedPages[0]] || selectedPages[0]
+      : `${selectedPages.length} pages selected`;
+
+  const renderPagesBadge = (pages?: string[]) => {
+    if (!pages || pages.length === 0) {
+      return (
+        <span className="px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">
+          All Pages
+        </span>
+      );
+    }
+    if (pages.length <= 2) {
+      return (
+        <>
+          {pages.map((p) => (
+            <span
+              key={p}
+              className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700"
+              title={PAGE_LABEL_BY_ID[p] || p}
+            >
+              {PAGE_LABEL_BY_ID[p] || p}
+            </span>
+          ))}
+        </>
+      );
+    }
+    return (
+      <span
+        className="px-2 py-1 rounded text-xs font-medium bg-slate-100 text-slate-700"
+        title={pages.map((p) => PAGE_LABEL_BY_ID[p] || p).join(', ')}
+      >
+        {pages.length} pages
+      </span>
+    );
+  };
 
   // Received Requests
   const [receivedRequests, setReceivedRequests] = useState<AccessRequest[]>([]);
@@ -153,11 +258,19 @@ const DelegatedAccessSection: React.FC = () => {
 
     try {
       setRequestLoading(true);
-      await delegatedAccessService.requestAccess(trimmed.toLowerCase(), permissionLevel, reason);
+      await delegatedAccessService.requestAccess(
+        trimmed.toLowerCase(),
+        permissionLevel,
+        reason,
+        selectedPages
+      );
       toast.success('Access request sent successfully');
       setTargetEmail('');
       setReason('');
       setPermissionLevel('view');
+      setSelectedPages([]);
+      setPageSearch('');
+      setPageMenuOpen(false);
       await loadSentRequests();
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to request access');
@@ -298,6 +411,136 @@ const DelegatedAccessSection: React.FC = () => {
               <p className="text-xs text-slate-500 mt-1">Select the level of access you're requesting</p>
             </div>
 
+            <div ref={pageMenuRef} className="relative">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Pages
+              </label>
+              <button
+                type="button"
+                onClick={() => setPageMenuOpen((o) => !o)}
+                disabled={requestLoading}
+                className="w-full flex items-center justify-between px-3 py-2 border border-slate-300 rounded-lg bg-white text-left text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                <span className={isAllPages ? 'text-slate-900' : 'text-slate-900'}>
+                  {pageSummary}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-400 transition-transform ${pageMenuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {/* Selected page chips (when specific pages picked) */}
+              {!isAllPages && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {selectedPages.map((id) => (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1 rounded-full bg-indigo-50 text-indigo-700 text-xs px-2 py-1"
+                    >
+                      {PAGE_LABEL_BY_ID[id] || id}
+                      <button
+                        type="button"
+                        onClick={() => togglePage(id)}
+                        className="hover:text-indigo-900"
+                        aria-label={`Remove ${id}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {pageMenuOpen && (
+                <div className="absolute z-30 mt-2 w-full max-h-80 overflow-hidden bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col">
+                  <div className="p-2 border-b border-slate-100">
+                    <div className="relative">
+                      <Search
+                        size={14}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+                      <input
+                        type="text"
+                        value={pageSearch}
+                        onChange={(e) => setPageSearch(e.target.value)}
+                        placeholder="Search pages..."
+                        className="w-full pl-7 pr-2 py-1.5 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={selectAllPages}
+                    className={`flex items-center gap-2 px-3 py-2 text-sm border-b border-slate-100 hover:bg-slate-50 ${isAllPages ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700'}`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded border flex items-center justify-center ${isAllPages ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 bg-white'}`}
+                    >
+                      {isAllPages && <Check size={12} className="text-white" />}
+                    </span>
+                    All Pages (entire app)
+                  </button>
+
+                  <div className="flex-1 overflow-y-auto py-1">
+                    {filteredPageGroups.length === 0 ? (
+                      <p className="px-3 py-4 text-xs text-slate-500 text-center">
+                        No pages match your search
+                      </p>
+                    ) : (
+                      filteredPageGroups.map(([group, items]) => (
+                        <div key={group}>
+                          <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                            {group}
+                          </div>
+                          {items.map((it) => {
+                            const checked = selectedPages.includes(it.id);
+                            return (
+                              <button
+                                key={it.id}
+                                type="button"
+                                onClick={() => togglePage(it.id)}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                              >
+                                <span
+                                  className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${checked ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 bg-white'}`}
+                                >
+                                  {checked && (
+                                    <Check size={12} className="text-white" />
+                                  )}
+                                </span>
+                                <span className="truncate text-left">{it.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="px-3 py-2 border-t border-slate-100 flex items-center justify-between bg-slate-50 text-xs">
+                    <span className="text-slate-500">
+                      {isAllPages
+                        ? 'All pages selected'
+                        : `${selectedPages.length} selected`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPageMenuOpen(false)}
+                      className="px-2 py-1 rounded text-indigo-600 hover:bg-indigo-50 font-medium"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-slate-500 mt-1">
+                Pick specific pages, or leave as "All Pages" to request access to the entire app.
+              </p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Reason (Optional)
@@ -365,11 +608,12 @@ const DelegatedAccessSection: React.FC = () => {
                 <div key={req._id} className="p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center flex-wrap gap-2 mb-2">
                         <span className="font-medium text-slate-900">{req.requesterEmail}</span>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getPermissionBadgeColor(req.permissionLevel)}`}>
                           {req.permissionLevel === 'view' ? 'Can View' : req.permissionLevel === 'edit' ? 'Can Edit' : 'Can Delete'}
                         </span>
+                        {renderPagesBadge(req.pages)}
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(req.status)}`}>
                           {req.status}
                         </span>
@@ -447,11 +691,12 @@ const DelegatedAccessSection: React.FC = () => {
                 <div key={req._id} className="p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center flex-wrap gap-2 mb-2">
                         <span className="font-medium text-slate-900">{req.targetUserEmail}</span>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getPermissionBadgeColor(req.permissionLevel)}`}>
                           {req.permissionLevel === 'view' ? 'Can View' : req.permissionLevel === 'edit' ? 'Can Edit' : 'Can Delete'}
                         </span>
+                        {renderPagesBadge(req.pages)}
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusBadgeColor(req.status)}`}>
                           {req.status}
                         </span>
@@ -502,11 +747,12 @@ const DelegatedAccessSection: React.FC = () => {
                 <div key={access._id} className="p-4 hover:bg-slate-50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center flex-wrap gap-2 mb-2">
                         <span className="font-medium text-slate-900">{access.targetUserEmail}</span>
                         <span className={`px-2 py-1 rounded text-xs font-medium ${getPermissionBadgeColor(access.permissionLevel)}`}>
                           {access.permissionLevel === 'view' ? 'Can View' : access.permissionLevel === 'edit' ? 'Can Edit' : 'Can Delete'}
                         </span>
+                        {renderPagesBadge(access.pages)}
                       </div>
                       <p className="text-xs text-slate-500">
                         Approved on {new Date(access.approvedAt).toLocaleDateString()}

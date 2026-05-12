@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setIsOpen,
 }) => {
   const dispatch = useAppDispatch();
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, isDelegatedSession } = useAppSelector((state) => state.auth);
   const { items } = useAppSelector((state) => state.inventory);
   const { expiryBatches } = useAppSelector((state) => state.stockControl);
   const { prs, pos, qcQueue } = useAppSelector((state) => state.procurement);
@@ -66,6 +66,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
   const [searchTerm, setSearchTerm] = useState("");
 
+  // During a delegated session, hide the target account's User & Access menu —
+  // the borrowed session should not be able to manage that user's permissions.
+  const visibleMenuItems = isDelegatedSession
+    ? MENU_ITEMS.filter((item) => item.id !== "users")
+    : MENU_ITEMS;
+
   const toggleExpand = (id: string) => {
     const newExpanded = new Set(expandedMenus);
     if (newExpanded.has(id)) {
@@ -76,7 +82,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     setExpandedMenus(newExpanded);
   };
 
-  const filteredItems = MENU_ITEMS.map((item) => {
+  const filteredItems = visibleMenuItems.map((item) => {
     // If search term exists, check if item or subitems match
     if (!searchTerm) return item;
     const matchesLabel = item.label

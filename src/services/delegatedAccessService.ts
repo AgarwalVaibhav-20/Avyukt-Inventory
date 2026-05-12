@@ -32,13 +32,20 @@ interface ApprovedAccess {
 
 export const delegatedAccessService = {
   /**
-   * Request access to another user's account
+   * Request access to another user's account.
+   * `pages`: empty array means "all pages"; otherwise a list of submenu ids.
    */
-  requestAccess: async (targetUserEmail: string, permissionLevel: 'view' | 'edit' | 'delete', reason?: string) => {
+  requestAccess: async (
+    targetUserEmail: string,
+    permissionLevel: 'view' | 'edit' | 'delete',
+    reason?: string,
+    pages: string[] = []
+  ) => {
     const response = await api.post(`${PATH}/request`, {
       targetUserEmail,
       permissionLevel,
-      reason: reason || ''
+      reason: reason || '',
+      pages
     });
     return response.data;
   },

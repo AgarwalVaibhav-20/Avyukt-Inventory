@@ -1651,8 +1651,18 @@ const App: React.FC = () => {
               <Route path="/reports/rep-gst" element={<GstTaxReportView />} />
               <Route path="/reports/rep-audit" element={<AuditReportView />} />
 
-              {/* Users & Access */}
-              <Route path="/users/usr-mgmt" element={<UserManagementView />} />
+              {/* Users & Access — hidden during a delegated session so the
+                  borrowed account's permissions cannot be managed from inside it. */}
+              <Route
+                path="/users/usr-mgmt"
+                element={
+                  isDelegatedSession ? (
+                    <Navigate to="/dashboard/dash-overview" replace />
+                  ) : (
+                    <UserManagementView />
+                  )
+                }
+              />
 
               {/* Profile */}
               <Route path="/profile" element={<ProfileView />} />
