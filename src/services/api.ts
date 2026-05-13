@@ -1,7 +1,11 @@
 import axios from "axios";
 
+const DEFAULT_API_BASE_URL = import.meta.env.DEV
+  ? "http://localhost:4000"
+  : "https://inventory-backend-alpha-eight.vercel.app";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://inventory-backend-alpha-eight.vercel.app",
+  baseURL: import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

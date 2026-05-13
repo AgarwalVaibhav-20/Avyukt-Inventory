@@ -319,7 +319,9 @@ const App: React.FC = () => {
         try {
           const socket = io(
             import.meta.env.VITE_SOCKET_URL ||
-              "https://inventory-backend-alpha-eight.vercel.app",
+              (import.meta.env.DEV
+                ? "http://localhost:4000"
+                : "https://inventory-backend-alpha-eight.vercel.app"),
             { transports: ["websocket", "polling"] },
           );
           socketRef.current = socket;

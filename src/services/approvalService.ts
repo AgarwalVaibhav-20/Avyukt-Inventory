@@ -26,6 +26,38 @@ const toFrontendGRN = (grn: any): GRN => ({
   })),
 });
 
+const toFrontendPurchaseReturn = (item: any): PurchaseReturn => ({
+  id: String(item._id || item.id || ''),
+  returnNumber: item.returnNo || item.returnNumber || '',
+  grnId: String(item.grnId || ''),
+  vendorId: String(item.vendorId || ''),
+  vendorName: item.vendor || item.vendorName || '',
+  date: (item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
+  items: (item.items || []).map((line: any) => ({
+    itemId: String(line.productId || line.itemId || ''),
+    itemName: line.name || line.itemName || '',
+    quantity: Number(line.qty || line.quantity || 0),
+    reason: line.reason || '',
+  })),
+  status: item.status || 'Draft',
+});
+
+const toFrontendSalesReturn = (item: any): SalesReturn => ({
+  id: String(item._id || item.id || ''),
+  returnNumber: item.returnNo || item.returnNumber || '',
+  soId: String(item.salesOrderId || item.soId || ''),
+  soNumber: item.soRef || item.soNumber || '',
+  customerName: item.customerName || '',
+  date: (item.returnDate || item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
+  items: (item.items || []).map((line: any) => ({
+    itemId: String(line.productId || line.itemId || ''),
+    itemName: line.description || line.itemName || '',
+    quantity: Number(line.returnQty || line.quantity || line.qty || 0),
+    reason: line.reason || '',
+  })),
+  status: item.status || 'Pending',
+});
+
 export const approvalService = {
   // --- Purchase Requisitions (PR) ---
   getPendingPRs: async (): Promise<PurchaseRequisition[]> => {
@@ -284,34 +316,42 @@ export const approvalService = {
 
   // --- Returns (Purchase & Sales) ---
   getPendingPurchaseReturns: async (): Promise<PurchaseReturn[]> => {
-    await delay(200);
-    return mockDb.getPurchaseReturns().filter(r => r.status === 'Draft' || r.status === 'Pending Approval');
+    try {
+      const response = await api.get('/api/purchase-returns', {
+        params: { limit: 1000 },
+      });
+      const data = response.data.data ?? [];
+      return data
+        .map(toFrontendPurchaseReturn)
+        .filter((ret) => ret.status === 'Draft' || ret.status === 'Pending Approval' || ret.status === 'Pending');
+    } catch (e) {
+      await delay(200);
+      return mockDb.getPurchaseReturns().filter(r => r.status === 'Draft' || r.status === 'Pending Approval');
+    }
   },
 
   approvePurchaseReturn: async (id: string): Promise<void> => {
-    await delay(300);
+    try {
+      await api.put(`/api/purchase-returns/${id}`, { status: 'Sent' });
+      return;
+    } catch (e) {
+      await delay(300);
+    }
     const returns = mockDb.getPurchaseReturns();
     const idx = returns.findIndex(r => r.id === id);
     if(idx !== -1) {
         returns[idx].status = 'Sent';
         mockDb.savePurchaseReturns(returns);
-        
-        // Stock Deduction logic for Purchase Return
-        const ret = returns[idx];
-        const items = mockDb.getItems();
-        ret.items.forEach(rItem => {
-            const iIdx = items.findIndex(i => i.id === rItem.itemId);
-            if(iIdx !== -1) {
-                items[iIdx].stock -= rItem.quantity;
-                if(items[iIdx].stock < 0) items[iIdx].stock = 0;
-            }
-        });
-        mockDb.saveItems(items);
     }
   },
 
   rejectPurchaseReturn: async (id: string): Promise<void> => {
-    await delay(300);
+    try {
+      await api.put(`/api/purchase-returns/${id}`, { status: 'Rejected' });
+      return;
+    } catch (e) {
+      await delay(300);
+    }
     const returns = mockDb.getPurchaseReturns();
     const idx = returns.findIndex(r => r.id === id);
     if(idx !== -1) {
@@ -321,33 +361,42 @@ export const approvalService = {
   },
 
   getPendingSalesReturns: async (): Promise<SalesReturn[]> => {
-    await delay(200);
-    return mockDb.getSalesReturns().filter(r => r.status === 'Received' || r.status === 'Pending Approval');
+    try {
+      const response = await api.get('/api/sales-returns', {
+        params: { limit: 1000 },
+      });
+      const data = response.data.data ?? [];
+      return data
+        .map(toFrontendSalesReturn)
+        .filter((ret) => ret.status === 'Received' || ret.status === 'Pending Approval' || ret.status === 'Pending');
+    } catch (e) {
+      await delay(200);
+      return mockDb.getSalesReturns().filter(r => r.status === 'Received' || r.status === 'Pending Approval');
+    }
   },
 
   approveSalesReturn: async (id: string): Promise<void> => {
-    await delay(300);
+    try {
+      await api.put(`/api/sales-returns/${id}`, { status: 'Processed' });
+      return;
+    } catch (e) {
+      await delay(300);
+    }
     const returns = mockDb.getSalesReturns();
     const idx = returns.findIndex(r => r.id === id);
     if(idx !== -1) {
         returns[idx].status = 'Processed';
         mockDb.saveSalesReturns(returns);
-
-        // Stock Addition logic for Sales Return (Restock)
-        const ret = returns[idx];
-        const items = mockDb.getItems();
-        ret.items.forEach(rItem => {
-            const iIdx = items.findIndex(i => i.id === rItem.itemId);
-            if(iIdx !== -1) {
-                items[iIdx].stock += rItem.quantity;
-            }
-        });
-        mockDb.saveItems(items);
     }
   },
 
   rejectSalesReturn: async (id: string): Promise<void> => {
-    await delay(300);
+    try {
+      await api.put(`/api/sales-returns/${id}`, { status: 'Rejected' });
+      return;
+    } catch (e) {
+      await delay(300);
+    }
     const returns = mockDb.getSalesReturns();
     const idx = returns.findIndex(r => r.id === id);
     if(idx !== -1) {

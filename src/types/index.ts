@@ -388,7 +388,9 @@ export interface PurchaseReturn {
   vendorName: string;
   date: string;
   items: ReturnItem[];
-  status: 'Draft' | 'Pending Approval' | 'Sent' | 'Rejected';
+  status: 'Draft' | 'Pending' | 'Pending Approval' | 'Approved' | 'Sent' | 'Sent to Vendor' | 'Completed' | 'Rejected';
+  notes?: string;
+  stockEffectApplied?: boolean;
 }
 
 export interface ReturnItem {
@@ -483,7 +485,11 @@ export interface SalesReturn {
   customerName: string;
   date: string;
   items: ReturnItem[];
-  status: 'Received' | 'Pending Approval' | 'Processed' | 'Rejected';
+  status: 'Pending' | 'Received' | 'Pending Approval' | 'Approved' | 'Processed' | 'Refunded' | 'Replaced' | 'Completed' | 'Rejected';
+  reason?: string;
+  returnType?: 'Refund' | 'Replacement' | 'Credit Note';
+  remarks?: string;
+  stockEffectApplied?: boolean;
 }
 
 // --- Stock Movement Types ---
@@ -835,7 +841,7 @@ export interface ReplacementOrder {
   itemId: string;
   itemName: string;
   quantity: number;
-  status: 'Pending' | 'Shipped' | 'Received';
+  status: 'Draft' | 'Pending' | 'Approved' | 'Shipped' | 'Dispatched' | 'Delivered' | 'Received' | 'Cancelled';
 }
 
 export interface FinancialNote {

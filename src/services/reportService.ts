@@ -5,7 +5,12 @@ import { stockControlService } from './stockControlService';
 import axios from 'axios';
 import api from './api';
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "https://inventory-backend-alpha-eight.vercel.app") + "/api";
+const API_BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV
+    ? "http://localhost:4000"
+    : "https://inventory-backend-alpha-eight.vercel.app")
+) + "/api";
 const REPORTS_API = `${API_BASE_URL}/reports`;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
