@@ -28,6 +28,8 @@ import BatchTrackingView from "@/components/control/BatchTrackingView";
 import SerialTrackingView from "@/components/control/SerialTrackingView";
 import ExpiryTrackingView from "@/components/control/ExpiryTrackingView";
 import StockReservationView from "@/components/control/StockReservationView";
+import InventoryValuationWorkspace from "@/components/valuation/InventoryValuationWorkspace";
+import ValuationAnalysisView from "@/components/valuation/ValuationAnalysisView";
 import ValuationMethodsView from "@/components/valuation/ValuationMethodsView";
 import ItemWiseValuationView from "@/components/valuation/ItemWiseValuationView";
 import WarehouseValuationView from "@/components/valuation/WarehouseValuationView";
@@ -35,6 +37,7 @@ import RealTimeValuationView from "@/components/valuation/RealTimeValuationView"
 import ClosingStockReportView from "@/components/valuation/ClosingStockReportView";
 import CostRecalculationView from "@/components/valuation/CostRecalculationView";
 import COGSView from "@/components/valuation/COGSView";
+import AdvancedView from "@/components/advanced/AdvancedView";
 import QualityParametersView from "@/components/quality/QualityParametersView";
 import InspectionPlansView from "@/components/quality/InspectionPlansView";
 import QualityChecklistsView from "@/components/quality/QualityChecklistsView";
@@ -490,7 +493,7 @@ const App: React.FC = () => {
       case "dash-in-out":
         return <DashboardInOut />;
       case "dash-valuation":
-        return <RealTimeValuationView />;
+        return <ValuationAnalysisView />;
       case "dash-low-stock":
       case "dash-overstock":
         return <GenericView title={activeLabel} parent={parentLabel} />;
@@ -623,6 +626,8 @@ const App: React.FC = () => {
         return <ClosingStockReportView />;
       case "val-recalc":
         return <CostRecalculationView />;
+      case "val-cogs":
+        return <COGSView />;
 
       // --- Barcode & Automation ---
       case "bc-gen":
@@ -755,6 +760,15 @@ const App: React.FC = () => {
       case "usr-mgmt":
         console.log("🎯 Rendering UserManagementView");
         return <UserManagementView />;
+
+      // --- Advanced ---
+      case "adv-forecast":
+      case "adv-ai":
+      case "adv-multi":
+      case "adv-curr":
+      case "adv-comp":
+      case "adv-iot":
+        return <AdvancedView focusFeature={activeMenuId as any} />;
 
       // Reusing Generic for others
       default:
@@ -1253,7 +1267,7 @@ const App: React.FC = () => {
               />
               <Route
                 path="/dashboard/dash-valuation"
-                element={<RealTimeValuationView />}
+                element={<ValuationAnalysisView />}
               />
               <Route
                 path="/dashboard/dash-low-stock"
@@ -1396,7 +1410,10 @@ const App: React.FC = () => {
                 path="/compliance/comp-deduct"
                 element={<StockLedgerView />}
               />
-              <Route path="/compliance/comp-cogs" element={<COGSView />} />
+              <Route
+                path="/compliance/comp-cogs"
+                element={<COGSView />}
+              />
               <Route
                 path="/compliance/comp-invoice"
                 element={<CustomerInvoiceView />}
@@ -1459,6 +1476,32 @@ const App: React.FC = () => {
                 element={<CostRecalculationView />}
               />
               <Route path="/valuation/val-cogs" element={<COGSView />} />
+
+              {/* Advanced */}
+              <Route
+                path="/advanced/adv-forecast"
+                element={<AdvancedView focusFeature="adv-forecast" />}
+              />
+              <Route
+                path="/advanced/adv-ai"
+                element={<AdvancedView focusFeature="adv-ai" />}
+              />
+              <Route
+                path="/advanced/adv-multi"
+                element={<AdvancedView focusFeature="adv-multi" />}
+              />
+              <Route
+                path="/advanced/adv-curr"
+                element={<AdvancedView focusFeature="adv-curr" />}
+              />
+              <Route
+                path="/advanced/adv-comp"
+                element={<AdvancedView focusFeature="adv-comp" />}
+              />
+              <Route
+                path="/advanced/adv-iot"
+                element={<AdvancedView focusFeature="adv-iot" />}
+              />
 
               {/* Barcode & Automation */}
               <Route

@@ -1,6 +1,5 @@
 import api from './api';
 import { authService } from './authService';
-import { warehouseService } from './warehouseService';
 import {
   Batch,
   ClosingStockSnapshot,
@@ -342,59 +341,89 @@ export const stockControlService = {
   },
 
   getValuationReport: async (
-    _overrideMethod?: 'FIFO' | 'LIFO' | 'Avg'
-  ): Promise<any[]> => {
+    options: {
+      search?: string;
+      category?: string;
+      warehouse?: string;
+      itemType?: string;
+      includeZero?: boolean;
+      valueMin?: number | string;
+      valueMax?: number | string;
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortDir?: 'asc' | 'desc';
+    } = {}
+  ): Promise<any> => {
     try {
       const organisationId = requireOrganisationId();
       const response = await api.get(`/valuation/item-wise/${organisationId}`, {
-        params: { limit: 500 },
+        params: {
+          limit: options.limit || 500,
+          page: options.page || 1,
+          search: options.search || '',
+          category: options.category || 'All',
+          warehouse: options.warehouse || 'All',
+          itemType: options.itemType || 'all',
+          includeZero: options.includeZero === false ? 'false' : 'true',
+          valueMin: options.valueMin ?? '',
+          valueMax: options.valueMax ?? '',
+          sortBy: options.sortBy || 'totalValue',
+          sortDir: options.sortDir || 'desc',
+        },
       });
       const method = mapMethodFromBackend(response.data.method);
 
-      return (response.data.items || []).map((item: any) => ({
-        itemId: item.id,
-        itemName: item.name,
-        sku: item.sku || '',
-        category: item.category || '',
-        stock: Number(item.qty || 0),
-        method,
-        unitValuation: Number(item.unitValue || 0),
-        totalValuation: Number(item.totalValue || 0),
+      const items = (response.data.items || []).map((item: any) => ({
+          itemId: item.id,
+          itemName: item.name,
+          sku: item.sku || '',
+          category: item.category || '',
+          stock: Number(item.qty || 0),
+          method,
+          unitValuation: Number(item.unitValue || item.unit || 0),
+          totalValuation: Number(item.totalValue || 0),
+          itemType: item.itemType || '',
+          warehouseNames: item.warehouseNames || [],
+          sourceModules: item.sourceModules || [],
       }));
+
+      return Object.assign(items, {
+        method,
+        summary: response.data.summary || {},
+        categories: response.data.categories || [],
+        warehouses: response.data.warehouses || [],
+        pagination: response.data.pagination || { page: 1, limit: 500, totalItems: 0, totalPages: 1 },
+      });
     } catch (err) {
       console.error('Error fetching valuation report:', err);
-      return [];
+      const empty: any[] = [];
+      return Object.assign(empty, {
+        method: 'FIFO',
+        summary: {},
+        categories: [],
+        warehouses: [],
+        pagination: { page: 1, limit: 500, totalItems: 0, totalPages: 1 },
+      });
     }
   },
 
   getWarehouseValuation: async () => {
     try {
-      const [warehouses, items] = await Promise.all([
-        warehouseService.getAllWarehouses(),
-        stockControlService.getValuationReport(),
-      ]);
-
-      const totalGlobalValue = items.reduce(
-        (sum, item) => sum + Number(item.totalValuation || 0),
-        0
-      );
-
-      return warehouses.map((warehouse, index) => {
-        const weight = (warehouses.length - index + 1) * 10;
-        const totalWeight = warehouses.reduce(
-          (sum, _, idx) => sum + (warehouses.length - idx + 1) * 10,
-          0
-        );
-        const share = totalWeight > 0 ? weight / totalWeight : 0;
-
-        return {
-          warehouseId: warehouse.id,
-          warehouseName: warehouse.name,
-          location: warehouse.location,
-          valuation: Number((totalGlobalValue * share).toFixed(2)),
-          itemCount: Math.floor(items.length * (0.5 + share)),
-        };
+      const organisationId = requireOrganisationId();
+      const response = await api.get(`/valuation/warehouse/${organisationId}`, {
+        params: { includeZero: true },
       });
+
+      return (response.data.warehouses || []).map((warehouse: any) => ({
+        warehouseId: warehouse.warehouseId,
+        warehouseName: warehouse.warehouseName,
+        location: warehouse.location || '',
+        valuation: Number(warehouse.valuation || 0),
+        itemCount: Number(warehouse.itemCount || 0),
+        quantity: Number(warehouse.quantity || 0),
+        avgUnitValue: Number(warehouse.avgUnitValue || 0),
+      }));
     } catch (err) {
       console.error('Error fetching warehouse valuation:', err);
       return [];
