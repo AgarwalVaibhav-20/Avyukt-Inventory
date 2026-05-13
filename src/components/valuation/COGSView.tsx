@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { stockControlService } from "@/services/stockControlService";
 import { Box, Calendar, Calculator, Filter, Loader2, RefreshCcw, Receipt, Search } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -11,6 +12,7 @@ const currency = new Intl.NumberFormat("en-IN", {
 const COGSView: React.FC = () => {
   const [cogsData, setCogsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -52,12 +54,7 @@ const COGSView: React.FC = () => {
     });
   };
 
-  const filteredData = cogsData.filter(
-    (entry) =>
-      entry.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      entry.sku.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+
 
   return (
     <div className="space-y-8 mx-auto max-w-[1600px]">

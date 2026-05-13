@@ -4,7 +4,7 @@ import { exportService } from '@/services/exportService';
 import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
 import { AuditLog } from '@/types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Shield, Search, Loader2, Activity, Download } from 'lucide-react';
+import { Shield, Search, Loader2, Activity, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const AuditReportView: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -13,6 +13,10 @@ const AuditReportView: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
 
   useEffect(() => {
     loadData();
@@ -55,8 +59,26 @@ const AuditReportView: React.FC = () => {
   const filtered = logs.filter(l => 
       l.user.toLowerCase().includes(search.toLowerCase()) || 
       l.action.toLowerCase().includes(search.toLowerCase()) ||
-      l.module.toLowerCase().includes(search.toLowerCase())
+      l.module.toLowerCase().includes(search.toLowerCase()) ||
+      (l.description && l.description.toLowerCase().includes(search.toLowerCase()))
   );
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+  const paginate = (pageNumber: number) => {
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    }
+  };
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   if (loading) return (
     <div className="flex h-screen justify-center items-center">
@@ -191,9 +213,12 @@ const AuditReportView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map((log, index) => (
+              {currentItems.map((log, index) => (
                 <tr key={log.id} className={`transition-colors hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                  <td className="px-6 py-4 text-slate-600 font-mono text-xs">{log.date} {log.timestamp}</td>
+                  <td className="px-6 py-4 text-slate-600 font-mono text-xs whitespace-nowrap">
+                    <span className="font-semibold text-slate-900">{log.date}</span>
+                    <span className="ml-2 text-slate-400">{log.timestamp}</span>
+                  </td>
                   <td className="px-6 py-4 font-semibold text-slate-900">{log.user}</td>
                   <td className="px-6 py-4">
                     <span
@@ -209,11 +234,78 @@ const AuditReportView: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-slate-700 font-semibold">{log.module}</td>
-                  <td className="px-6 py-4 text-slate-600 max-w-lg truncate">{log.description}</td>
+                  <td className="px-6 py-4 text-slate-600 max-w-lg">
+                    <p className="truncate" title={log.description}>{log.description}</p>
+                  </td>
                 </tr>
               ))}
+              {currentItems.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">
+                    No audit logs found matching your search criteria.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="bg-slate-50 px-8 py-4 border-t border-slate-200 flex items-center justify-between">
+          <div className="text-sm text-slate-600 font-medium">
+            Showing <span className="text-slate-900">{filtered.length > 0 ? indexOfFirstItem + 1 : 0}</span> to <span className="text-slate-900">{Math.min(indexOfLastItem, filtered.length)}</span> of <span className="text-slate-900">{filtered.length}</span> results
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="p-2 border border-slate-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              title="Previous Page"
+            >
+              <ChevronLeft size={20} className="text-slate-600" />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {[...Array(totalPages)].map((_, i) => {
+                // Show only a few page numbers if there are too many
+                if (
+                  totalPages <= 7 || 
+                  i === 0 || 
+                  i === totalPages - 1 || 
+                  (i >= currentPage - 2 && i <= currentPage)
+                ) {
+                  return (
+                    <button
+                      key={i + 1}
+                      onClick={() => paginate(i + 1)}
+                      className={`w-10 h-10 rounded-lg text-sm font-bold transition-all ${
+                        currentPage === i + 1
+                          ? 'bg-blue-500 text-white shadow-md'
+                          : 'hover:bg-white border border-transparent hover:border-slate-300 text-slate-600'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  );
+                } else if (
+                  (i === 1 && currentPage > 4) || 
+                  (i === totalPages - 2 && currentPage < totalPages - 3)
+                ) {
+                  return <span key={i} className="px-1 text-slate-400">...</span>;
+                }
+                return null;
+              })}
+            </div>
+
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="p-2 border border-slate-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+              title="Next Page"
+            >
+              <ChevronRight size={20} className="text-slate-600" />
+            </button>
+          </div>
         </div>
       </div>
 
