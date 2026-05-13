@@ -110,7 +110,7 @@ const PurchaseRequisitionView: React.FC = () => {
         itemId: i.itemId,
         itemName: i.itemName,
         quantity: i.quantity,
-        estimatedPrice: i.estimatedPrice,
+        estimatedPrice: i.estimatedPrice ?? 0,
       })),
     });
     setEditingPrId(pr.id);
@@ -398,7 +398,7 @@ const PurchaseRequisitionView: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleApprove(pr.id)}
+                        onClick={() => handleSendToApproval(pr.id)}
                         className="rounded-xl hover:bg-emerald-50 hover:text-emerald-600 transition-all p-2"
                         disabled={pr.status !== "Pending Approval"}
                       >
