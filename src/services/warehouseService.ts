@@ -51,37 +51,32 @@ export const warehouseService = {
 
   // --- Transfers ---
   getAllTransfers: async (): Promise<StockTransfer[]> => {
-    const response = await api.get("/stock-transfers");
+    const response = await api.get("/api/transfer");
     return (response.data.transfers || []).map((transfer: any) => ({
       id: transfer._id,
       sourceWarehouseId:
-        typeof transfer.fromWarehouse === "object"
-          ? transfer.fromWarehouse?._id
-          : transfer.fromWarehouse,
+        typeof transfer.sourceWarehouse === "object"
+          ? transfer.sourceWarehouse?._id
+          : transfer.sourceWarehouse,
       destinationWarehouseId:
-        typeof transfer.toWarehouse === "object"
-          ? transfer.toWarehouse?._id
-          : transfer.toWarehouse,
-      items: [
-        {
-          itemId:
-            typeof transfer.productId === "object"
-              ? transfer.productId?._id
-              : transfer.productId,
-          itemName: transfer.productName || "Unknown Item",
-          quantity: Number(transfer.quantity || 0),
-        },
-      ],
+        typeof transfer.destinationWarehouse === "object"
+          ? transfer.destinationWarehouse?._id
+          : transfer.destinationWarehouse,
+      items: (transfer.items || []).map((item: any) => ({
+        itemId: item.itemId,
+        itemName: item.itemName || "Unknown Item",
+        quantity: Number(item.quantity || 0),
+      })),
       status:
         transfer.status === "delivered"
           ? "Completed"
           : transfer.status === "in-transit"
             ? "In Transit"
-            : "Pending",
+            : transfer.status || "Pending",
       date: transfer.transportTime
         ? new Date(transfer.transportTime).toISOString().split("T")[0]
         : new Date(transfer.createdAt).toISOString().split("T")[0],
-      referenceNo: `TRF-${String(transfer._id).slice(-6).toUpperCase()}`,
+      referenceNo: transfer.ref || `TRF-${String(transfer._id).slice(-6).toUpperCase()}`,
     }));
   },
 

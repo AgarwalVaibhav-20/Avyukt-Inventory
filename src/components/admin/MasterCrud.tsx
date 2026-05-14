@@ -10,6 +10,7 @@ import {
   deleteMasterData,
 } from "@/store/slices/masterSlice";
 import { Edit2 } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 interface ColumnDef {
   key: string;
@@ -73,7 +74,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
         setLocalData(result);
       } catch (error) {
         console.error("Failed to load data", error);
-        alert(
+        toast.error(
           `Failed to load data: ${(error as any)?.message || "Unknown error"}`,
         );
       } finally {
@@ -92,9 +93,29 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     // Basic validation
     for (const col of columns) {
       if (!col.optional && !newData[col.key]) {
-        alert(`${col.label} is required`);
+        toast.error(`${col.label} is required`);
         return;
       }
+    }
+
+    // Duplicate check (case-insensitive)
+    const duplicate = data.find((item: any) => {
+      // Check common name/code fields for duplicates
+      const keysToCompare = ["name", "hsnCode", "code", "uomName"];
+      return keysToCompare.some((key) => {
+        if (newData[key] && item[key]) {
+          return (
+            item[key].toString().toLowerCase() ===
+            newData[key].toString().toLowerCase()
+          );
+        }
+        return false;
+      });
+    });
+
+    if (duplicate) {
+      toast.error("this name already exist");
+      return;
     }
 
     // Format array types if needed
@@ -122,7 +143,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
       setIsAdding(false);
       setNewData({});
       console.log("Save successful, reloading data...");
-      alert("Record saved successfully!");
+      toast.success("Record saved successfully!");
     } catch (e) {
       console.error("Save error:", e);
       const errorMessage =
@@ -130,7 +151,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
         (e as any)?.response?.data?.error ||
         (e as any)?.message ||
         "Failed to save record";
-      alert(`Error: ${errorMessage}`);
+      toast.error(`Error: ${errorMessage}`);
     }
   };
 
@@ -140,9 +161,31 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     // Basic validation
     for (const col of columns) {
       if (!col.optional && !editDataForm[col.key]) {
-        alert(`${col.label} is required`);
+        toast.error(`${col.label} is required`);
         return;
       }
+    }
+
+    // Duplicate check (case-insensitive, excluding current item)
+    const duplicate = data.find((item: any) => {
+      const itemId = item._id || item.id;
+      if (itemId === editingId) return false;
+
+      const keysToCompare = ["name", "hsnCode", "code", "uomName"];
+      return keysToCompare.some((key) => {
+        if (editDataForm[key] && item[key]) {
+          return (
+            item[key].toString().toLowerCase() ===
+            editDataForm[key].toString().toLowerCase()
+          );
+        }
+        return false;
+      });
+    });
+
+    if (duplicate) {
+      toast.error("this name already exist");
+      return;
     }
 
     const formattedData = { ...editDataForm };
@@ -163,10 +206,10 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
       }
       setEditingId(null);
       setEditDataForm({});
-      alert("Record updated successfully!");
+      toast.success("Record updated successfully!");
     } catch (e) {
       console.error("Update error:", e);
-      alert(`Error: ${(e as any)?.message || "Failed to update record"}`);
+      toast.error(`Error: ${(e as any)?.message || "Failed to update record"}`);
     }
   };
 

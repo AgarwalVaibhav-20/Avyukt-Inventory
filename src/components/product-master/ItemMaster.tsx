@@ -21,6 +21,7 @@ import {
   Boxes,
   Check,
   ChevronDown,
+  ChevronsUpDown,
   Clock,
   Download,
   Edit,
@@ -58,6 +59,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
@@ -587,72 +596,51 @@ const ItemMaster: React.FC = () => {
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                     Category
                   </label>
-                  <Select
+                  <NotionSelect
                     value={filters.category}
                     onValueChange={(v) =>
                       setFilters((f) => ({ ...f, category: v }))
                     }
-                  >
-                    <SelectTrigger className="h-8 text-xs border-gray-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.name}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Category"
+                    options={[
+                      { label: "All Categories", value: "all" },
+                      ...categories.map((c) => ({ label: c.name, value: c.name })),
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                     Brand
                   </label>
-                  <Select
+                  <NotionSelect
                     value={filters.brand}
                     onValueChange={(v) =>
                       setFilters((f) => ({ ...f, brand: v }))
                     }
-                  >
-                    <SelectTrigger className="h-8 text-xs border-gray-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="all">All Brands</SelectItem>
-                      {brands.map((b) => (
-                        <SelectItem key={b.id} value={b.name}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Brand"
+                    options={[
+                      { label: "All Brands", value: "all" },
+                      ...brands.map((b) => ({ label: b.name, value: b.name })),
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                     Item Type
                   </label>
-                  <Select
+                  <NotionSelect
                     value={filters.itemType}
                     onValueChange={(v) =>
                       setFilters((f) => ({ ...f, itemType: v }))
                     }
-                  >
-                    <SelectTrigger className="h-8 text-xs border-gray-200">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      <SelectItem value="all">All Types</SelectItem>
-                      {ITEM_TYPES.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Item Type"
+                    options={[
+                      { label: "All Types", value: "all" },
+                      ...ITEM_TYPES.map((t) => ({ label: t, value: t })),
+                    ]}
+                  />
                 </div>
               </div>
             </div>
@@ -946,13 +934,8 @@ const ItemMaster: React.FC = () => {
                           setField("itemType", v as InventoryItem["itemType"])
                         }
                         placeholder="Select type"
-                      >
-                        {ITEM_TYPES.map((t) => (
-                          <SelectItem key={t} value={t}>
-                            {t}
-                          </SelectItem>
-                        ))}
-                      </NotionSelect>
+                        options={ITEM_TYPES.map((t) => ({ label: t, value: t }))}
+                      />
                     </NField>
                   </Row3>
                   <Row2>
@@ -989,43 +972,37 @@ const ItemMaster: React.FC = () => {
                       value={formData.category || ""}
                       onValueChange={(v) => setField("category", v)}
                       placeholder="Category"
-                    >
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.name}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </NotionSelect>
+                      options={categories.map((c) => ({
+                        label: c.name,
+                        value: c.name,
+                      }))}
+                    />
                   </NField>
                   <NField label="Brand">
                     <NotionSelect
                       value={formData.brand || ""}
                       onValueChange={(v) => setField("brand", v)}
                       placeholder="Brand"
-                    >
-                      {brands.map((b) => (
-                        <SelectItem key={b.id} value={b.name}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </NotionSelect>
+                      options={brands.map((b) => ({
+                        label: b.name,
+                        value: b.name,
+                      }))}
+                    />
                   </NField>
                   <NField label="HSN / SAC">
                     <NotionSelect
                       value={formData.hsnCode || ""}
                       onValueChange={(v) => setField("hsnCode", v)}
                       placeholder="HSN code"
-                    >
-                      {hsns.map((h) => {
+                      options={hsns.map((h) => {
                         const code = h.code || (h as any).hsnCode;
                         const rate = h.taxRate ?? (h as any).taxPercentage ?? 0;
-                        return (
-                          <SelectItem key={h.id} value={code}>
-                            {code} — {rate}%
-                          </SelectItem>
-                        );
+                        return {
+                          label: `${code} � ${rate}%`,
+                          value: code,
+                        };
                       })}
-                    </NotionSelect>
+                    />
                   </NField>
                   <NField label="Tax Rate (%)">
                     <Input
@@ -1139,29 +1116,25 @@ const ItemMaster: React.FC = () => {
                           }))
                         }
                         placeholder="Select warehouse"
-                      >
-                        {warehouses.map((w) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name}
-                          </SelectItem>
-                        ))}
-                      </NotionSelect>
+                        options={warehouses.map((w) => ({
+                          label: w.name,
+                          value: w.id,
+                        }))}
+                      />
                     </NField>
                     <NField label="Bin / Location">
                       <NotionSelect
                         value={formData.binCode || ""}
                         onValueChange={(v) => setField("binCode", v)}
                         placeholder="Optional bin"
-                      >
-                        {warehouseBins.map((b) => {
+                        options={warehouseBins.map((b) => {
                           const code = b.binCode || (b as any).code || b.name;
-                          return (
-                            <SelectItem key={b.id} value={code}>
-                              {b.name} ({code})
-                            </SelectItem>
-                          );
+                          return {
+                            label: `${b.name} (${code})`,
+                            value: code,
+                          };
                         })}
-                      </NotionSelect>
+                      />
                     </NField>
                     <NumFld
                       label="Opening Qty"
@@ -1239,13 +1212,11 @@ const ItemMaster: React.FC = () => {
                           )
                         }
                         placeholder="Method"
-                      >
-                        {VALUATION_METHODS.map((m) => (
-                          <SelectItem key={m} value={m}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </NotionSelect>
+                        options={VALUATION_METHODS.map((m) => ({
+                          label: m,
+                          value: m,
+                        }))}
+                      />
                     </NField>
                   </Row4>
                   <Row2>
@@ -1319,13 +1290,11 @@ const ItemMaster: React.FC = () => {
                           )
                         }
                         placeholder="Format"
-                      >
-                        {BARCODE_FORMATS.map((f) => (
-                          <SelectItem key={f} value={f}>
-                            {f}
-                          </SelectItem>
-                        ))}
-                      </NotionSelect>
+                        options={BARCODE_FORMATS.map((f) => ({
+                          label: f,
+                          value: f,
+                        }))}
+                      />
                     </NField>
                   </Row3>
 
@@ -1375,23 +1344,18 @@ const ItemMaster: React.FC = () => {
                   {/* Attributes */}
                   <NField label="Attributes">
                     <div className="flex gap-2 mb-3">
-                      <Select
+                      <NotionSelect
                         value={attributeDraft.name}
                         onValueChange={(v) =>
                           setAttributeDraft((c) => ({ ...c, name: v }))
                         }
-                      >
-                        <SelectTrigger className={cn(inputCls, "flex-1")}>
-                          <SelectValue placeholder="Attribute" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {attributes.map((a) => (
-                            <SelectItem key={a.id} value={a.name}>
-                              {a.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Attribute"
+                        className="flex-1"
+                        options={attributes.map((a) => ({
+                          label: a.name,
+                          value: a.name,
+                        }))}
+                      />
                       <Input
                         value={attributeDraft.value}
                         onChange={(e) =>
@@ -1502,7 +1466,7 @@ const ItemMaster: React.FC = () => {
   );
 };
 
-// ── Shared UI components ──
+// -- Shared UI components --
 const inputCls =
   "h-9 text-sm border-gray-200 bg-white focus-visible:ring-1 focus-visible:ring-gray-300 focus-visible:ring-offset-0 rounded-md placeholder:text-gray-300 transition-all";
 
@@ -1571,13 +1535,12 @@ const UomSel: React.FC<{
   onChange: (v: string) => void;
 }> = ({ label, value, uoms, onChange }) => (
   <NField label={label}>
-    <NotionSelect value={value} onValueChange={onChange} placeholder="UoM">
-      {uoms.map((u) => (
-        <SelectItem key={u.id} value={u.code}>
-          {u.name} ({u.code})
-        </SelectItem>
-      ))}
-    </NotionSelect>
+    <NotionSelect
+      value={value}
+      onValueChange={onChange}
+      placeholder="UoM"
+      options={uoms.map((u) => ({ label: `${u.name} (${u.code})`, value: u.code }))}
+    />
   </NField>
 );
 
@@ -1585,17 +1548,73 @@ const NotionSelect: React.FC<{
   value: string;
   onValueChange: (v: string) => void;
   placeholder: string;
-  children: React.ReactNode;
-}> = ({ value, onValueChange, placeholder, children }) => (
-  <Select value={value} onValueChange={onValueChange}>
-    <SelectTrigger className={cn(inputCls, "w-full")}>
-      <SelectValue placeholder={placeholder} />
-    </SelectTrigger>
-    <SelectContent className="bg-white border border-gray-100 shadow-md rounded-lg text-sm max-h-[300px]">
-      {children}
-    </SelectContent>
-  </Select>
-);
+  options: { label: string; value: string }[];
+  className?: string;
+}> = ({ value, onValueChange, placeholder, options, className }) => {
+  const [open, setOpen] = React.useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            inputCls,
+            "w-full justify-between font-normal px-3",
+            className,
+          )}
+        >
+          <span className="truncate">
+            {value
+              ? options.find((o) => o.value === value)?.label || value
+              : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0 bg-white border border-gray-100 shadow-md rounded-lg overflow-hidden"
+        style={{ width: "var(--radix-popover-trigger-width)" }}
+        align="start"
+      >
+        <Command>
+          <CommandInput
+            placeholder={`Search ${placeholder.toLowerCase()}...`}
+            className="h-9 border-none focus:ring-0"
+          />
+          <CommandList className="max-h-[300px] overflow-y-auto">
+            <CommandEmpty className="py-3 text-center text-xs text-gray-400">
+              No results found.
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.value}
+                  value={option.value}
+                  onSelect={(v) => {
+                    onValueChange(option.value);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 data-[selected=true]:bg-gray-100"
+                >
+                  <Check
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      value === option.value ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  <span className="truncate">{option.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const ChipTag: React.FC<{
   children: React.ReactNode;

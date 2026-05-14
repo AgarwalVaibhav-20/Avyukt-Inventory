@@ -1,6 +1,6 @@
 import api from './api';
 import { authService } from './authService';
-import { Vendor, PurchaseOrder, GRN, POItem, GRNItem, PutAwayTask, PurchaseReturn } from '@/types';
+import { Vendor, PurchaseOrder, GRN, POItem, GRNItem, PutAwayTask, PurchaseReturn, PurchaseRequisition, PurchaseInvoice } from '@/types';
 
 const unwrapList = <T,>(response: any): T[] => 
   response?.data?.data ?? 
@@ -100,6 +100,7 @@ const toFrontendPO = (po: any): PurchaseOrder => ({
     quantity: Number(line.quantity || 0),
     unitPrice: Number(line.unitPrice || 0),
     receivedQty: Number(line.receivedQuantity || 0),
+    hsnCode: line.hsnCode || '',
   })),
 });
 
@@ -259,6 +260,8 @@ export const procurementService = {
         grnItemId: task.id,
         qty: task.quantity,
         itemName: task.itemName,
+        materialId: task.itemId,
+        productId: task.itemId,
       }],
     });
   },

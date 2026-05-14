@@ -287,31 +287,40 @@ export const approvalService = {
 
   // --- Stock Transfers ---
   getPendingTransfers: async (): Promise<StockTransfer[]> => {
-    await delay(200);
-    return mockDb.getTransfers().filter(t => t.status === 'Pending');
+    try {
+      const response = await api.get('/api/transfer');
+      const transfers = (response.data.transfers || []).map((transfer: any) => ({
+        id: transfer._id,
+        sourceWarehouseId:
+          typeof transfer.sourceWarehouse === "object"
+            ? transfer.sourceWarehouse?._id
+            : transfer.sourceWarehouse,
+        destinationWarehouseId:
+          typeof transfer.destinationWarehouse === "object"
+            ? transfer.destinationWarehouse?._id
+            : transfer.destinationWarehouse,
+        items: (transfer.items || []).map((item: any) => ({
+          itemId: item.itemId,
+          itemName: item.itemName || "Item",
+          quantity: Number(item.quantity || 0),
+        })),
+        status: transfer.status || "Pending",
+        date: new Date(transfer.createdAt).toISOString().split("T")[0],
+        referenceNo: transfer.ref || `TRF-${String(transfer._id).slice(-6).toUpperCase()}`,
+      }));
+      return transfers.filter((t: StockTransfer) => t.status === 'Pending');
+    } catch (e) {
+      console.error("Failed to fetch pending transfers", e);
+      return [];
+    }
   },
 
   approveTransfer: async (id: string): Promise<void> => {
-    await delay(300);
-    const transfers = mockDb.getTransfers();
-    const idx = transfers.findIndex(t => t.id === id);
-    if(idx !== -1) {
-        transfers[idx].status = 'In Transit';
-        mockDb.saveTransfers(transfers);
-        
-        // Deduct from Source Warehouse (Simulated globally in item stock usually, 
-        // but here we just change status. Real app would move stock to 'In Transit' location)
-    }
+    await api.put(`/api/transfer/complete/${id}`);
   },
 
   rejectTransfer: async (id: string): Promise<void> => {
-    await delay(300);
-    const transfers = mockDb.getTransfers();
-    const idx = transfers.findIndex(t => t.id === id);
-    if(idx !== -1) {
-        transfers[idx].status = 'Rejected';
-        mockDb.saveTransfers(transfers);
-    }
+    await api.put(`/api/transfer/cancel/${id}`);
   },
 
   // --- Returns (Purchase & Sales) ---
