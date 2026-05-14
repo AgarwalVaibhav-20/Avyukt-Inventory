@@ -74,13 +74,26 @@ export const reportService = {
     });
   },
 
-  // 4. Aging Analysis
-  getAgingReport: async (): Promise<AgingAnalysisItem[]> => {
-    return callReportAPI('/aging-analysis', () => {
+  // 4. Aging Analysis Report
+  getAgingReport: async (params?: { search?: string; category?: string }): Promise<AgingAnalysisItem[]> => {
+    try {
+      const response = await api.get('/api/reports/aging-analysis', { params });
+      return response.data;
+    } catch (error) {
+      console.warn(`API call failed for aging-analysis, using mock data:`, error);
       const items = mockDb.getItems();
       const batches = mockDb.getBatches();
       
-      return items.map(item => {
+      let filteredItems = items;
+      if (params?.category) {
+        filteredItems = items.filter(i => i.category === params.category);
+      }
+      if (params?.search) {
+        const s = params.search.toLowerCase();
+        filteredItems = items.filter(i => i.name.toLowerCase().includes(s) || i.sku.toLowerCase().includes(s));
+      }
+
+      return filteredItems.map(item => {
           const itemBatches = batches.filter(b => b.itemId === item.id);
           const buckets = {
               "0-30 Days": 0,
@@ -122,16 +135,20 @@ export const reportService = {
               buckets: bucketArray
           };
       });
-    });
+    }
   },
 
-  // 5. Expiry Analysis (Reuse dashboard logic, returns batches)
-  getExpiryReport: async () => {
-    return callReportAPI('/expiry-analysis', () => {
+  // 5. Expiry Analysis Report
+  getExpiryReport: async (params?: { search?: string; status?: string }): Promise<any[]> => {
+    try {
+      const response = await api.get('/api/reports/expiry-analysis', { params });
+      return response.data;
+    } catch (error) {
+      console.warn(`API call failed for expiry-analysis, using mock data:`, error);
       return mockDb.getBatches()
         .filter(b => b.status === 'Active')
         .sort((a,b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime());
-    });
+    }
   },
 
   // 6. Movement Analysis

@@ -1,10 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { reportService } from '@/services/reportService';
-import { exportService } from '@/services/exportService';
-import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
-import { Batch } from '@/types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { CalendarX, Loader2, AlertTriangle, Clock, CheckCircle, Download } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { reportService } from "@/services/reportService";
+import { exportService } from "@/services/exportService";
+import ExportDialog, {
+  ExportPeriod,
+  ExportFormat,
+} from "@/components/common/ExportDialog";
+import { Batch } from "@/types";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  CalendarX,
+  Loader2,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
+  Download,
+  Search,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ExpiryAnalysisReportView: React.FC = () => {
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -12,58 +42,61 @@ const ExpiryAnalysisReportView: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("all");
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = setTimeout(() => {
+      loadData();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedStatus]);
 
   const loadData = async () => {
     setLoading(true);
-    const data = await reportService.getExpiryReport();
-    setBatches(data);
-    
-    // Calculate statistics
-    const today = new Date();
-    const expired = data.filter(b => new Date(b.expiryDate) < today).length;
-    const expiringSoon = data.filter(b => {
-      const daysLeft = Math.ceil((new Date(b.expiryDate).getTime() - today.getTime()) / (1000 * 3600 * 24));
-      return daysLeft > 0 && daysLeft <= 30;
-    }).length;
-    const safe = data.filter(b => {
-      const daysLeft = Math.ceil((new Date(b.expiryDate).getTime() - today.getTime()) / (1000 * 3600 * 24));
-      return daysLeft > 30;
-    }).length;
-
-    const expiredQty = data
-      .filter(b => new Date(b.expiryDate) < today)
-      .reduce((sum, b) => sum + b.quantity, 0);
-    const expiringSoonQty = data
-      .filter(b => {
-        const daysLeft = Math.ceil((new Date(b.expiryDate).getTime() - today.getTime()) / (1000 * 3600 * 24));
-        return daysLeft > 0 && daysLeft <= 30;
-      })
-      .reduce((sum, b) => sum + b.quantity, 0);
-
-    setStats({
-      total: data.length,
-      expired,
-      expiringSoon,
-      safe,
-      expiredQty,
-      expiringSoonQty
+    const data = await reportService.getExpiryReport({
+      search: searchQuery,
+      status: selectedStatus === "all" ? "" : selectedStatus,
     });
-
-    // Chart data for expiry range
-    const ranges = [
-      { range: 'Already Expired', count: expired, qty: expiredQty },
-      { range: 'Expiring Soon (0-30d)', count: expiringSoon, qty: expiringSoonQty },
-      { range: 'Safe (>30d)', count: safe, qty: data.filter(b => {
-        const daysLeft = Math.ceil((new Date(b.expiryDate).getTime() - today.getTime()) / (1000 * 3600 * 24));
-        return daysLeft > 30;
-      }).reduce((sum, b) => sum + b.quantity, 0) }
-    ];
-
-    setChartData(ranges);
+    setBatches(data || []);
+    const today = new Date();
+    const getDaysLeft = (d: string) => {
+      if (!d || d === "N/A") return 999;
+      return Math.ceil((new Date(d).getTime() - today.getTime()) / 86400000);
+    };
+    const expired = data?.filter((b: any) => getDaysLeft(b.expiryDate) < 0) || [];
+    const expiringSoon =
+      data?.filter((b: any) => {
+        const d = getDaysLeft(b.expiryDate);
+        return d >= 0 && d <= 30;
+      }) || [];
+    const safe = data?.filter((b: any) => getDaysLeft(b.expiryDate) > 30) || [];
+    const expiredQty = expired.reduce((s: number, b: any) => s + b.quantity, 0);
+    const expiringSoonQty = expiringSoon.reduce(
+      (s: number, b: any) => s + b.quantity,
+      0,
+    );
+    setStats({
+      total: data?.length || 0,
+      expired: expired.length,
+      expiringSoon: expiringSoon.length,
+      safe: safe.length,
+      expiredQty,
+      expiringSoonQty,
+    });
+    setChartData([
+      { range: "Expired", count: expired.length, qty: expiredQty },
+      {
+        range: "Expiring Soon",
+        count: expiringSoon.length,
+        qty: expiringSoonQty,
+      },
+      {
+        range: "Safe (>30d)",
+        count: safe.length,
+        qty: safe.reduce((s: number, b: any) => s + b.quantity, 0),
+      },
+    ]);
     setLoading(false);
   };
 
@@ -71,148 +104,240 @@ const ExpiryAnalysisReportView: React.FC = () => {
     await exportService.exportExpiryAnalysis(period, format);
   };
 
-  if (loading) return (
-    <div className="flex h-screen justify-center items-center">
-      <div className="text-center">
-        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
-        <p className="text-slate-600 font-medium">Loading expiry analysis...</p>
+  if (loading)
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="animate-spin text-blue-500 mr-2" size={24} />
+        <span className="text-slate-500 text-sm">
+          Loading expiry analysis...
+        </span>
       </div>
-    </div>
-  );
+    );
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-8 bg-white min-h-screen p-6">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Expiry Analysis Report</h1>
-          <p className="text-slate-600">Monitor batch expiry dates and manage stock lifecycle</p>
+          <h1 className="text-2xl font-semibold text-slate-800">
+            Expiry Analysis Report
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Monitor batch expiry dates and manage stock lifecycle
+          </p>
         </div>
-        <button
+        <Button
+          size="sm"
           onClick={() => setShowExportDialog(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+          className="gap-2"
         >
-          <Download size={20} />
-          Export
-        </button>
+          <Download size={15} /> Export
+        </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="group overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">Total Batches</p>
-              <p className="text-4xl font-bold text-blue-900 mt-3">{stats.total}</p>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-blue-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <Clock size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="group overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-red-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-red-600">Already Expired</p>
-              <p className="text-4xl font-bold text-red-900 mt-3">{stats.expired}</p>
-              <span className="text-red-600 text-xs font-semibold flex items-center mt-2"><AlertTriangle size={14} className="mr-1" /> {stats.expiredQty} units</span>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-red-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <CalendarX size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="group overflow-hidden rounded-2xl border border-orange-100 bg-gradient-to-br from-orange-50 to-orange-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-orange-600">Expiring Soon (0-30d)</p>
-              <p className="text-4xl font-bold text-orange-900 mt-3">{stats.expiringSoon}</p>
-              <span className="text-orange-600 text-xs font-semibold flex items-center mt-2"><AlertTriangle size={14} className="mr-1" /> {stats.expiringSoonQty} units</span>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-orange-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <Clock size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="group overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Safe (&gt;30d)</p>
-              <p className="text-4xl font-bold text-emerald-900 mt-3">{stats.safe}</p>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-emerald-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <CheckCircle size={28} />
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          {
+            label: "Total Batches",
+            value: stats.total,
+            icon: Clock,
+            color: "text-blue-600",
+            bg: "bg-blue-50",
+          },
+          {
+            label: "Already Expired",
+            value: stats.expired,
+            icon: CalendarX,
+            color: "text-red-600",
+            bg: "bg-red-50",
+            sub: `${stats.expiredQty} units`,
+          },
+          {
+            label: "Expiring Soon (0-30d)",
+            value: stats.expiringSoon,
+            icon: AlertTriangle,
+            color: "text-amber-600",
+            bg: "bg-amber-50",
+            sub: `${stats.expiringSoonQty} units`,
+          },
+          {
+            label: "Safe (>30d)",
+            value: stats.safe,
+            icon: CheckCircle,
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
+          },
+        ].map(({ label, value, icon: Icon, color, bg, sub }) => (
+          <Card key={label} className="border border-slate-100 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">{label}</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-1">
+                    {value}
+                  </p>
+                  {sub && (
+                    <p className={`text-xs mt-1 font-medium ${color}`}>{sub}</p>
+                  )}
+                </div>
+                <div className={`${bg} ${color} p-2 rounded-lg`}>
+                  <Icon size={18} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Expiry Status Chart */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="rounded-lg bg-gradient-to-br from-red-500 to-red-600 p-2.5 text-white">
-            <CalendarX size={20} />
+      {/* Chart */}
+      <Card className="border border-slate-100 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+            <CalendarX size={16} className="text-slate-400" /> Batch Expiry
+            Status Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barCategoryGap="40%">
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f1f5f9"
+                />
+                <XAxis
+                  dataKey="range"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                    fontSize: 13,
+                  }}
+                  formatter={(value: any, name: string) =>
+                    name === "qty" ? `${value} units` : `${value} batches`
+                  }
+                />
+                <Bar dataKey="count" fill="#ef4444" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <h3 className="text-xl font-bold text-slate-900">Batch Expiry Status Overview</h3>
-        </div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-              <XAxis dataKey="range" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} formatter={(value: any, name: string) => name === 'qty' ? `${value} units` : `${value} batches`} />
-              <Bar dataKey="count" fill="#ef4444" radius={[12, 12, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Detailed Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-white p-8 border-b border-slate-200">
-          <h3 className="text-2xl font-bold text-slate-900">Batch Expiry Details</h3>
-          <p className="text-sm text-slate-600 mt-1">Sorted by expiry date (most critical first)</p>
-        </div>
+      {/* Table */}
+      <Card className="border border-slate-100 shadow-sm overflow-hidden">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-semibold text-slate-700">
+                Batch Expiry Details
+              </CardTitle>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Sorted by expiry date — most critical first
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={15}
+                />
+                <Input
+                  placeholder="Search batch or item..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 w-52 text-sm"
+                />
+              </div>
+              <Select
+                value={selectedStatus || "all"}
+                onValueChange={(v) => setSelectedStatus(v)}
+              >
+                <SelectTrigger className="h-9 w-40 text-sm">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="expiring_soon">Expiring Soon</SelectItem>
+                  <SelectItem value="safe">Safe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 font-semibold text-slate-700">Batch Number</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Item Name</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Stock Qty</th>
-                <th className="px-6 py-4 font-semibold text-slate-700">Expiry Date</th>
-                <th className="px-6 py-4 text-center font-semibold text-slate-700">Days to Expiry</th>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Batch No.
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Item Name
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Qty
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Expiry Date
+                </th>
+                <th className="px-5 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Status
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {batches.map((b, index) => {
-                const daysLeft = Math.ceil((new Date(b.expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-                let badgeColor = '';
-                let badgeClass = '';
-                if (daysLeft < 0) {
-                  badgeColor = 'bg-red-100 text-red-700';
-                  badgeClass = 'border-l-4 border-red-500';
-                } else if (daysLeft < 30) {
-                  badgeColor = 'bg-orange-100 text-orange-700';
-                  badgeClass = 'border-l-4 border-orange-500';
-                } else {
-                  badgeColor = 'bg-emerald-100 text-emerald-700';
-                  badgeClass = 'border-l-4 border-emerald-500';
-                }
+            <tbody className="divide-y divide-slate-50">
+              {batches.map((b) => {
+                const daysLeft = Math.ceil(
+                  (new Date(b.expiryDate).getTime() - new Date().getTime()) /
+                    86400000,
+                );
+                const isExpired = daysLeft < 0;
+                const isSoon = !isExpired && daysLeft <= 30;
+                const badgeClass = isExpired
+                  ? "bg-red-50 text-red-700 border-red-200"
+                  : isSoon
+                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                    : "bg-emerald-50 text-emerald-700 border-emerald-200";
+                const leftBorder = isExpired
+                  ? "border-l-2 border-red-400"
+                  : isSoon
+                    ? "border-l-2 border-amber-400"
+                    : "";
 
                 return (
-                  <tr key={b.id} className={`transition-colors hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'} ${badgeClass}`}>
-                    <td className="px-6 py-4 font-mono text-slate-700 font-semibold">{b.batchNumber}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-900">{b.itemName}</td>
-                    <td className="px-6 py-4 font-semibold text-slate-900">{b.quantity}</td>
-                    <td className="px-6 py-4 text-slate-600">{b.expiryDate}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-block px-3 py-1.5 rounded-lg text-xs font-bold ${badgeColor}`}>
-                        {daysLeft < 0 ? '⚠️ EXPIRED' : `${daysLeft} Days`}
+                  <tr
+                    key={b.id}
+                    className={`hover:bg-slate-50 transition-colors ${leftBorder}`}
+                  >
+                    <td className="px-5 py-3 font-mono text-xs text-slate-600">
+                      {b.batchNumber}
+                    </td>
+                    <td className="px-5 py-3 font-medium text-slate-800">
+                      {b.itemName}
+                    </td>
+                    <td className="px-5 py-3 text-right text-slate-700">
+                      {b.quantity}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">{b.expiryDate}</td>
+                    <td className="px-5 py-3 text-center">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${badgeClass}`}
+                      >
+                        {isExpired ? "Expired" : `${daysLeft}d left`}
                       </span>
                     </td>
                   </tr>
@@ -221,9 +346,8 @@ const ExpiryAnalysisReportView: React.FC = () => {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
-      {/* Export Dialog */}
       <ExportDialog
         isOpen={showExportDialog}
         onClose={() => setShowExportDialog(false)}

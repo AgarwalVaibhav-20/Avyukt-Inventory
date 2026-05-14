@@ -9,7 +9,16 @@ import {
   MinusCircle,
   Loader2,
   AlertCircle,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Filter = "All" | "Fast" | "Slow" | "Non";
 type MovementClass = "Fast Moving" | "Slow Moving" | "Non-Moving";
@@ -194,6 +203,8 @@ const DashboardMovement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
   useEffect(() => {
     loadData();
@@ -216,12 +227,26 @@ const DashboardMovement: React.FC = () => {
     }
   };
 
-  const filtered = data.filter(
-    (d) =>
+  const filtered = data.filter((d) => {
+    const matchesFilter =
       filter === "All" ||
       (filter === "Fast" && d.classification === "Fast Moving") ||
       (filter === "Slow" && d.classification === "Slow Moving") ||
-      (filter === "Non" && d.classification === "Non-Moving"),
+      (filter === "Non" && d.classification === "Non-Moving");
+
+    const matchesSearch =
+      d.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      d.sku.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory =
+      selectedCategory === "all" || d.category === selectedCategory;
+
+    return matchesFilter && matchesSearch && matchesCategory;
+  });
+
+  const categories = useMemo(
+    () => ["all", ...Array.from(new Set(data.map((d) => d.category)))],
+    [data],
   );
 
   const summary = useMemo(
@@ -236,7 +261,7 @@ const DashboardMovement: React.FC = () => {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-50 text-indigo-500 p-2 rounded-xl">
             <Activity size={18} />
@@ -251,20 +276,48 @@ const DashboardMovement: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center bg-slate-50 border border-slate-100 rounded-xl p-1 gap-0.5">
-          {filters.map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                filter === f.key
-                  ? `bg-white shadow-sm ${f.color}`
-                  : "text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={14}
+            />
+            <Input
+              placeholder="Search item..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 w-40 text-xs"
+            />
+          </div>
+
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger className="h-9 w-32 text-xs">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat} value={cat}>
+                  {cat === "all" ? "All Categories" : cat}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center bg-slate-50 border border-slate-100 rounded-xl p-1 gap-0.5">
+            {filters.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  filter === f.key
+                    ? `bg-white shadow-sm ${f.color}`
+                    : "text-slate-400 hover:text-slate-600"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

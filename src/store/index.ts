@@ -10,6 +10,7 @@ import stockControlReducer from "./slices/stockControlSlice";
 import procurementReducer from "./slices/procurementSlice";
 import barcodeReducer from "./slices/barcodeSlice";
 import auditReducer from "./slices/auditSlice";
+import advancedReducer from "./slices/advancedSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +25,7 @@ export const store = configureStore({
     procurement: procurementReducer,
     barcode: barcodeReducer,
     audit: auditReducer,
+    advanced: advancedReducer,
   },
 });
 

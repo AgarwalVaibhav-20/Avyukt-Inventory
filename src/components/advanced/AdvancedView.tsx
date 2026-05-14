@@ -18,6 +18,18 @@ import {
   Warehouse,
   Wifi,
 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import {
+  fetchForecasts,
+  fetchReorderSuggestions,
+  fetchCompanies,
+  fetchCurrencies,
+  fetchIotDevices,
+  fetchComplianceStatus,
+} from "../../store/slices/advancedSlice";
+import { fetchItems } from "../../store/slices/inventorySlice";
+import { createPR } from "../../store/slices/procurementSlice";
+
 
 type FocusFeature = "adv-forecast" | "adv-ai" | "adv-multi" | "adv-curr" | "adv-comp" | "adv-iot";
 
@@ -54,8 +66,8 @@ const configs: Record<FocusFeature, FeatureConfig> = {
     summary: "Predict future demand from stock ledger movement and order patterns.",
     detail:
       "Reads from stock ledger, item master, and sales history to forecast demand with confidence bands and replenishment guidance.",
-    primaryFilters: ["Item", "Category", "Warehouse", "Forecast Period"],
-    advancedFilters: ["Forecast Model", "History Period", "Confidence Level", "Include Zero"],
+    primaryFilters: ["Increase PR", "Watch", "General", "High Confidence"],
+    advancedFilters: ["90%+", "80%+", "Next 30 Days", "Next 90 Days"],
     accent: "from-blue-600 to-indigo-600",
     icon: LineChart,
   },
@@ -66,7 +78,7 @@ const configs: Record<FocusFeature, FeatureConfig> = {
     summary: "Turn forecasts into reorder recommendations with lead-time awareness.",
     detail:
       "Combines forecast output, current stock, open purchase orders, and vendor lead time data to suggest replenishment actions.",
-    primaryFilters: ["Item", "Category", "Vendor", "Priority"],
+    primaryFilters: ["Critical", "High", "Medium", "Primary Vendor"],
     advancedFilters: ["Lead Time", "Confidence", "Demand Spike", "Open PO"],
     accent: "from-emerald-600 to-teal-600",
     icon: BrainCircuit,
@@ -78,7 +90,7 @@ const configs: Record<FocusFeature, FeatureConfig> = {
     summary: "Separate company books with a consolidated oversight layer.",
     detail:
       "Keeps entity-level ledgers, warehouses, and valuations isolated while allowing group-level reporting and intercompany visibility.",
-    primaryFilters: ["Company", "Warehouse", "Currency", "Status"],
+    primaryFilters: ["Active", "Watch", "INR", "USD"],
     advancedFilters: ["Category", "Consolidated View", "Ledger Scope", "Intercompany"],
     accent: "from-fuchsia-600 to-indigo-600",
     icon: Globe,
@@ -90,7 +102,7 @@ const configs: Record<FocusFeature, FeatureConfig> = {
     summary: "Convert foreign purchase costs into the base currency for valuation.",
     detail:
       "Handles exchange rates, landed cost, and gain/loss tracking so inventory value remains consistent across currencies.",
-    primaryFilters: ["Currency", "Supplier Country", "PO Date", "Warehouse"],
+    primaryFilters: ["JPY", "EUR", "USD", "AED"],
     advancedFilters: ["Rate Source", "Gain/Loss", "Invoice Date", "Revaluation"],
     accent: "from-sky-600 to-blue-600",
     icon: Cloud,
@@ -102,7 +114,7 @@ const configs: Record<FocusFeature, FeatureConfig> = {
     summary: "Automate GST, E-Way Bill, and maker-checker validations.",
     detail:
       "The reference flow sits between transaction creation and posting, applying document checks and rule-based automation before finalizing movement.",
-    primaryFilters: ["Document Type", "Status", "Warehouse", "Due Date"],
+    primaryFilters: ["GRN", "Dispatch", "Approved", "Pending approval"],
     advancedFilters: ["Rule Type", "Auto vs Manual", "Regulated Item", "Exception"],
     accent: "from-orange-600 to-rose-600",
     icon: ShieldAlert,
@@ -114,7 +126,7 @@ const configs: Record<FocusFeature, FeatureConfig> = {
     summary: "Blend live warehouse sensor data with stock records.",
     detail:
       "Sensors, RTLS, and smart shelf events feed the stock ledger and dashboard so exceptions can be acted on in real time.",
-    primaryFilters: ["Warehouse", "Device Type", "Alert Severity", "Last Seen"],
+    primaryFilters: ["Temperature", "RFID", "Normal", "Alert"],
     advancedFilters: ["Battery", "Offline Only", "Signal Quality", "Zone"],
     accent: "from-cyan-600 to-blue-600",
     icon: Wifi,
@@ -342,28 +354,101 @@ const TableCard: React.FC<{ title: string; subtitle: string; children: React.Rea
   </section>
 );
 
+const Pagination: React.FC<{
+  total: number;
+  page: number;
+  limit: number;
+  onPageChange: (p: number) => void;
+}> = ({ total, page, limit, onPageChange }) => {
+  const totalPages = Math.ceil(total / limit);
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-6 py-4">
+      <div className="text-xs text-slate-500">
+        Showing <span className="font-bold">{(page - 1) * limit + 1}</span> to{" "}
+        <span className="font-bold">{Math.min(page * limit, total)}</span> of{" "}
+        <span className="font-bold">{total}</span> results
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page === 1}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page === totalPages}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-50 disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ForecastPage: React.FC = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [toastMsg, setToastMsg] = useState("");
+
+  const dispatch = useAppDispatch();
+  const { forecasts, forecastSummary, pagination } = useAppSelector((state) => state.advanced);
+
+  useEffect(() => {
+    dispatch(fetchForecasts({ page, limit: 10, search: query, filter: activeFilters[0] }));
+  }, [dispatch, page, query, activeFilters]);
+
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeFilters]);
+
+  const forecastsList = useMemo(() => {
+    return forecasts.map((f: any) => ({
+      id: f._id,
+      item: f.productId?.name || "Unknown Item",
+      category: f.productId?.category || "General",
+      current: f.currentStock || 0,
+      forecast: f.demandForecast || 0,
+      conf: f.confidence || "0%",
+      action: f.action || "Watch",
+      unitPrice: f.productId?.purchasePrice || 0
+    }));
+  }, [forecasts]);
 
   const toggleFilter = (f: string) =>
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
-  const filtered = useMemo(() => {
-    return forecastRows.filter((row) => {
-      const matchesQuery = `${row.item} ${row.category}`.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        activeFilters.some(
-          (f) =>
-            row.category.toLowerCase().includes(f.toLowerCase()) ||
-            row.action.toLowerCase().includes(f.toLowerCase()),
-        );
-      return matchesQuery && matchesFilter;
-    });
-  }, [query, activeFilters]);
+  const filtered = useMemo(() => forecastsList, [forecastsList]);
+
+  const handleAction = (row: any) => {
+    const qtyToOrder = Math.max(1, row.forecast - row.current);
+    
+    dispatch(createPR({
+      department: "Production",
+      requestedBy: "AI Forecast System",
+      date: new Date().toISOString().slice(0, 10),
+      requiredDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      justification: `AI Forecast suggest replenishment based on ${row.conf} confidence model.`,
+      source: "AI Forecast",
+      items: [{
+        itemId: row.id,
+        itemName: row.item,
+        quantity: qtyToOrder,
+        estimatedPrice: row.unitPrice
+      }]
+    }));
+
+    setToastMsg(`Purchase Requisition drafted for ${row.item}.`);
+    setTimeout(() => setToastMsg(""), 3000);
+  };
 
   return (
     <PageShell
@@ -416,11 +501,18 @@ const ForecastPage: React.FC = () => {
         }}
       />
 
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 rounded-xl bg-slate-900 px-5 py-3.5 text-white shadow-xl">
+          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+          <p className="text-sm font-medium">{toastMsg}</p>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Trend" value="Rising demand" note="12 items above current stock" tone="w-12 bg-blue-500" />
-        <StatCard label="Confidence" value="92%" note="Model variance within threshold" tone="w-12 bg-indigo-500" />
-        <StatCard label="Impact" value="28 PRs" note="Items ready for replenishment" tone="w-12 bg-cyan-500" />
-        <StatCard label="Coverage" value="6 mo" note="Forecast horizon from the reference" tone="w-12 bg-slate-900" />
+        <StatCard label="Trend" value={forecastSummary?.trend || "..."} note="Items with rising demand" tone="w-12 bg-blue-500" />
+        <StatCard label="Confidence" value={forecastSummary?.confidence || "..."} note="Model variance within threshold" tone="w-12 bg-indigo-500" />
+        <StatCard label="Impact" value={forecastSummary?.impact || "..."} note="Items ready for replenishment" tone="w-12 bg-cyan-500" />
+        <StatCard label="Coverage" value={forecastSummary?.coverage || "6 mo"} note="Forecast horizon" tone="w-12 bg-slate-900" />
       </div>
 
       <TableCard title="Forecast output" subtitle="Item-wise demand forecast and action guidance">
@@ -436,20 +528,35 @@ const ForecastPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((row) => (
-              <tr key={row.item} className="hover:bg-slate-50">
+            {filtered.map((row, idx) => (
+              <tr key={idx} className="hover:bg-slate-50">
                 <td className="px-6 py-4 font-semibold text-slate-900">{row.item}</td>
                 <td className="px-6 py-4 text-slate-600">{row.category}</td>
                 <td className="px-6 py-4 text-right">{row.current}</td>
                 <td className="px-6 py-4 text-right font-bold text-slate-900">{row.forecast}</td>
                 <td className="px-6 py-4 text-right">{row.conf}</td>
                 <td className="px-6 py-4">
-                  <Chip tone="bg-blue-50 text-blue-700 border-blue-200">{row.action}</Chip>
+                  {row.action === "Increase PR" ? (
+                    <button
+                      onClick={() => handleAction(row)}
+                      className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700 border border-blue-200 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                    >
+                      Draft PR
+                    </button>
+                  ) : (
+                    <Chip tone="bg-slate-50 text-slate-600 border-slate-200">{row.action}</Chip>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={pagination?.forecasts?.total ?? 0}
+          page={pagination?.forecasts?.page ?? 1}
+          limit={pagination?.forecasts?.limit ?? 10}
+          onPageChange={setPage}
+        />
       </TableCard>
     </PageShell>
   );
@@ -458,25 +565,26 @@ const ForecastPage: React.FC = () => {
 const AiPage: React.FC = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+
+  const dispatch = useAppDispatch();
+  const { reorderSuggestions, aiSummary, pagination } = useAppSelector((state) => state.advanced);
+
+  useEffect(() => {
+    dispatch(fetchReorderSuggestions({ page, limit: 10, search: query, filter: activeFilters[0] }));
+  }, [dispatch, page, query, activeFilters]);
+
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeFilters]);
 
   const toggleFilter = (f: string) =>
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
-  const filtered = useMemo(() => {
-    return aiRows.filter((row) => {
-      const matchesQuery = `${row.item} ${row.vendor} ${row.reason}`.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        activeFilters.some(
-          (f) =>
-            row.priority.toLowerCase().includes(f.toLowerCase()) ||
-            row.vendor.toLowerCase().includes(f.toLowerCase()),
-        );
-      return matchesQuery && matchesFilter;
-    });
-  }, [query, activeFilters]);
+  const filtered = useMemo(() => reorderSuggestions, [reorderSuggestions]);
 
   return (
     <PageShell
@@ -514,9 +622,9 @@ const AiPage: React.FC = () => {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Auto drafts" value="14" note="Purchase requests ready to review" tone="w-12 bg-emerald-500" />
-        <StatCard label="High priority" value="9" note="Stock-out risk within lead window" tone="w-12 bg-amber-500" />
-        <StatCard label="Confident matches" value="96%" note="Strong vendor and lead-time fit" tone="w-12 bg-slate-900" />
+        <StatCard label="Auto drafts" value={aiSummary?.autoDrafts.toString() || "0"} note="Purchase requests ready to review" tone="w-12 bg-emerald-500" />
+        <StatCard label="High priority" value={aiSummary?.highPriority.toString() || "0"} note="Stock-out risk within lead window" tone="w-12 bg-amber-500" />
+        <StatCard label="Confident matches" value={aiSummary?.confidence || "96%"} note="Strong vendor fit" tone="w-12 bg-slate-900" />
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -551,8 +659,8 @@ const AiPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((row) => (
-              <tr key={row.item} className="hover:bg-slate-50">
+            {filtered.map((row, idx) => (
+              <tr key={idx} className="hover:bg-slate-50">
                 <td className="px-6 py-4 font-semibold text-slate-900">{row.item}</td>
                 <td className="px-6 py-4 text-slate-600">{row.vendor}</td>
                 <td className="px-6 py-4 text-right">{row.qty}</td>
@@ -576,6 +684,12 @@ const AiPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={pagination?.reorderSuggestions?.total ?? 0}
+          page={pagination?.reorderSuggestions?.page ?? 1}
+          limit={pagination?.reorderSuggestions?.limit ?? 10}
+          onPageChange={setPage}
+        />
       </TableCard>
     </PageShell>
   );
@@ -584,26 +698,26 @@ const AiPage: React.FC = () => {
 const MultiCompanyPage: React.FC = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+
+  const dispatch = useAppDispatch();
+  const { companies, summary, pagination } = useAppSelector((state) => state.advanced);
+
+  useEffect(() => {
+    dispatch(fetchCompanies({ page, limit: 10, search: query, filter: activeFilters[0] }));
+  }, [dispatch, page, query, activeFilters]);
+
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeFilters]);
 
   const toggleFilter = (f: string) =>
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
-  const filtered = useMemo(() => {
-    return multiCompanyRows.filter((row) => {
-      const matchesQuery = `${row.company} ${row.currency}`.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        activeFilters.some(
-          (f) =>
-            row.currency.toLowerCase().includes(f.toLowerCase()) ||
-            row.status.toLowerCase().includes(f.toLowerCase()) ||
-            f.includes(row.warehouses.toString()),
-        );
-      return matchesQuery && matchesFilter;
-    });
-  }, [query, activeFilters]);
+  const filtered = useMemo(() => companies, [companies]);
 
   return (
     <PageShell
@@ -613,14 +727,14 @@ const MultiCompanyPage: React.FC = () => {
           <h3 className="text-lg font-bold text-slate-900">Entity map</h3>
           <p className="mt-1 text-sm text-slate-500">Separation with group visibility.</p>
           <div className="mt-4 space-y-3">
-            {multiCompanyRows.map((row) => (
-              <div key={row.company} className="rounded-2xl bg-slate-50 p-4">
+            {filtered.map((row) => (
+              <div key={row.name} className="rounded-2xl bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-slate-900">{row.company}</p>
+                  <p className="font-semibold text-slate-900">{row.name}</p>
                   <Chip tone={row.tone}>{row.status}</Chip>
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
-                  {row.currency} ledger, {row.warehouses} warehouses
+                  {row.baseCurrency} ledger, {row.warehouses} warehouses
                 </p>
               </div>
             ))}
@@ -641,10 +755,10 @@ const MultiCompanyPage: React.FC = () => {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Active entities" value="4" note="Company-wise inventory isolation" tone="w-12 bg-fuchsia-500" />
-        <StatCard label="Warehouses" value="15" note="All entity warehouses combined" tone="w-12 bg-slate-900" />
-        <StatCard label="Shared items" value="1,240" note="Cross-company item master overlap" tone="w-12 bg-violet-500" />
-        <StatCard label="Currency mix" value="2" note="INR and USD operational scope" tone="w-12 bg-blue-500" />
+        <StatCard label="Active entities" value={summary?.activeEntities.toString() || "0"} note="Company-wise inventory isolation" tone="w-12 bg-fuchsia-500" />
+        <StatCard label="Warehouses" value={summary?.totalWarehouses.toString() || "0"} note="All entity warehouses combined" tone="w-12 bg-slate-900" />
+        <StatCard label="Shared items" value={summary?.totalItems.toLocaleString() || "0"} note="Cross-company item master overlap" tone="w-12 bg-violet-500" />
+        <StatCard label="Currency mix" value={summary?.currencyMix.toString() || "0"} note="INR and USD operational scope" tone="w-12 bg-blue-500" />
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -653,15 +767,15 @@ const MultiCompanyPage: React.FC = () => {
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {filtered.map((row) => (
             <div
-              key={row.company}
+              key={row.name}
               className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4"
             >
               <div>
-                <p className="truncate text-xs font-semibold uppercase tracking-[0.15em] text-slate-500" title={row.company}>
-                  {row.company}
+                <p className="truncate text-xs font-semibold uppercase tracking-[0.15em] text-slate-500" title={row.name}>
+                  {row.name}
                 </p>
-                <p className="mt-2 truncate text-xl font-black text-slate-900 lg:text-2xl" title={currency.format(row.value)}>
-                  {currency.format(row.value)}
+                <p className="mt-2 truncate text-xl font-black text-slate-900 lg:text-2xl" title={currency.format(row.value || 0)}>
+                  {currency.format(row.value || 0)}
                 </p>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -671,7 +785,7 @@ const MultiCompanyPage: React.FC = () => {
                 </div>
                 <div className="rounded-xl bg-white p-2.5 shadow-sm">
                   <p className="truncate text-[10px] uppercase tracking-wider text-slate-500">Currency</p>
-                  <p className="mt-0.5 font-bold text-slate-900">{row.currency}</p>
+                  <p className="mt-0.5 font-bold text-slate-900">{row.baseCurrency}</p>
                 </div>
               </div>
             </div>
@@ -692,11 +806,11 @@ const MultiCompanyPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.map((row) => (
-              <tr key={row.company} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-semibold text-slate-900">{row.company}</td>
+              <tr key={row.name} className="hover:bg-slate-50">
+                <td className="px-6 py-4 font-semibold text-slate-900">{row.name}</td>
                 <td className="px-6 py-4 text-center">{row.warehouses}</td>
-                <td className="px-6 py-4">{row.currency}</td>
-                <td className="px-6 py-4 text-right font-bold text-slate-900">{currency.format(row.value)}</td>
+                <td className="px-6 py-4">{row.baseCurrency}</td>
+                <td className="px-6 py-4 text-right font-bold text-slate-900">{currency.format(row.value || 0)}</td>
                 <td className="px-6 py-4">
                   <Chip tone={row.tone}>{row.status}</Chip>
                 </td>
@@ -704,6 +818,12 @@ const MultiCompanyPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={pagination?.companies?.total ?? 0}
+          page={pagination?.companies?.page ?? 1}
+          limit={pagination?.companies?.limit ?? 10}
+          onPageChange={setPage}
+        />
       </TableCard>
     </PageShell>
   );
@@ -712,26 +832,26 @@ const MultiCompanyPage: React.FC = () => {
 const CurrencyPage: React.FC = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+
+  const dispatch = useAppDispatch();
+  const { currencies, currencySummary, pagination } = useAppSelector((state) => state.advanced);
+
+  useEffect(() => {
+    dispatch(fetchCurrencies({ page, limit: 10, search: query, filter: activeFilters[0] }));
+  }, [dispatch, page, query, activeFilters]);
+
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeFilters]);
 
   const toggleFilter = (f: string) =>
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
-  const filtered = useMemo(() => {
-    return currencyRows.filter((row) => {
-      const matchesQuery = `${row.po} ${row.supplier} ${row.currency}`.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        activeFilters.some(
-          (f) =>
-            row.currency.toLowerCase().includes(f.toLowerCase()) ||
-            row.supplier.toLowerCase().includes(f.toLowerCase()) ||
-            f.includes("Rate"),
-        );
-      return matchesQuery && matchesFilter;
-    });
-  }, [query, activeFilters]);
+  const filtered = useMemo(() => currencies, [currencies]);
 
   return (
     <PageShell
@@ -742,10 +862,10 @@ const CurrencyPage: React.FC = () => {
           <p className="mt-1 text-sm text-slate-500">Conversion and landed-cost chain.</p>
           <div className="mt-4 space-y-3">
             {[
-              { label: "PO cost", value: 780000, tone: "bg-blue-500" },
-              { label: "Exchange adjustment", value: 42000, tone: "bg-indigo-500" },
-              { label: "Landing and duty", value: 182000, tone: "bg-cyan-500" },
-              { label: "Base currency value", value: 1004200, tone: "bg-slate-900" },
+              { label: "PO cost (Exposure)", value: currencySummary?.liveExposure || 0, tone: "bg-blue-500" },
+              { label: "Exchange adjustment", value: currencySummary?.gainLoss || 0, tone: "bg-indigo-500" },
+              { label: "Landing and duty", value: (currencySummary?.totalLanded || 0) - (currencySummary?.liveExposure || 0), tone: "bg-cyan-500" },
+              { label: "Base currency value", value: currencySummary?.totalLanded || 0, tone: "bg-slate-900" },
             ].map((item) => (
               <div key={item.label} className="rounded-2xl bg-slate-50 p-4">
                 <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
@@ -755,7 +875,7 @@ const CurrencyPage: React.FC = () => {
                 <div className="h-2 rounded-full bg-slate-200">
                   <div
                     className={`h-2 rounded-full ${item.tone}`}
-                    style={{ width: `${Math.min(100, item.value / 12000)}%` }}
+                    style={{ width: `${Math.min(100, (item.value / (currencySummary?.totalLanded || 1)) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -777,14 +897,19 @@ const CurrencyPage: React.FC = () => {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Base currency" value="INR" note="All valuations normalized" tone="w-12 bg-sky-500" />
+        <StatCard label="Base currency" value={currencySummary?.baseCurrency || "INR"} note="All valuations normalized" tone="w-12 bg-sky-500" />
         <StatCard
           label="Live exposure"
-          value={currency.format(5945800)}
+          value={currency.format(currencySummary?.liveExposure || 0)}
           note="Foreign-currency inventory exposure"
           tone="w-12 bg-indigo-500"
         />
-        <StatCard label="FX gain / loss" value={currency.format(28900)} note="Current net impact" tone="w-12 bg-slate-900" />
+        <StatCard 
+          label="FX gain / loss" 
+          value={currency.format(currencySummary?.gainLoss || 0)} 
+          note="Current net impact" 
+          tone="w-12 bg-slate-900" 
+        />
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -844,6 +969,12 @@ const CurrencyPage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={pagination?.currencies?.total ?? 0}
+          page={pagination?.currencies?.page ?? 1}
+          limit={pagination?.currencies?.limit ?? 10}
+          onPageChange={setPage}
+        />
       </TableCard>
     </PageShell>
   );
@@ -852,26 +983,26 @@ const CurrencyPage: React.FC = () => {
 const CompliancePage: React.FC = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+
+  const dispatch = useAppDispatch();
+  const { complianceStatus, complianceSummary, pagination } = useAppSelector((state) => state.advanced);
+
+  useEffect(() => {
+    dispatch(fetchComplianceStatus({ page, limit: 10, search: query, filter: activeFilters[0] }));
+  }, [dispatch, page, query, activeFilters]);
+
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeFilters]);
 
   const toggleFilter = (f: string) =>
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
-  const filtered = useMemo(() => {
-    return complianceRows.filter((row) => {
-      const matchesQuery = `${row.doc} ${row.module} ${row.rule}`.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        activeFilters.some(
-          (f) =>
-            row.module.toLowerCase().includes(f.toLowerCase()) ||
-            row.status.toLowerCase().includes(f.toLowerCase()) ||
-            row.rule.toLowerCase().includes(f.toLowerCase()),
-        );
-      return matchesQuery && matchesFilter;
-    });
-  }, [query, activeFilters]);
+  const filtered = useMemo(() => complianceStatus, [complianceStatus]);
 
   return (
     <PageShell
@@ -904,9 +1035,9 @@ const CompliancePage: React.FC = () => {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="GST ready" value="18" note="Documents ready for filing" tone="w-12 bg-blue-500" />
-        <StatCard label="E-Way queued" value="9" note="Dispatch events waiting" tone="w-12 bg-emerald-500" />
-        <StatCard label="Pending checker" value="11" note="Maker-checker queue" tone="w-12 bg-amber-500" />
+        <StatCard label="GST ready" value={complianceSummary?.gstReady.toString() || "0"} note="Documents ready for filing" tone="w-12 bg-blue-500" />
+        <StatCard label="E-Way queued" value={complianceSummary?.eWayQueued.toString() || "0"} note="Dispatch events waiting" tone="w-12 bg-emerald-500" />
+        <StatCard label="Pending checker" value={complianceSummary?.pendingChecker.toString() || "0"} note="Maker-checker queue" tone="w-12 bg-amber-500" />
         <StatCard label="Auto rules" value="32" note="Automated validations active" tone="w-12 bg-slate-900" />
       </div>
 
@@ -914,18 +1045,21 @@ const CompliancePage: React.FC = () => {
         <h3 className="text-lg font-bold text-slate-900">Workflow lane</h3>
         <p className="mt-1 text-sm text-slate-500">Compliance states from draft to posting.</p>
         <div className="mt-4 grid gap-4 md:grid-cols-4">
-          {[
-            { title: "Draft", items: 9, tone: "bg-slate-50 text-slate-900" },
-            { title: "Validate", items: 14, tone: "bg-blue-50 text-blue-700" },
-            { title: "Approve", items: 11, tone: "bg-amber-50 text-amber-700" },
-            { title: "Post", items: 21, tone: "bg-emerald-50 text-emerald-700" },
-          ].map((step, index) => (
-            <div key={step.title} className={`rounded-2xl border border-slate-200 p-5 ${step.tone}`}>
-              <p className="text-xs uppercase tracking-[0.2em]">Step {index + 1}</p>
-              <p className="mt-2 text-2xl font-black">{step.title}</p>
-              <p className="mt-1 text-sm opacity-80">{step.items} documents</p>
-            </div>
-          ))}
+          {(complianceSummary?.workflowLanes || [
+            { title: "Draft", items: 0 },
+            { title: "Validate", items: 0 },
+            { title: "Approve", items: 0 },
+            { title: "Post", items: 0 },
+          ]).map((step: any, index: number) => {
+            const tones = ["bg-slate-50 text-slate-900", "bg-blue-50 text-blue-700", "bg-amber-50 text-amber-700", "bg-emerald-50 text-emerald-700"];
+            return (
+              <div key={step.title} className={`rounded-2xl border border-slate-200 p-5 ${tones[index % tones.length]}`}>
+                <p className="text-xs uppercase tracking-[0.2em]">Step {index + 1}</p>
+                <p className="mt-2 text-2xl font-black">{step.title}</p>
+                <p className="mt-1 text-sm opacity-80">{step.items} documents</p>
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -952,6 +1086,12 @@ const CompliancePage: React.FC = () => {
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={pagination?.complianceStatus?.total ?? 0}
+          page={pagination?.complianceStatus?.page ?? 1}
+          limit={pagination?.complianceStatus?.limit ?? 10}
+          onPageChange={setPage}
+        />
       </TableCard>
     </PageShell>
   );
@@ -960,26 +1100,26 @@ const CompliancePage: React.FC = () => {
 const IoTPage: React.FC = () => {
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+
+  const dispatch = useAppDispatch();
+  const { iotDevices, iotSummary, pagination } = useAppSelector((state) => state.advanced);
+
+  useEffect(() => {
+    dispatch(fetchIotDevices({ page, limit: 10, search: query, filter: activeFilters[0] }));
+  }, [dispatch, page, query, activeFilters]);
+
+  // Reset page when search/filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, activeFilters]);
 
   const toggleFilter = (f: string) =>
     setActiveFilters((prev) =>
       prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f],
     );
 
-  const filtered = useMemo(() => {
-    return iotRows.filter((row) => {
-      const matchesQuery = `${row.device} ${row.type}`.toLowerCase().includes(query.toLowerCase());
-      const matchesFilter =
-        activeFilters.length === 0 ||
-        activeFilters.some(
-          (f) =>
-            row.type.toLowerCase().includes(f.toLowerCase()) ||
-            row.severity.toLowerCase().includes(f.toLowerCase()) ||
-            f.includes("WH-"),
-        );
-      return matchesQuery && matchesFilter;
-    });
-  }, [query, activeFilters]);
+  const filtered = useMemo(() => iotDevices, [iotDevices]);
 
   return (
     <PageShell
@@ -996,9 +1136,9 @@ const IoTPage: React.FC = () => {
               </div>
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {[
-                  { label: "Online", value: "118", tone: "bg-emerald-500" },
-                  { label: "Warning", value: "6", tone: "bg-amber-500" },
-                  { label: "Offline", value: "2", tone: "bg-rose-500" },
+                  { label: "Online", value: iotSummary?.online.toString() || "0", tone: "bg-emerald-500" },
+                  { label: "Warning", value: iotSummary?.warning.toString() || "0", tone: "bg-amber-500" },
+                  { label: "Offline", value: ((iotSummary?.total || 0) - (iotSummary?.online || 0) - (iotSummary?.warning || 0)).toString(), tone: "bg-rose-500" },
                 ].map((item) => (
                   <div key={item.label} className="rounded-xl bg-white p-3 text-center shadow-sm">
                     <div className={`mx-auto h-2 w-10 rounded-full ${item.tone}`} />
@@ -1038,9 +1178,9 @@ const IoTPage: React.FC = () => {
       />
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Connected devices" value="126" note="Sensors across active warehouses" tone="w-12 bg-cyan-500" />
-        <StatCard label="Warnings" value="6" note="Needs attention within the shift" tone="w-12 bg-amber-500" />
-        <StatCard label="Response lag" value="2 sec" note="From event to dashboard update" tone="w-12 bg-slate-900" />
+        <StatCard label="Connected devices" value={iotSummary?.total.toString() || "0"} note="Sensors across warehouses" tone="w-12 bg-cyan-500" />
+        <StatCard label="Warnings" value={iotSummary?.warning.toString() || "0"} note="Needs attention" tone="w-12 bg-amber-500" />
+        <StatCard label="Alerts" value={iotSummary?.alert.toString() || "0"} note="Critical sensor events" tone="w-12 bg-rose-500" />
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1049,7 +1189,7 @@ const IoTPage: React.FC = () => {
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_320px]">
           <div className="rounded-2xl bg-slate-50 p-5">
             <div className="grid grid-cols-4 gap-3">
-              {[88, 74, 96, 61].map((value, idx) => (
+              {(iotSummary?.floorState || [0, 0, 0, 0]).map((value, idx) => (
                 <div key={idx} className="rounded-xl bg-white p-4 shadow-sm">
                   <div className="flex h-36 items-end">
                     <div
@@ -1068,7 +1208,7 @@ const IoTPage: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Alert feed</p>
               <div className="mt-3 space-y-2">
-                {["WH-04 door sensor open", "Shelf load cell nearing threshold", "RFID portal resync completed"].map(
+              {(iotSummary?.alertFeed || ["No active alerts"]).map(
                   (msg) => (
                     <div key={msg} className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-700">
                       {msg}
@@ -1100,18 +1240,46 @@ const IoTPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((row) => (
-              <tr key={row.device} className="hover:bg-slate-50">
-                <td className="px-6 py-4 font-semibold text-slate-900">{row.device}</td>
-                <td className="px-6 py-4 text-slate-600">{row.type}</td>
-                <td className="px-6 py-4 text-right">{row.reading}</td>
-                <td className="px-6 py-4 text-slate-600">{row.severity}</td>
-                <td className="px-6 py-4 text-slate-600">{row.lastSeen}</td>
-                <td className="px-6 py-4 text-right text-slate-600">{row.battery}</td>
+            {filtered.map((row, idx) => (
+              <tr key={idx} className="hover:bg-slate-50">
+                <td className="px-6 py-4 font-semibold text-slate-900">{row.deviceName}</td>
+                <td className="px-6 py-4 text-slate-600">{row.deviceType}</td>
+                <td className="px-6 py-4 text-right font-bold text-slate-900">{row.lastReading}</td>
+                <td className="px-6 py-4">
+                  <Chip
+                    tone={
+                      row.status === "Alert"
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : row.status === "Warning"
+                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    }
+                  >
+                    {row.status}
+                  </Chip>
+                </td>
+                <td className="px-6 py-4 text-slate-600 text-xs">{new Date(row.lastSeen).toLocaleString()}</td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <div className="h-1.5 w-12 rounded-full bg-slate-100">
+                      <div
+                        className="h-1.5 rounded-full bg-slate-400"
+                        style={{ width: `${row.batteryLevel}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">{row.batteryLevel}%</span>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+        <Pagination
+          total={pagination?.iotDevices?.total ?? 0}
+          page={pagination?.iotDevices?.page ?? 1}
+          limit={pagination?.iotDevices?.limit ?? 10}
+          onPageChange={setPage}
+        />
       </TableCard>
     </PageShell>
   );

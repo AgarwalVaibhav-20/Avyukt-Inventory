@@ -60,6 +60,10 @@ export const fetchReturns = createAsyncThunk('procurement/fetchReturns', async (
   return await procurementService.getPurchaseReturns();
 });
 
+export const createPR = createAsyncThunk('procurement/createPR', async (data: Omit<PurchaseRequisition, 'id' | 'prNumber' | 'status'>) => {
+  return await procurementService.createPR(data);
+});
+
 export const createVendor = createAsyncThunk('procurement/createVendor', async (data: Omit<Vendor, 'id' | 'rating'>) => {
   return await procurementService.addVendor(data);
 });
@@ -127,6 +131,9 @@ const procurementSlice = createSlice({
       })
       .addCase(fetchReturns.fulfilled, (state, action) => {
         state.returns = action.payload;
+      })
+      .addCase(createPR.fulfilled, (state, action) => {
+        state.prs.unshift(action.payload);
       });
   },
 });

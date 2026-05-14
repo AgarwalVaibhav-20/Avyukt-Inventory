@@ -1,13 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { reportService } from '@/services/reportService';
-import { exportService } from '@/services/exportService';
-import ExportDialog, { ExportPeriod, ExportFormat } from '@/components/common/ExportDialog';
-import { AgingAnalysisItem } from '@/types';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Clock, Loader2, Package, AlertTriangle, TrendingUp, Download } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { reportService } from "@/services/reportService";
+import { exportService } from "@/services/exportService";
+import ExportDialog, {
+  ExportPeriod,
+  ExportFormat,
+} from "@/components/common/ExportDialog";
+import { AgingAnalysisItem } from "@/types";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
+import {
+  Clock,
+  Loader2,
+  Package,
+  AlertTriangle,
+  TrendingUp,
+  Download,
+  Search,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
-const AGE_RANGES = ['0-30 Days', '31-60 Days', '61-90 Days', '>90 Days'];
+const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"];
+const AGE_RANGES = ["0-30 Days", "31-60 Days", "61-90 Days", ">90 Days"];
 
 const AgingAnalysisView: React.FC = () => {
   const [data, setData] = useState<AgingAnalysisItem[]>([]);
@@ -15,44 +46,55 @@ const AgingAnalysisView: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   useEffect(() => {
-    loadData();
-  }, []);
+    const timer = setTimeout(() => {
+      loadData();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedCategory]);
 
   const loadData = async () => {
     setLoading(true);
-    const res = await reportService.getAgingReport();
-    setData(res);
-    
-    // Calculate statistics
-    const totalStock = res.reduce((sum, item) => sum + item.totalStock, 0);
-    const ageStats = AGE_RANGES.map((range) => {
-      const qty = res.reduce((sum, item) => {
-        const bucket = item.buckets.find(b => b.range === range);
-        return sum + (bucket?.quantity || 0);
-      }, 0);
-      return { range, qty, percentage: ((qty / totalStock) * 100).toFixed(1) };
+    const res = await reportService.getAgingReport({
+      search: searchQuery,
+      category: selectedCategory === "all" ? "" : selectedCategory,
     });
-
+    setData(res || []);
+    const totalStock = res?.reduce((sum, item) => sum + item.totalStock, 0) || 0;
+    const ageStats = AGE_RANGES.map((range) => {
+      const qty = res?.reduce((sum, item) => {
+        const bucket = item.buckets.find((b) => b.range === range);
+        return sum + (bucket?.quantity || 0);
+      }, 0) || 0;
+      return {
+        range,
+        qty,
+        percentage: totalStock > 0 ? ((qty / totalStock) * 100).toFixed(1) : "0",
+      };
+    });
     setStats({
       totalStock,
       freshStock: ageStats[0].qty,
       mediumStock: ageStats[1].qty + ageStats[2].qty,
       oldStock: ageStats[3].qty,
-      oldPercentage: ageStats[3].percentage
+      oldPercentage: ageStats[3].percentage,
     });
-
-    // Chart data
-    const chart = AGE_RANGES.map((range) => {
-      const qty = res.reduce((sum, item) => {
-        const bucket = item.buckets.find(b => b.range === range);
-        return sum + (bucket?.quantity || 0);
-      }, 0);
-      return { name: range, value: qty, percentage: ((qty / totalStock) * 100).toFixed(1) };
-    });
-    setChartData(chart);
-    
+    setChartData(
+      AGE_RANGES.map((range) => {
+        const qty = res?.reduce((sum, item) => {
+          const bucket = item.buckets.find((b) => b.range === range);
+          return sum + (bucket?.quantity || 0);
+        }, 0) || 0;
+        return {
+          name: range,
+          value: qty,
+          percentage: totalStock > 0 ? ((qty / totalStock) * 100).toFixed(1) : "0",
+        };
+      }),
+    );
     setLoading(false);
   };
 
@@ -60,151 +102,255 @@ const AgingAnalysisView: React.FC = () => {
     await exportService.exportAgingAnalysis(period, format);
   };
 
-  if (loading) return (
-    <div className="flex h-screen justify-center items-center">
-      <div className="text-center">
-        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
-        <p className="text-slate-600 font-medium">Loading aging analysis...</p>
+  if (loading)
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="animate-spin text-blue-500 mr-2" size={24} />
+        <span className="text-slate-500 text-sm">
+          Loading aging analysis...
+        </span>
       </div>
-    </div>
-  );
+    );
+
+  const summaryCards = [
+    {
+      label: "Total Stock",
+      value: stats.totalStock.toLocaleString(),
+      icon: Package,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      label: "Fresh Stock (0-30d)",
+      value: stats.freshStock.toLocaleString(),
+      icon: TrendingUp,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    {
+      label: "Medium Age (31-90d)",
+      value: stats.mediumStock.toLocaleString(),
+      icon: Clock,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+    },
+    {
+      label: "Old Stock (>90d)",
+      value: stats.oldStock.toLocaleString(),
+      icon: AlertTriangle,
+      color: "text-red-600",
+      bg: "bg-red-50",
+      sub: `${stats.oldPercentage}% of total`,
+    },
+  ];
 
   return (
-    <div className="space-y-8 pb-8">
+    <div className="space-y-6 pb-8 bg-white min-h-screen p-6">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">Stock Aging Analysis</h1>
-          <p className="text-slate-600">Analyze inventory age and optimize stock rotation</p>
+          <h1 className="text-2xl font-semibold text-slate-800">
+            Stock Aging Analysis
+          </h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Analyze inventory age and optimize stock rotation
+          </p>
         </div>
-        <button
+        <Button
+          size="sm"
           onClick={() => setShowExportDialog(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-md hover:shadow-lg"
+          className="gap-2"
         >
-          <Download size={20} />
-          Export
-        </button>
+          <Download size={15} /> Export
+        </Button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="group overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-blue-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-blue-600">Total Stock</p>
-              <p className="text-4xl font-bold text-blue-900 mt-3">{stats.totalStock.toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-blue-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <Package size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="group overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-emerald-600">Fresh Stock (0-30d)</p>
-              <p className="text-4xl font-bold text-emerald-900 mt-3">{stats.freshStock.toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-emerald-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <TrendingUp size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="group overflow-hidden rounded-2xl border border-cyan-100 bg-gradient-to-br from-cyan-50 to-cyan-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-cyan-600">Medium Age (31-90d)</p>
-              <p className="text-4xl font-bold text-cyan-900 mt-3">{stats.mediumStock.toLocaleString()}</p>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-cyan-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <Clock size={28} />
-            </div>
-          </div>
-        </div>
-
-        <div className="group overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 to-red-100 p-6 shadow-md hover:shadow-xl transition-all">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-red-600">Old Stock (&gt;90d)</p>
-              <p className="text-4xl font-bold text-red-900 mt-3">{stats.oldStock.toLocaleString()}</p>
-              <span className="text-red-600 text-xs font-semibold flex items-center mt-2"><AlertTriangle size={14} className="mr-1" /> {stats.oldPercentage}% of total</span>
-            </div>
-            <div className="rounded-xl bg-white p-3 text-red-600 shadow-md group-hover:shadow-lg transition-shadow">
-              <AlertTriangle size={28} />
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map(({ label, value, icon: Icon, color, bg, sub }) => (
+          <Card key={label} className="border border-slate-100 shadow-sm">
+            <CardContent className="p-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">{label}</p>
+                  <p className="text-2xl font-bold text-slate-800 mt-1">
+                    {value}
+                  </p>
+                  {sub && (
+                    <p className={`text-xs mt-1 font-medium ${color}`}>{sub}</p>
+                  )}
+                </div>
+                <div className={`${bg} ${color} p-2 rounded-lg`}>
+                  <Icon size={18} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Age Distribution Chart */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 p-2.5 text-white">
-            <Clock size={20} />
+      {/* Chart */}
+      <Card className="border border-slate-100 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold text-slate-700 flex items-center gap-2">
+            <Clock size={16} className="text-slate-400" /> Stock Age
+            Distribution
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-60">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} barCategoryGap="35%">
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#f1f5f9"
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#94a3b8", fontSize: 12 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                    fontSize: 13,
+                  }}
+                  formatter={(value: any, _: string, props: any) => [
+                    `${value} units (${props.payload.percentage}%)`,
+                    "Qty",
+                  ]}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {chartData.map((_: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <h3 className="text-xl font-bold text-slate-900">Stock Age Distribution</h3>
-        </div>
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} formatter={(value: any, name: string, props: any) => [`${value} units (${props.payload.percentage}%)`, 'Quantity']} />
-              <Bar dataKey="value" radius={[12, 12, 0, 0]}>
-                {chartData.map((entry: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* Detailed Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-r from-slate-50 to-white p-8 border-b border-slate-200">
-          <h3 className="text-2xl font-bold text-slate-900">Item-wise Aging Analysis</h3>
-          <p className="text-sm text-slate-600 mt-1">Stock distribution by age range</p>
-        </div>
+      {/* Table */}
+      <Card className="border border-slate-100 shadow-sm overflow-hidden">
+        <CardHeader className="border-b border-slate-100 pb-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-semibold text-slate-700">
+                Item-wise Aging Analysis
+              </CardTitle>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Stock distribution by age range
+              </p>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <div className="relative">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={15}
+                />
+                <Input
+                  placeholder="Search item or SKU..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 w-52 text-sm"
+                />
+              </div>
+              <Select
+                value={selectedCategory || "all"}
+                onValueChange={(v) => setSelectedCategory(v)}
+              >
+                <SelectTrigger className="h-9 w-40 text-sm">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="Raw Material">Raw Material</SelectItem>
+                  <SelectItem value="Finished Goods">Finished Goods</SelectItem>
+                  <SelectItem value="Consumable">Consumable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gradient-to-r from-slate-100 to-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 font-semibold text-slate-700">Item Name</th>
-                <th className="px-6 py-4 text-right font-semibold text-slate-700">Total Stock</th>
-                <th className="px-6 py-4 text-right font-semibold text-emerald-700 bg-emerald-50">0-30 Days</th>
-                <th className="px-6 py-4 text-right font-semibold text-blue-700 bg-blue-50">31-60 Days</th>
-                <th className="px-6 py-4 text-right font-semibold text-orange-700 bg-orange-50">61-90 Days</th>
-                <th className="px-6 py-4 text-right font-semibold text-red-700 bg-red-50">&gt; 90 Days</th>
+              <tr className="bg-slate-50 border-b border-slate-100">
+                <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Item Name
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Total
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-emerald-600 uppercase tracking-wide">
+                  0-30d
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-blue-600 uppercase tracking-wide">
+                  31-60d
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-amber-600 uppercase tracking-wide">
+                  61-90d
+                </th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-red-600 uppercase tracking-wide">
+                  &gt;90d
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data.map((item, index) => {
-                const b30 = item.buckets.find((b) => b.range === '0-30 Days')?.quantity || 0;
-                const b60 = item.buckets.find((b) => b.range === '31-60 Days')?.quantity || 0;
-                const b90 = item.buckets.find((b) => b.range === '61-90 Days')?.quantity || 0;
-                const b90plus = item.buckets.find((b) => b.range === '>90 Days')?.quantity || 0;
-
+            <tbody className="divide-y divide-slate-50">
+              {data.map((item) => {
+                const b30 =
+                  item.buckets.find((b) => b.range === "0-30 Days")?.quantity ||
+                  0;
+                const b60 =
+                  item.buckets.find((b) => b.range === "31-60 Days")
+                    ?.quantity || 0;
+                const b90 =
+                  item.buckets.find((b) => b.range === "61-90 Days")
+                    ?.quantity || 0;
+                const b90plus =
+                  item.buckets.find((b) => b.range === ">90 Days")?.quantity ||
+                  0;
                 return (
-                  <tr key={item.itemId} className={`transition-colors hover:bg-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <td className="px-6 py-4 font-semibold text-slate-900">{item.itemName}</td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-900">{item.totalStock}</td>
-                    <td className="px-6 py-4 text-right bg-emerald-50 text-emerald-700 font-semibold">{b30 || '-'}</td>
-                    <td className="px-6 py-4 text-right bg-blue-50 text-blue-700 font-semibold">{b60 || '-'}</td>
-                    <td className="px-6 py-4 text-right bg-orange-50 text-orange-700 font-semibold">{b90 || '-'}</td>
-                    <td className="px-6 py-4 text-right bg-red-50 text-red-700 font-bold">{b90plus || '-'}</td>
+                  <tr
+                    key={item.itemId}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="px-5 py-3 font-medium text-slate-800">
+                      {item.itemName}
+                    </td>
+                    <td className="px-5 py-3 text-right font-semibold text-slate-700">
+                      {item.totalStock}
+                    </td>
+                    <td className="px-5 py-3 text-right text-emerald-600 font-medium">
+                      {b30 || "–"}
+                    </td>
+                    <td className="px-5 py-3 text-right text-blue-600 font-medium">
+                      {b60 || "–"}
+                    </td>
+                    <td className="px-5 py-3 text-right text-amber-600 font-medium">
+                      {b90 || "–"}
+                    </td>
+                    <td className="px-5 py-3 text-right text-red-600 font-semibold">
+                      {b90plus || "–"}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
-      {/* Export Dialog */}
       <ExportDialog
         isOpen={showExportDialog}
         onClose={() => setShowExportDialog(false)}
