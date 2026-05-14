@@ -3,7 +3,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchStockControlData } from '@/store/slices/stockControlSlice';
 import { 
     History, Search, Loader2, ArrowUpRight, ArrowDownLeft, 
-    Filter, Download, Calendar, Box, MapPin, DollarSign,
+    Filter, Download, Calendar, Box, MapPin, IndianRupee,
     TrendingDown, TrendingUp, ChevronRight, Hash, Activity
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';

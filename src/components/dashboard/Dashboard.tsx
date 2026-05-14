@@ -18,7 +18,7 @@ import {
   RefreshCcw,
   Activity,
   Sparkles,
-  DollarSign,
+  IndianRupee,
   Loader2,
 } from "lucide-react";
 import { dashboardService } from "@/services/dashboardService";
@@ -84,10 +84,10 @@ const Dashboard: React.FC = () => {
       const newStatCards: StatCard[] = [
         {
           label: "Total Inventory Value",
-          value: `$${(totalValue / 1000000).toFixed(2)}M`,
+          value: `₹${(totalValue / 1000000).toFixed(2)}M`,
           sub: `${warehouse.length} warehouses`,
           subColor: "text-slate-500",
-          icon: DollarSign,
+          icon: IndianRupee,
           iconBg: "bg-blue-50",
           iconColor: "text-blue-500",
         },

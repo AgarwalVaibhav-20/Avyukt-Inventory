@@ -15,7 +15,7 @@ import {
   User,
   Clock,
   Building2,
-  DollarSign,
+  IndianRupee,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -255,7 +255,7 @@ const PurchaseApprovalView: React.FC = () => {
                                            </div>
                                            <span className="text-xs font-black text-slate-700">{item.itemName}</span>
                                         </div>
-                                        <span className="text-[10px] font-bold text-slate-400 font-mono">${(item.estimatedPrice || 0) * item.quantity}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 font-mono">₹{(item.estimatedPrice || 0) * item.quantity}</span>
                                      </div>
                                    ))}
                                 </div>
@@ -350,7 +350,7 @@ const PurchaseApprovalView: React.FC = () => {
                                <div>
                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Financial Commit</p>
                                  <div className="flex items-center gap-1.5 mt-1">
-                                    <DollarSign size={20} className="text-indigo-400" />
+                                    <IndianRupee size={20} className="text-indigo-400" />
                                     <p className="text-2xl font-black text-white tabular-nums">{po.totalAmount.toLocaleString()}</p>
                                  </div>
                                </div>
@@ -377,11 +377,11 @@ const PurchaseApprovalView: React.FC = () => {
                                         </div>
                                         <div>
                                           <p className="text-sm font-black text-slate-800">{item.itemName}</p>
-                                          <p className="text-[10px] font-bold text-slate-400 uppercase">Qty: {item.quantity} | Rate: ${item.unitPrice}</p>
+                                          <p className="text-[10px] font-bold text-slate-400 uppercase">Qty: {item.quantity} | Rate: ₹{item.unitPrice}</p>
                                         </div>
                                      </div>
                                      <div className="text-right">
-                                        <p className="text-sm font-black text-slate-800 tabular-nums">${item.quantity * item.unitPrice}</p>
+                                        <p className="text-sm font-black text-slate-800 tabular-nums">₹{item.quantity * item.unitPrice}</p>
                                      </div>
                                   </div>
                                 ))}

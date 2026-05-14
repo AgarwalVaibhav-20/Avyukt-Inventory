@@ -606,7 +606,7 @@ const PurchaseRequisitionView: React.FC = () => {
                                   {item.itemName}
                                 </h5>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                  Est. Price: ${item.estimatedPrice}
+                                  Est. Price: ₹{item.estimatedPrice}
                                 </p>
                               </div>
                               <div className="flex items-center gap-4 bg-slate-50 p-2 pr-6 rounded-2xl">

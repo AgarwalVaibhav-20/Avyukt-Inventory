@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { procurementService } from '@/services/procurementService';
 import { returnsService } from '@/services/returnsService';
 import { PurchaseReturn, FinancialNote } from '@/types';
-import { Undo2, Banknote, Loader2, Search, Package2, FileText, CircleDollarSign, ArrowUpRight } from 'lucide-react';
+import { Undo2, Banknote, Loader2, Search, Package2, FileText, IndianRupee, ArrowUpRight } from 'lucide-react';
 
 const PurchaseReturnMgmtView: React.FC = () => {
   const [returns, setReturns] = useState<PurchaseReturn[]>([]);
@@ -125,7 +125,7 @@ const PurchaseReturnMgmtView: React.FC = () => {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700">
-                        <CircleDollarSign size={20} />
+                        <IndianRupee size={20} />
                     </div>
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Workflow status</p>

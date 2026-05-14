@@ -58,7 +58,7 @@ const ScrapManagementView: React.FC = () => {
                      onChange={e => setFormData({...formData, itemId: e.target.value})}
                    >
                        <option value="">Select Item</option>
-                       {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (${i.unitPrice})</option>)}
+                       {typedItems.map(i => <option key={i.id} value={i.id}>{i.sku} - {i.name} (₹{i.unitPrice})</option>)}
                    </select>
                </div>
                <div>
@@ -66,7 +66,7 @@ const ScrapManagementView: React.FC = () => {
                    <input type="number" className="w-full border rounded-lg p-2 text-sm" value={formData.quantity} onChange={e => setFormData({...formData, quantity: Number(e.target.value)})}/>
                </div>
                <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-1">Salvage Value ($)</label>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Salvage Value (₹)</label>
                    <input type="number" className="w-full border rounded-lg p-2 text-sm" value={formData.salvageValue} onChange={e => setFormData({...formData, salvageValue: Number(e.target.value)})}/>
                </div>
            </div>
@@ -91,7 +91,7 @@ const ScrapManagementView: React.FC = () => {
                        <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
                        <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search ref, item, reason..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-72" />
                    </div>
-                   <span className="text-xs text-slate-500">Total Salvage Value: ${filteredScrapEntries.reduce((acc, curr) => acc + curr.salvageValue, 0).toFixed(2)}</span>
+                   <span className="text-xs text-slate-500">Total Salvage Value: ₹{filteredScrapEntries.reduce((acc, curr) => acc + curr.salvageValue, 0).toFixed(2)}</span>
                </div>
            </div>
            <table className="w-full text-sm text-left">
@@ -114,7 +114,7 @@ const ScrapManagementView: React.FC = () => {
                            <td className="p-3">{s.itemName}</td>
                            <td className="p-3 font-bold text-red-600">{s.quantity}</td>
                            <td className="p-3 text-slate-600">{s.reason}</td>
-                           <td className="p-3 text-right font-mono">${s.salvageValue.toFixed(2)}</td>
+                           <td className="p-3 text-right font-mono">₹{s.salvageValue.toFixed(2)}</td>
                        </tr>
                    ))}
                </tbody>

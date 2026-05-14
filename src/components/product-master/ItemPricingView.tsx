@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { productService } from '@/services/productService';
 import { InventoryItem } from '@/types';
-import { DollarSign, Save, Search, Loader2 } from 'lucide-react';
+import { IndianRupee, Save, Search, Loader2 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import { useListControls } from '@/hooks/useListControls';
 
@@ -78,7 +78,7 @@ const ItemPricingView: React.FC = () => {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
         <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <DollarSign className="text-green-600" size={20}/> Item Pricing Master
+                <IndianRupee className="text-green-600" size={20}/> Item Pricing Master
             </h2>
             <div className="flex gap-3">
               <div className="relative w-64">
@@ -140,7 +140,7 @@ const ItemPricingView: React.FC = () => {
                                                 value={editValues.unitPrice}
                                                 onChange={e => setEditValues({...editValues, unitPrice: parseFloat(e.target.value)})}
                                             />
-                                        ) : `$${item.unitPrice.toFixed(2)}`}
+                                        ) : `₹${item.unitPrice.toFixed(2)}`}
                                     </td>
 
                                     {/* MRP */}
@@ -151,7 +151,7 @@ const ItemPricingView: React.FC = () => {
                                                 value={editValues.mrp}
                                                 onChange={e => setEditValues({...editValues, mrp: parseFloat(e.target.value)})}
                                             />
-                                        ) : `$${item.mrp.toFixed(2)}`}
+                                        ) : `₹${item.mrp.toFixed(2)}`}
                                     </td>
 
                                     {/* Sale Price */}
@@ -162,7 +162,7 @@ const ItemPricingView: React.FC = () => {
                                                 value={editValues.salePrice}
                                                 onChange={e => setEditValues({...editValues, salePrice: parseFloat(e.target.value)})}
                                             />
-                                        ) : `$${item.salePrice.toFixed(2)}`}
+                                        ) : `₹${item.salePrice.toFixed(2)}`}
                                     </td>
 
                                     <td className="px-6 py-4">

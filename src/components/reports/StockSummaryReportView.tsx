@@ -22,7 +22,7 @@ import {
 import {
   BarChart3,
   Package,
-  DollarSign,
+  IndianRupee,
   AlertTriangle,
   Loader2,
   TrendingUp,
@@ -189,8 +189,8 @@ const StockSummaryReportView: React.FC = () => {
           },
           {
             label: "Total Value",
-            value: `$${(stats?.totalValue / 1000000).toFixed(2)}M`,
-            icon: DollarSign,
+            value: `₹${(stats?.totalValue / 1000000).toFixed(2)}M`,
+            icon: IndianRupee,
             color: "text-emerald-600",
             bg: "bg-emerald-50",
           },
@@ -256,7 +256,7 @@ const StockSummaryReportView: React.FC = () => {
                       border: "1px solid #e2e8f0",
                       fontSize: 12,
                     }}
-                    formatter={(v: any) => `$${Number(v).toLocaleString()}`}
+                    formatter={(v: any) => `₹${Number(v).toLocaleString("en-IN")}`}
                   />
                   <Bar dataKey="value" fill="#3b82f6" radius={[5, 5, 0, 0]} />
                 </BarChart>
@@ -295,7 +295,7 @@ const StockSummaryReportView: React.FC = () => {
                       border: "1px solid #e2e8f0",
                       fontSize: 12,
                     }}
-                    formatter={(v: any) => `$${Number(v).toLocaleString()}`}
+                    formatter={(v: any) => `₹${Number(v).toLocaleString("en-IN")}`}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -352,7 +352,7 @@ const StockSummaryReportView: React.FC = () => {
                     border: "1px solid #e2e8f0",
                     fontSize: 12,
                   }}
-                  formatter={(v: any) => `$${Number(v).toLocaleString()}`}
+                  formatter={(v: any) => `₹${Number(v).toLocaleString("en-IN")}`}
                 />
                 <Line
                   type="monotone"
@@ -472,10 +472,10 @@ const StockSummaryReportView: React.FC = () => {
                       {item.stock.toLocaleString()} {item.uom}
                     </td>
                     <td className="px-5 py-3 text-right text-slate-600">
-                      ${item.unitPrice.toLocaleString()}
+                      ₹{item.unitPrice.toLocaleString("en-IN")}
                     </td>
                     <td className="px-5 py-3 text-right font-bold text-slate-800">
-                      ${(item.stock * item.unitPrice).toLocaleString()}
+                      ₹{(item.stock * item.unitPrice).toLocaleString("en-IN")}
                     </td>
                     <td className="px-5 py-3 text-slate-400 text-xs">
                       {item.lastUpdated

@@ -277,7 +277,7 @@ const PurchaseOrderView: React.FC = () => {
                                 <th className="px-6 py-5">SKU / Item Details</th>
                                 <th className="px-6 py-5 w-48">HSN / SAC Code</th>
                                 <th className="px-6 py-5 w-32">Quantity</th>
-                                <th className="px-6 py-5 w-40">Unit Cost ($)</th>
+                                <th className="px-6 py-5 w-40">Unit Cost (₹)</th>
                                 <th className="px-6 py-5 w-40 text-right">Row Total</th>
                                 <th className="px-6 py-5 w-16"></th>
                             </tr>
@@ -343,7 +343,7 @@ const PurchaseOrderView: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-6">
                                         <div className="relative">
-                                            <span className="absolute left-3 top-3 text-slate-300 font-bold">$</span>
+                                            <span className="absolute left-3 top-3 text-slate-300 font-bold">₹</span>
                                             <input 
                                                 type="number" className="w-full border-2 border-slate-50 rounded-xl pl-7 p-3 text-sm bg-slate-50 focus:bg-white focus:border-blue-500/30 outline-none font-bold text-slate-700 transition-all"
                                                 value={item.unitPrice}
@@ -352,7 +352,7 @@ const PurchaseOrderView: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-6 text-right font-black text-slate-900 text-lg">
-                                        ${(item.quantity * item.unitPrice).toLocaleString()}
+                                        ₹{(item.quantity * item.unitPrice).toLocaleString("en-IN")}
                                     </td>
                                     <td className="px-6 py-6 text-center">
                                         <button 
@@ -373,7 +373,7 @@ const PurchaseOrderView: React.FC = () => {
                                 <tr>
                                     <td colSpan={4} className="px-6 py-8 text-right text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">Net Procurement Total:</td>
                                     <td className="px-6 py-8 text-right text-3xl font-black text-blue-600 tabular-nums drop-shadow-sm">
-                                        ${newPO.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toLocaleString()}
+                                        ₹{newPO.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toLocaleString("en-IN")}
                                     </td>
                                     <td></td>
                                 </tr>
@@ -526,7 +526,7 @@ const PurchaseOrderView: React.FC = () => {
                             <td className="px-8 py-7 text-right">
                                 <div className="flex flex-col items-end">
                                     <span className="font-black text-slate-900 text-xl tabular-nums tracking-tighter">
-                                        ${po.totalAmount.toLocaleString()}
+                                        ₹{po.totalAmount.toLocaleString("en-IN")}
                                     </span>
                                     <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest opacity-80">Payment Pending</span>
                                 </div>
@@ -622,7 +622,7 @@ const PurchaseOrderView: React.FC = () => {
                               <div className="flex items-end justify-between">
                                   <div>
                                       <p className="text-[10px] font-bold text-slate-400 uppercase">Gross Commitment</p>
-                                      <p className="text-4xl font-black text-white mt-1 tabular-nums">${selectedPO.totalAmount.toLocaleString()}</p>
+                                      <p className="text-4xl font-black text-white mt-1 tabular-nums">₹{selectedPO.totalAmount.toLocaleString("en-IN")}</p>
                                   </div>
                                   <div className="text-right">
                                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payment Status</p>
@@ -649,8 +649,8 @@ const PurchaseOrderView: React.FC = () => {
                                           <tr key={idx} className="hover:bg-slate-50/50">
                                               <td className="px-6 py-5 font-black text-slate-800">{item.itemName}</td>
                                               <td className="px-6 py-5 text-center font-bold text-slate-600">{item.quantity}</td>
-                                              <td className="px-6 py-5 text-right font-bold text-slate-600">${item.unitPrice}</td>
-                                              <td className="px-6 py-5 text-right font-black text-slate-900">${item.quantity * item.unitPrice}</td>
+                                              <td className="px-6 py-5 text-right font-bold text-slate-600">₹{item.unitPrice}</td>
+                                              <td className="px-6 py-5 text-right font-black text-slate-900">₹{item.quantity * item.unitPrice}</td>
                                           </tr>
                                       ))}
                                   </tbody>

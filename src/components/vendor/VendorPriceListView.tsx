@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { vendorService } from '@/services/vendorService';
 import { productService } from '@/services/productService';
 import { Vendor, InventoryItem, VendorItemMap } from '@/types';
-import { DollarSign, Search, Plus, Trash2, Save, Loader2, X } from 'lucide-react';
+import { IndianRupee, Search, Plus, Trash2, Save, Loader2, X } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import { useListControls } from '@/hooks/useListControls';
 
@@ -88,7 +88,7 @@ const VendorPriceListView: React.FC = () => {
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <DollarSign className="text-green-600" size={20}/> Vendor Price List
+                    <IndianRupee className="text-green-600" size={20}/> Vendor Price List
                 </h2>
                 <button type="button" onClick={() => setIsAdding(!isAdding)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex gap-2">
                     <Plus size={16}/> Add Price

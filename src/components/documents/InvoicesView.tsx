@@ -109,7 +109,7 @@ const InvoicesView: React.FC = () => {
                         <label className="block text-xs font-medium text-blue-800 mb-1">Select Dispatched Order</label>
                         <select className="w-full border rounded p-2 text-sm" value={selectedSOId} onChange={e => setSelectedSOId(e.target.value)}>
                             <option value="">-- Choose Order --</option>
-                            {pendingSOs.map(s => <option key={s.id} value={s.id}>{s.soNumber} - {s.customerName} (${s.totalAmount})</option>)}
+                            {pendingSOs.map(s => <option key={s.id} value={s.id}>{s.soNumber} - {s.customerName} (₹{s.totalAmount})</option>)}
                         </select>
                     </div>
                     <button onClick={handleCreate} disabled={!selectedSOId} className="bg-blue-600 text-white px-6 py-2 rounded text-sm hover:bg-blue-700 h-10 disabled:opacity-50">Generate</button>
@@ -138,7 +138,7 @@ const InvoicesView: React.FC = () => {
                                 <td className="px-6 py-4 text-slate-500">{inv.date}</td>
                                 <td className="px-6 py-4">{inv.customerName}</td>
                                 <td className="px-6 py-4 text-slate-500 text-xs">{inv.soNumber}</td>
-                                <td className="px-6 py-4 text-right font-medium">${(inv.totalAmount || 0).toFixed(2)}</td>
+                                <td className="px-6 py-4 text-right font-medium">₹{(inv.totalAmount || 0).toFixed(2)}</td>
                                 <td className="px-6 py-4 text-center">
                                     <span className={`px-2 py-1 rounded text-xs font-medium ${inv.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
                                         {inv.status}

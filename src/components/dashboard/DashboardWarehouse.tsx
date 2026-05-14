@@ -5,7 +5,6 @@ import {
   Warehouse,
   Loader2,
   Boxes,
-  DollarSign,
   IndianRupeeIcon,
   Search,
 } from "lucide-react";
