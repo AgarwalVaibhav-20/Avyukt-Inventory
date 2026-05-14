@@ -9,8 +9,8 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   ArrowRight, 
-  DollarSign, 
-  FileText, 
+  IndianRupee,
+  FileText,
   Truck, 
   ShieldCheck,
   Plus,
@@ -143,7 +143,7 @@ const InvoiceMatchingView: React.FC = () => {
               <div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Matched Value</p>
                 <p className="text-4xl font-black text-emerald-600 mt-2">
-                  ${invoices.filter(i => i.status === 'Matched').reduce((acc, i) => acc + i.totalAmount, 0).toLocaleString()}
+                  ₹{invoices.filter(i => i.status === 'Matched').reduce((acc, i) => acc + i.totalAmount, 0).toLocaleString("en-IN")}
                 </p>
                 <p className="text-xs text-slate-500 mt-2 font-medium">Successfully reconciled purchase value</p>
               </div>
@@ -219,7 +219,7 @@ const InvoiceMatchingView: React.FC = () => {
                     </td>
                     <td className="px-8 py-7">
                       <div className="flex items-center gap-1.5 text-slate-800 font-black text-base tabular-nums">
-                        <DollarSign size={16} className="text-slate-400" />
+                        <IndianRupee size={16} className="text-slate-400" />
                         {inv.totalAmount.toLocaleString()}
                       </div>
                       <div className="text-[10px] font-bold text-slate-400 uppercase mt-1">Matched Value</div>
@@ -349,7 +349,7 @@ const InvoiceMatchingView: React.FC = () => {
                                 <div className="flex justify-between items-start mb-6">
                                   <div>
                                     <p className="text-base font-black text-slate-800 leading-tight">{item.itemName}</p>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Price: ${item.unitPrice} / unit</p>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Price: ₹{item.unitPrice} / unit</p>
                                   </div>
                                   <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${item.variance === 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                     {item.variance === 0 ? 'Perfect Match' : `${item.variance > 0 ? '+' : ''}${item.variance} Variance`}

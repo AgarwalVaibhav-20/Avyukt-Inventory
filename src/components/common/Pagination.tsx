@@ -69,19 +69,21 @@ const Pagination: React.FC<PaginationProps> = ({
   }
 
   return (
-    <div className={`flex items-center justify-between py-4 ${className}`}>
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-medium">{startItem}</span> to{" "}
-        <span className="font-medium">{endItem}</span> of{" "}
-        <span className="font-medium">{totalItems}</span> results
+    <div
+      className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-4 w-full min-w-0 ${className}`}
+    >
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gray-600 min-w-0">
+        <span className="whitespace-nowrap">
+          Showing <span className="font-medium">{startItem}</span>–
+          <span className="font-medium">{endItem}</span> of{" "}
+          <span className="font-medium">{totalItems}</span>
+        </span>
         {onPageSizeChange && (
-          <span>
-            {" "}
-            (
+          <span className="flex items-center gap-1 whitespace-nowrap">
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(parseInt(e.target.value))}
-              className="ml-2 px-2 py-1 border border-gray-300 rounded text-sm"
+              className="ml-1 px-2 py-1 border border-gray-300 rounded text-sm"
             >
               {pageSizeOptions.map((size) => (
                 <option key={size} value={size}>
@@ -89,30 +91,30 @@ const Pagination: React.FC<PaginationProps> = ({
                 </option>
               ))}
             </select>
-            {" "}per page)
+            <span>per page</span>
           </span>
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1 sm:gap-2 min-w-0">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex shrink-0 items-center justify-center w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Previous page"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 min-w-0">
           {getPageNumbers().map((page, index) => (
             <React.Fragment key={index}>
               {page === "..." ? (
-                <span className="px-2 py-1 text-gray-600">...</span>
+                <span className="px-2 py-1 text-gray-600 shrink-0">...</span>
               ) : (
                 <button
                   onClick={() => onPageChange(page as number)}
-                  className={`w-8 h-8 rounded border transition-colors ${
+                  className={`shrink-0 w-8 h-8 rounded border transition-colors ${
                     page === currentPage
                       ? "bg-blue-600 text-white border-blue-600"
                       : "border-gray-300 text-gray-600 hover:bg-gray-50"
@@ -128,7 +130,7 @@ const Pagination: React.FC<PaginationProps> = ({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="inline-flex items-center justify-center w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex shrink-0 items-center justify-center w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Next page"
         >
           <ChevronRight className="w-4 h-4" />

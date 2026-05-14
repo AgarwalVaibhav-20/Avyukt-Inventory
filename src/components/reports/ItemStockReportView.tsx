@@ -20,7 +20,7 @@ import {
   Download,
   Loader2,
   Package,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
 } from "lucide-react";
 import Pagination from "@/components/common/Pagination";
@@ -144,14 +144,14 @@ const ItemStockReportView: React.FC = () => {
           },
           {
             label: "Total Value",
-            value: `$${(stats.totalValue / 1000000).toFixed(2)}M`,
-            icon: DollarSign,
+            value: `₹${(stats.totalValue / 1000000).toFixed(2)}M`,
+            icon: IndianRupee,
             color: "text-emerald-600",
             bg: "bg-emerald-50",
           },
           {
             label: "Avg Item Value",
-            value: `$${stats.avgValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}`,
+            value: `₹${stats.avgValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
             icon: TrendingUp,
             color: "text-amber-600",
             bg: "bg-amber-50",
@@ -221,7 +221,7 @@ const ItemStockReportView: React.FC = () => {
                     fontSize: 13,
                   }}
                   formatter={(value: any) =>
-                    `$${Number(value).toLocaleString()}`
+                    `₹${Number(value).toLocaleString("en-IN")}`
                   }
                 />
                 <Bar dataKey="numValue" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
@@ -319,11 +319,11 @@ const ItemStockReportView: React.FC = () => {
                       {item.reorderLevel}
                     </td>
                     <td className="px-5 py-3 text-right text-slate-600">
-                      ${item.unitPrice.toFixed(2)}
+                      ₹{item.unitPrice.toFixed(2)}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100">
-                        ${(item.stock * item.unitPrice).toLocaleString()}
+                        ₹{(item.stock * item.unitPrice).toLocaleString("en-IN")}
                       </span>
                     </td>
                   </tr>

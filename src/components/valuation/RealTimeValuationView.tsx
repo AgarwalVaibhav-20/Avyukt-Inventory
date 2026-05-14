@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { stockControlService } from "@/services/stockControlService";
-import { AlertCircle, Activity, DollarSign, Loader2, TrendingUp } from "lucide-react";
+import { AlertCircle, Activity, IndianRupee, Loader2, TrendingUp } from "lucide-react";
 
 const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -55,7 +55,7 @@ const RealTimeValuationView: React.FC = () => {
         <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-white shadow-lg">
           <div className="mb-4 flex items-start justify-between">
             <div className="rounded-xl bg-white/20 p-3">
-              <DollarSign size={24} />
+              <IndianRupee size={24} />
             </div>
             <span className="rounded-full bg-white/20 px-2 py-1 text-xs">Live</span>
           </div>
@@ -71,7 +71,7 @@ const RealTimeValuationView: React.FC = () => {
             <span className="text-xs font-semibold text-green-600">Updated from ledger</span>
           </div>
           <p className="mt-4 text-sm font-medium text-slate-500">Daily Value Change</p>
-          <h3 className="mt-1 text-2xl font-bold text-slate-800">+ $1,240.50</h3>
+          <h3 className="mt-1 text-2xl font-bold text-slate-800">+ ₹1,240.50</h3>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

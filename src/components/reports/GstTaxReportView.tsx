@@ -22,7 +22,7 @@ import {
   Receipt,
   Download,
   Loader2,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   FileText,
   Search,

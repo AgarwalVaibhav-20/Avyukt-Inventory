@@ -6,9 +6,9 @@ import {
   Download, 
   Search, 
   TrendingUp, 
-  Package, 
-  DollarSign, 
-  BarChart3, 
+  Package,
+  IndianRupee,
+  BarChart3,
   Loader2, 
   Filter,
   ChevronLeft,
@@ -110,13 +110,13 @@ const ValuationReportDocView: React.FC = () => {
         <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl p-8 text-white shadow-xl flex justify-between items-center relative overflow-hidden">
           <div className="z-10">
             <p className="text-blue-100 text-xs font-bold uppercase tracking-widest">Total Inventory Value</p>
-            <h3 className="text-4xl font-black mt-2">${(data?.totalValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+            <h3 className="text-4xl font-black mt-2">₹{(data?.totalValue || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</h3>
             <div className="flex items-center gap-2 mt-4 text-blue-100 text-sm">
               <TrendingUp size={16} />
               <span>Current market valuation</span>
             </div>
           </div>
-          <DollarSign size={80} className="text-white/10 absolute -right-4 -bottom-4" />
+          <IndianRupee size={80} className="text-white/10 absolute -right-4 -bottom-4" />
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-lg flex justify-between items-center">
@@ -136,7 +136,7 @@ const ValuationReportDocView: React.FC = () => {
           <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Avg. Item Value</p>
             <h3 className="text-4xl font-black text-slate-900 mt-2">
-              ${((data?.totalValue || 0) / (allItems.length || 1)).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              ₹{((data?.totalValue || 0) / (allItems.length || 1)).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
             </h3>
             <p className="text-slate-400 text-sm mt-4">Per unique SKU</p>
           </div>
@@ -222,11 +222,11 @@ const ValuationReportDocView: React.FC = () => {
                     {item.quantity.toLocaleString()}
                   </td>
                   <td className="px-6 py-5 text-right text-slate-600">
-                    ${item.unitPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    ₹{item.unitPrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-8 py-5 text-right">
                     <span className="text-lg font-black text-slate-900">
-                      ${item.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      ₹{item.totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                     </span>
                   </td>
                 </tr>

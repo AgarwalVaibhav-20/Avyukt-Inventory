@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { returnsService } from '@/services/returnsService';
 import { FinancialNote } from '@/types';
-import { Banknote, Loader2, FileText, CircleDollarSign, Landmark } from 'lucide-react';
+import { Banknote, Loader2, FileText, IndianRupee, Landmark } from 'lucide-react';
 
 const DebitCreditNotesView: React.FC = () => {
   const [notes, setNotes] = useState<FinancialNote[]>([]);
@@ -49,7 +49,7 @@ const DebitCreditNotesView: React.FC = () => {
                     </div>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Total amount</p>
-                        <p className="mt-2 text-2xl font-black text-slate-900">${totalAmount.toFixed(2)}</p>
+                        <p className="mt-2 text-2xl font-black text-slate-900">₹{totalAmount.toFixed(2)}</p>
                     </div>
                 </div>
             </div>
@@ -70,7 +70,7 @@ const DebitCreditNotesView: React.FC = () => {
             <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">
                     <div className="rounded-2xl bg-amber-50 p-3 text-amber-700">
-                        <CircleDollarSign size={20} />
+                        <IndianRupee size={20} />
                     </div>
                     <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Amount</p>
@@ -122,7 +122,7 @@ const DebitCreditNotesView: React.FC = () => {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4">{note.partyName}</td>
-                                <td className="px-6 py-4 text-right font-bold text-slate-700">${note.amount.toFixed(2)}</td>
+                                <td className="px-6 py-4 text-right font-bold text-slate-700">₹{note.amount.toFixed(2)}</td>
                                 <td className="px-6 py-4 text-slate-500">{note.reason}</td>
                             </tr>
                         ))}

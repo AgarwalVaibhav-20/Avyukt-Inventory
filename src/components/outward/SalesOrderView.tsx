@@ -272,7 +272,7 @@ const SalesOrderView: React.FC = () => {
                       />
                     </td>
                     <td className="p-2 text-right">
-                      ${(item.quantity * item.unitPrice).toFixed(2)}
+                      ₹{(item.quantity * item.unitPrice).toFixed(2)}
                     </td>
                   </tr>
                 ))}
@@ -366,7 +366,7 @@ const SalesOrderView: React.FC = () => {
                       <User size={14} className="text-slate-400" /> {salesOrder.customerName}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{salesOrder.date}</td>
-                    <td className="px-6 py-4 font-medium">${salesOrder.totalAmount.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-medium">₹{salesOrder.totalAmount.toFixed(2)}</td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium border ${

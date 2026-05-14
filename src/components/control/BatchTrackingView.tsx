@@ -163,7 +163,7 @@ const BatchTrackingView: React.FC = () => {
                                     <BarChart3 size={14} className="text-purple-400"/> Unit Procurement Cost
                                 </label>
                                 <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">$</span>
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-slate-300">₹</span>
                                     <input 
                                         type="number" 
                                         className="w-full border-2 border-slate-50 rounded-2xl p-4 pl-10 text-sm bg-slate-50 focus:bg-white focus:border-purple-500/30 outline-none transition-all font-black text-slate-800 shadow-sm" 
@@ -279,7 +279,7 @@ const BatchTrackingView: React.FC = () => {
                                             </div>
                                             <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
                                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Unit Valuation</p>
-                                                <p className="text-lg font-black text-slate-800 tabular-nums">${b.costPrice.toFixed(2)}</p>
+                                                <p className="text-lg font-black text-slate-800 tabular-nums">₹{b.costPrice.toFixed(2)}</p>
                                             </div>
                                         </div>
 

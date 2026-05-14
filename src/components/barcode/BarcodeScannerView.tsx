@@ -93,7 +93,7 @@ const BarcodeScannerView: React.FC<BarcodeScannerViewProps> = ({ isMobileMode = 
                       <p className="text-slate-400 text-sm mb-3">SKU: {lastScannedItem.sku}</p>
                       <div className="flex justify-center gap-4 text-sm">
                           <div className="bg-slate-700 px-3 py-1 rounded">Qty: {lastScannedItem.stock}</div>
-                          <div className="bg-slate-700 px-3 py-1 rounded">${lastScannedItem.salePrice}</div>
+                          <div className="bg-slate-700 px-3 py-1 rounded">₹{lastScannedItem.salePrice}</div>
                       </div>
                   </div>
               ) : (
@@ -171,7 +171,7 @@ const BarcodeScannerView: React.FC<BarcodeScannerViewProps> = ({ isMobileMode = 
                                 </div>
                                 <div className="bg-slate-50 p-2 rounded border border-slate-100">
                                     <p className="text-xs text-slate-500">Price</p>
-                                    <p className="font-bold text-lg text-slate-800">${lastScannedItem.salePrice}</p>
+                                    <p className="font-bold text-lg text-slate-800">₹{lastScannedItem.salePrice}</p>
                                 </div>
                             </div>
                         </div>
