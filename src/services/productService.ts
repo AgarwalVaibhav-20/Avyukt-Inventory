@@ -59,10 +59,24 @@ export const productService = {
     return { products: mapped, total: response.data.pagination?.total || mapped.length };
   },
 
-  getAllItems: async (): Promise<InventoryItem[]> => {
+  getAllItems: async (filters?: Record<string, any>): Promise<InventoryItem[]> => {
     const orgId = getOrgId();
     if (!orgId) return [];
-    const response = await api.get(`/inventory/product/all/${orgId}`);
+    
+    // Construct query parameters
+    const params = new URLSearchParams();
+    if (filters) {
+      if (filters.category && filters.category !== 'all') params.append('category', filters.category);
+      if (filters.brand && filters.brand !== 'all') {
+        const brands = Array.isArray(filters.brand) ? filters.brand : [filters.brand];
+        params.append('brands', JSON.stringify(brands));
+      }
+      if (filters.uom && filters.uom !== 'all') params.append('uom', filters.uom);
+      if (filters.hsnCode) params.append('hsnCode', filters.hsnCode);
+    }
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await api.get(`/inventory/product/all/${orgId}${queryString}`);
     const products = response.data.products || [];
     // Map _id to id for frontend compatibility and calculate total stock
     return products.map((item: any) => {

@@ -76,6 +76,34 @@ import { cn } from "@/lib/utils";
 import Pagination from "@/components/common/Pagination";
 import { useListControls } from "@/hooks/useListControls";
 
+
+const buildTree = (items: any[]) => {
+  const map: any = {};
+  const roots: any[] = [];
+  items.forEach(item => {
+    map[item.id] = { ...item, children: [] };
+  });
+  items.forEach(item => {
+    if (item.parentId && map[item.parentId]) {
+      map[item.parentId].children.push(map[item.id]);
+    } else {
+      roots.push(map[item.id]);
+    }
+  });
+  return roots;
+};
+
+const flattenTree = (tree: any[], level = 0): any[] => {
+  let result: any[] = [];
+  tree.forEach(node => {
+    result.push({ ...node, label: "  ".repeat(level) + (level > 0 ? "└─ " : "") + node.name, value: node.name });
+    if (node.children) {
+      result = result.concat(flattenTree(node.children, level + 1));
+    }
+  });
+  return result;
+};
+
 const ITEM_TYPES = [
   "Trading",
   "Raw Material",
@@ -158,10 +186,18 @@ const ItemMaster: React.FC = () => {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
   // Filter state
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    category: string;
+    brand: string[];
+    itemType: string;
+    uom: string;
+    hsnCode: string;
+  }>({
     category: "all",
-    brand: "all",
+    brand: [],
     itemType: "all",
+    uom: "all",
+    hsnCode: "",
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -170,14 +206,17 @@ const ItemMaster: React.FC = () => {
   const [hsns, setHsns] = useState<HSN[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
 
+    useEffect(() => {
+    loadMasterData();
+  });
+
   useEffect(() => {
     loadItems();
-    loadMasterData();
-  }, [dispatch]);
+    dispatch(fetchStockMovementData());
+  }, [filters, search]);
 
   const loadItems = () => {
-    dispatch(fetchItems());
-    dispatch(fetchStockMovementData());
+    dispatch(fetchItems({ ...filters, search }));
   };
 
   const loadMasterData = async () => {
@@ -257,7 +296,7 @@ const ItemMaster: React.FC = () => {
       const matchesCategory =
         activeFilters.category === "all" || item.category === activeFilters.category;
       const matchesBrand =
-        activeFilters.brand === "all" || item.brand === activeFilters.brand;
+        activeFilters.brand === "all" || (activeFilters.brand.length === 0 || activeFilters.brand.includes(item.brand));
       const matchesType =
         activeFilters.itemType === "all" || item.itemType === activeFilters.itemType;
 
@@ -466,9 +505,12 @@ const ItemMaster: React.FC = () => {
     return { label: "In stock", color: "text-emerald-600 bg-emerald-50" };
   };
 
-  const activeFiltersCount = Object.values(filters).filter(
-    (v) => v !== "all",
-  ).length;
+  const activeFiltersCount = 
+    (filters.category !== "all" ? 1 : 0) + 
+    (filters.brand.length > 0 ? 1 : 0) + 
+    (filters.itemType !== "all" ? 1 : 0) + 
+    (filters.uom !== "all" ? 1 : 0) + 
+    (filters.hsnCode !== "" ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-white font-sans">
@@ -576,55 +618,91 @@ const ItemMaster: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-gray-900">Filters</h4>
                 {activeFiltersCount > 0 && (
-                  <button
-                    onClick={() =>
-                      setFilters({
-                        category: "all",
-                        brand: "all",
-                        itemType: "all",
-                      })
-                    }
-                    className="text-[10px] text-blue-600 hover:underline font-medium"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                    Category
-                  </label>
-                  <NotionSelect
-                    value={filters.category}
-                    onValueChange={(v) =>
-                      setFilters((f) => ({ ...f, category: v }))
-                    }
-                    placeholder="Category"
-                    options={[
-                      { label: "All Categories", value: "all" },
-                      ...categories.map((c) => ({ label: c.name, value: c.name })),
-                    ]}
-                  />
+                    <button
+                      onClick={() =>
+                        setFilters({
+                          category: "all",
+                          brand: [],
+                          itemType: "all",
+                          uom: "all",
+                          hsnCode: "",
+                        })
+                      }
+                      className="text-[10px] text-blue-600 hover:underline font-medium"
+                    >
+                      Clear all
+                    </button>
+                  )}
                 </div>
+  
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                      Category
+                    </label>
+                    <NotionSelect
+                      value={filters.category}
+                      onValueChange={(v) =>
+                        setFilters((f) => ({ ...f, category: v }))
+                      }
+                      placeholder="Category"
+                      options={[{ label: "All Categories", value: "all" }, ...flattenTree(buildTree(categories))]}
+                    />
+                  </div>
+  
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                      Brand
+                    </label>
+                    <div className="flex flex-wrap gap-1 mb-1">
+                      {filters.brand.map(b => (
+                        <ChipTag key={b} onRemove={() => setFilters(f => ({ ...f, brand: f.brand.filter(x => x !== b) }))}>
+                          {b}
+                        </ChipTag>
+                      ))}
+                    </div>
+                    <NotionSelect
+                      value=""
+                      onValueChange={(v) => {
+                        if (v === "all") setFilters(f => ({ ...f, brand: [] }));
+                        else if (!filters.brand.includes(v)) setFilters(f => ({ ...f, brand: [...f.brand, v] }));
+                      }}
+                      placeholder="Add Brand"
+                      options={[
+                        { label: "All Brands", value: "all" },
+                        ...brands.map((b) => ({ label: b.name, value: b.name })),
+                      ]}
+                    />
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                    Brand
-                  </label>
-                  <NotionSelect
-                    value={filters.brand}
-                    onValueChange={(v) =>
-                      setFilters((f) => ({ ...f, brand: v }))
-                    }
-                    placeholder="Brand"
-                    options={[
-                      { label: "All Brands", value: "all" },
-                      ...brands.map((b) => ({ label: b.name, value: b.name })),
-                    ]}
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                      UoM
+                    </label>
+                    <NotionSelect
+                      value={filters.uom}
+                      onValueChange={(v) =>
+                        setFilters((f) => ({ ...f, uom: v }))
+                      }
+                      placeholder="UoM"
+                      options={[
+                        { label: "All UoM", value: "all" },
+                        ...uoms.map((u) => ({ label: u.name, value: u.code })),
+                      ]}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                      HSN Code
+                    </label>
+                    <Input 
+                      placeholder="Search HSN..."
+                      value={filters.hsnCode}
+                      onChange={(e) => setFilters(f => ({ ...f, hsnCode: e.target.value }))}
+                      className="h-8 text-xs border-gray-200"
+                    />
+                  </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -689,7 +767,7 @@ const ItemMaster: React.FC = () => {
               <tr>
                 <td colSpan={6} className="py-24 text-center">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin text-gray-300" />
-                  <p className="text-xs text-gray-400 mt-2">Loading…</p>
+                  <p className="text-xs text-gray-400 mt-2">Loadingâ€¦</p>
                 </td>
               </tr>
             ) : filteredItems.length === 0 ? (
@@ -735,7 +813,7 @@ const ItemMaster: React.FC = () => {
                         {item.itemType || "Trading"}
                       </div>
                       <div className="text-xs text-gray-400">
-                        {item.category || "—"}
+                        {item.category || "â€”"}
                       </div>
                     </td>
 
@@ -751,7 +829,7 @@ const ItemMaster: React.FC = () => {
                       </span>
                       <div className="text-xs text-gray-400 mt-1">
                         {item.stock} {item.stockUom || item.uom}
-                        {" · "}reorder {item.reorderLevel}
+                        {" Â· "}reorder {item.reorderLevel}
                       </div>
                       {getLinkedWarehouseName(item) && (
                         <div className="text-xs text-gray-300">
@@ -782,10 +860,10 @@ const ItemMaster: React.FC = () => {
                     {/* Pricing */}
                     <td className="py-3 pr-6">
                       <div className="text-sm font-medium text-gray-800">
-                        ₹{(item.salePrice || 0).toLocaleString()}
+                        â‚¹{(item.salePrice || 0).toLocaleString()}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Cost ₹{(item.unitPrice || 0).toLocaleString()}
+                        Cost â‚¹{(item.unitPrice || 0).toLocaleString()}
                       </div>
                     </td>
 
@@ -879,7 +957,7 @@ const ItemMaster: React.FC = () => {
         />
       </div>
 
-      {/* ── Dialog ── */}
+      {/* â”€â”€ Dialog â”€â”€ */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-7xl sm:max-w-7xl w-full p-0 gap-0 bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
           <form onSubmit={handleSubmit} className="flex h-[90vh] flex-col">
@@ -889,7 +967,7 @@ const ItemMaster: React.FC = () => {
                 <div>
                   <DialogTitle className="text-base font-semibold text-gray-900">
                     {editingItem
-                      ? `Edit — ${editingItem.name}`
+                      ? `Edit â€” ${editingItem.name}`
                       : "New item record"}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-gray-400 mt-0.5">
@@ -902,7 +980,7 @@ const ItemMaster: React.FC = () => {
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto px-7 py-8 space-y-12">
-              {/* ── SECTION: IDENTITY ── */}
+              {/* â”€â”€ SECTION: IDENTITY â”€â”€ */}
               <section className="space-y-6">
                 <SectionHead
                   title="Item Identity"
@@ -963,7 +1041,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* ── SECTION: CLASSIFICATION ── */}
+              {/* â”€â”€ SECTION: CLASSIFICATION â”€â”€ */}
               <section className="space-y-6">
                 <SectionHead title="Classification" icon={<Tags size={14} />} />
                 <Row4>
@@ -998,7 +1076,7 @@ const ItemMaster: React.FC = () => {
                         const code = h.code || (h as any).hsnCode;
                         const rate = h.taxRate ?? (h as any).taxPercentage ?? 0;
                         return {
-                          label: `${code} � ${rate}%`,
+                          label: `${code} — ${rate}%`,
                           value: code,
                         };
                       })}
@@ -1017,7 +1095,7 @@ const ItemMaster: React.FC = () => {
                 </Row4>
               </section>
 
-              {/* ── SECTION: UOM & REPLENISHMENT ── */}
+              {/* â”€â”€ SECTION: UOM & REPLENISHMENT â”€â”€ */}
               <section className="space-y-6">
                 <SectionHead
                   title="UoM & Replenishment"
@@ -1097,7 +1175,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* ── SECTION: WAREHOUSE ── */}
+              {/* â”€â”€ SECTION: WAREHOUSE â”€â”€ */}
               <section className="space-y-6">
                 <SectionHead
                   title="Warehouse Stock"
@@ -1155,7 +1233,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* ── SECTION: PRICING ── */}
+              {/* â”€â”€ SECTION: PRICING â”€â”€ */}
               <section className="space-y-6">
                 <SectionHead
                   title="Pricing & Valuation"
@@ -1244,7 +1322,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* ── SECTION: BARCODES & MEDIA ── */}
+              {/* â”€â”€ SECTION: BARCODES & MEDIA â”€â”€ */}
               <section className="space-y-6">
                 <SectionHead
                   title="Barcodes & Media"

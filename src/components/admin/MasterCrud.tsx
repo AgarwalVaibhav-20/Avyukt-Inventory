@@ -9,8 +9,16 @@ import {
   updateMasterData,
   deleteMasterData,
 } from "@/store/slices/masterSlice";
-import { Edit2 } from "lucide-react";
+import { Edit2, Filter } from "lucide-react";
 import { toast } from "react-hot-toast";
+import FilterPanel, { FilterField } from "@/components/common/FilterPanel";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ColumnDef {
   key: string;
@@ -29,6 +37,7 @@ interface MasterCrudProps {
   addData?: (data: any) => Promise<any>;
   updateData?: (id: string, data: any) => Promise<any>;
   deleteData?: (id: string) => Promise<void>;
+  filterFields?: FilterField[];
 }
 
 const MasterCrud: React.FC<MasterCrudProps> = ({
@@ -40,6 +49,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   addData,
   updateData,
   deleteData,
+  filterFields = [],
 }) => {
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
@@ -54,18 +64,26 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   const [newData, setNewData] = useState<any>({});
   const [editDataForm, setEditDataForm] = useState<any>({});
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
   const organisationId =
     user?.organisationId || localStorage.getItem("organisationId");
 
-  const data = Array.isArray(reduxData[type]) ? reduxData[type] : (Array.isArray(localData) ? localData : []);
+  const data = Array.isArray(reduxData[type])
+    ? reduxData[type]
+    : Array.isArray(localData)
+      ? localData
+      : [];
   const isLoading = loading || reduxLoading;
 
-  const loadData = async () => {
+  const loadData = async (searchVal = debouncedSearch) => {
     if (!organisationId) return;
 
     if (type && !fetchData) {
-      dispatch(fetchMasterData({ type, organisationId }));
+      dispatch(
+        fetchMasterData({ type, organisationId, search: searchVal, filters }),
+      );
     } else if (fetchData) {
       setLoading(true);
       try {
@@ -83,11 +101,20 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     }
   };
 
+  // Debounce search term
   useEffect(() => {
-    loadData();
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load data when type, orgId, debouncedSearch or filters change
+  useEffect(() => {
+    loadData(debouncedSearch);
     setIsAdding(false);
     setNewData({});
-  }, [type, organisationId]);
+  }, [type, organisationId, debouncedSearch, filters]);
 
   const handleSave = async () => {
     // Basic validation
@@ -199,7 +226,9 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
 
     try {
       if (type && !updateData) {
-        await dispatch(updateMasterData({ id: editingId, payload: formattedData })).unwrap();
+        await dispatch(
+          updateMasterData({ id: editingId, payload: formattedData }),
+        ).unwrap();
       } else if (updateData) {
         await updateData(editingId, formattedData);
         await loadData();
@@ -217,7 +246,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     setEditingId(item._id || item.id);
     const initialForm = { ...item };
     // Convert arrays back to comma separated strings for editing
-    columns.forEach(col => {
+    columns.forEach((col) => {
       if (col.type === "array" && Array.isArray(initialForm[col.key])) {
         initialForm[col.key] = initialForm[col.key].join(", ");
       }
@@ -253,6 +282,43 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     initialPageSize: 10,
   });
 
+  const activeFiltersCount = Object.keys(filters).filter(
+    (key) =>
+      filters[key] &&
+      filters[key] !== "all" &&
+      (Array.isArray(filters[key]) ? filters[key].length > 0 : true),
+  ).length;
+
+  const processedFilterFields = filterFields.map((field) => {
+    if (
+      (field.type === "tree-select" || field.type === "multi-select" || field.type === "select") &&
+      (!field.options || field.options.length === 0)
+    ) {
+      if (field.type === "tree-select") {
+        return {
+          ...field,
+          options: (data || []).map((item: any) => ({
+            label: item.name || item.label || 'Unnamed',
+            value: item._id || item.id,
+            parentId: item.parentId,
+          })),
+        };
+      } else {
+        const uniqueValues = Array.from(
+          new Set((data || []).map((item: any) => item[field.id]).filter(Boolean)),
+        );
+        return {
+          ...field,
+          options: uniqueValues.sort().map((v) => ({
+            label: String(v),
+            value: String(v),
+          })),
+        };
+      }
+    }
+    return field;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -272,7 +338,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Toolbar */}
         <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-          <div className="relative w-full max-w-sm">
+          <div className=" flex relative w-full max-w-sm">
             <Search
               className="absolute left-3 top-2.5 text-slate-400"
               size={16}
@@ -282,9 +348,46 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
               placeholder="Search records..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 w-full border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="pl-9 pr-4 py-2 w-full border border-slate-300 rounded-lg text-sm focus:ring-1  focus:border-blue-500 outline-none"
             />
           </div>
+
+          {filterFields.length > 0 && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-9 px-3 gap-2",
+                    activeFiltersCount > 0
+                      ? "bg-blue-50 text-blue-600 border-blue-200"
+                      : "text-slate-600",
+                  )}
+                >
+                  <Filter size={16} />
+                  Filters
+                  {activeFiltersCount > 0 && (
+                    <span className="bg-blue-600 text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center ml-1">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-72 p-0 bg-transparent border-none shadow-none"
+                align="end"
+              >
+                <FilterPanel
+                  fields={processedFilterFields}
+                  onFilterChange={setFilters}
+                  onReset={() => setFilters({})}
+                  className="border-none shadow-none"
+                  showToggle={false}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
         </div>
 
         {/* Content */}
@@ -305,7 +408,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                 <tr className="bg-blue-50/50">
                   {columns.map((col) => (
                     <td key={col.key} className="px-6 py-4">
-                      {col.type === "select" && col.options ? (
+                      {col.type === "select" ? (
                         <select
                           autoFocus={col.key === columns[0].key}
                           className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -318,11 +421,20 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                           }
                         >
                           <option value="">Select {col.label}</option>
-                          {col.options.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
+                          {col.options
+                            ? col.options.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))
+                            : data.map((item: any) => (
+                                <option
+                                  key={item._id || item.id}
+                                  value={item._id || item.id}
+                                >
+                                  {item.name}
+                                </option>
+                              ))}
                         </select>
                       ) : (
                         <input
@@ -393,12 +505,12 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                   return (
                     <tr
                       key={itemId}
-                      className={`hover:bg-slate-50 transition-colors ${isEditing ? 'bg-blue-50/30' : ''}`}
+                      className={`hover:bg-slate-50 transition-colors ${isEditing ? "bg-blue-50/30" : ""}`}
                     >
                       {columns.map((col) => (
                         <td key={col.key} className="px-6 py-4 text-slate-700">
                           {isEditing ? (
-                            col.type === "select" && col.options ? (
+                            col.type === "select" ? (
                               <select
                                 className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 value={editDataForm[col.key] || ""}
@@ -410,11 +522,25 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                                 }
                               >
                                 <option value="">Select {col.label}</option>
-                                {col.options.map((opt) => (
-                                  <option key={opt} value={opt}>
-                                    {opt}
-                                  </option>
-                                ))}
+                                {col.options
+                                  ? col.options.map((opt) => (
+                                      <option key={opt} value={opt}>
+                                        {opt}
+                                      </option>
+                                    ))
+                                  : data
+                                      .filter(
+                                        (i: any) =>
+                                          (i._id || i.id) !== editingId,
+                                      )
+                                      .map((item: any) => (
+                                        <option
+                                          key={item._id || item.id}
+                                          value={item._id || item.id}
+                                        >
+                                          {item.name}
+                                        </option>
+                                      ))}
                               </select>
                             ) : (
                               <input
@@ -429,10 +555,14 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                                 }
                               />
                             )
+                          ) : Array.isArray(item[col.key]) ? (
+                            item[col.key].join(", ")
+                          ) : col.type === "select" && !col.options ? (
+                            data.find(
+                              (i: any) => (i._id || i.id) === item[col.key],
+                            )?.name || item[col.key]
                           ) : (
-                            Array.isArray(item[col.key])
-                              ? item[col.key].join(", ")
-                              : item[col.key]
+                            item[col.key]
                           )}
                         </td>
                       ))}

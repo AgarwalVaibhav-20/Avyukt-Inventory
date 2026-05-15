@@ -11,6 +11,14 @@ const BrandView: React.FC = () => {
         { key: 'name', label: 'Brand Name' },
         { key: 'manufacturer', label: 'Manufacturer' }
       ]}
+      filterFields={[
+        {
+          id: "manufacturer",
+          label: "Manufacturer",
+          type: "multi-select",
+          options: [] // To be populated from unique manufacturers in data
+        }
+      ]}
     />
   );
 };

@@ -26,8 +26,16 @@ const initialState: MasterState = {
 
 export const fetchMasterData = createAsyncThunk(
   'master/fetchAll',
-  async ({ type, organisationId }: { type: string; organisationId: string }) => {
-    const response = await api.get(`/inventory/${type}`, { params: { organisationId } });
+  async ({ type, organisationId, page = 1, limit = 5000, search = '', filters = {} }: { type: string; organisationId: string; page?: number; limit?: number; search?: string; filters?: any }) => {
+    const response = await api.get(`/inventory/${type}`, { 
+      params: { 
+        organisationId,
+        page,
+        limit,
+        search,
+        filters: JSON.stringify(filters)
+      } 
+    });
     return { type, items: response.data.items || [] };
   }
 );

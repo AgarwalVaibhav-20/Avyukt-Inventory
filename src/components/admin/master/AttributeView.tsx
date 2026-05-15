@@ -11,6 +11,14 @@ const AttributeView: React.FC = () => {
         { key: 'name', label: 'Attribute Name' },
         { key: 'options', label: 'Options', type: 'array' }
       ]}
+      filterFields={[
+        {
+          id: "name",
+          label: "Attribute Name",
+          type: "multi-select",
+          options: [] // Automatically populated from unique attribute names
+        }
+      ]}
     />
   );
 };

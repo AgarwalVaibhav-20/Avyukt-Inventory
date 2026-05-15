@@ -1,4 +1,10 @@
-import React, { useState } from "react";
+import os
+import re
+
+# --- Update FilterPanel.tsx ---
+path_panel = r"c:\Users\agarw\Desktop\ACT Business\inventory\avyukt-inventary\src\components\common\FilterPanel.tsx"
+
+new_panel_content = """import React, { useState } from "react";
 import { X, Filter, ChevronRight, ChevronDown, RotateCcw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +63,7 @@ const TreeNode: React.FC<{
             {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </button>
         ) : (
-          <div className="w-4.5 h-4.5 flex-shrink-0" />
+          <span className="w-4.5" />
         )}
         <span className="truncate">{node.label}</span>
       </div>
@@ -135,7 +141,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 
   const activeFiltersCount = Object.values(filters).filter((v) => {
     if (Array.isArray(v)) return v.length > 0;
-    return v && v !== 'all' && v !== '';
+    return v && v !== 'all';
   }).length;
 
   return (
@@ -166,7 +172,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
         )}>
           {/* Panel Header */}
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{title}</h3>
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</h3>
             {activeFiltersCount > 0 && (
               <button 
                 onClick={handleReset}
@@ -270,13 +276,13 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                   )}
 
                   {field.type === "multi-select" && (
-                    <div className="grid grid-cols-1 gap-1 min-h-[40px] max-h-40 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-lg custom-scrollbar">
+                    <div className="grid grid-cols-1 gap-1.5 max-h-40 overflow-y-auto p-3 bg-slate-50 border border-slate-200 rounded-lg custom-scrollbar">
                       {(!field.options || field.options.length === 0) ? (
-                        <p className="text-[10px] text-slate-400 italic text-center py-2 w-full">No options available</p>
+                        <p className="text-[10px] text-slate-400 italic text-center py-2">No options available</p>
                       ) : (
                         field.options.map((opt) => (
                           <label key={opt.value} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-blue-50 p-1.5 rounded-md transition-colors group">
-                            <div className="relative flex items-center justify-center flex-shrink-0">
+                            <div className="relative flex items-center justify-center">
                               <input
                                 type="checkbox"
                                 checked={(filters[field.id] || []).includes(opt.value)}
@@ -320,8 +326,8 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
             ))}
           </div>
           
-          <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex justify-end">
-             <p className="text-[10px] text-slate-400">{activeFiltersCount} active filter{activeFiltersCount !== 1 ? 's' : ''}</p>
+          <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+             <p className="text-[10px] text-slate-400">Showing {activeFiltersCount} active filter{activeFiltersCount !== 1 ? 's' : ''}</p>
           </div>
         </div>
       )}
@@ -330,3 +336,20 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 };
 
 export default FilterPanel;
+"""
+
+with open(path_panel, "w", encoding="utf-8") as f:
+    f.write(new_panel_content)
+
+# --- Update MasterCrud.tsx to fix Popover styling ---
+path_master = r"c:\Users\agarw\Desktop\ACT Business\inventory\avyukt-inventary\src\components\admin\MasterCrud.tsx"
+with open(path_master, "r", encoding="utf-8") as f:
+    content = f.read()
+
+# Adjust PopoverContent width and alignment
+content = content.replace('<PopoverContent className="w-80 p-0" align="end">', '<PopoverContent className="w-72 p-0 bg-transparent border-none shadow-none" align="end">')
+
+with open(path_master, "w", encoding="utf-8") as f:
+    f.write(content)
+
+print("Success")

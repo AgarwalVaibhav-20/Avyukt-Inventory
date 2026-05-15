@@ -12,6 +12,14 @@ const HsnView: React.FC = () => {
         { key: 'description', label: 'Description', optional: true },
         { key: 'taxPercentage', label: 'Tax Rate (%)', type: 'number' }
       ]}
+      filterFields={[
+        {
+          id: "taxPercentage",
+          label: "Tax Rate (%)",
+          type: "select",
+          options: [] // Automatically extract all unique tax rates from data
+        }
+      ]}
     />
   );
 };
