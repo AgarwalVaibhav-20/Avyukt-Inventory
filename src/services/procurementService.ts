@@ -101,6 +101,7 @@ const toFrontendPO = (po: any): PurchaseOrder => ({
     unitPrice: Number(line.unitPrice || 0),
     receivedQty: Number(line.receivedQuantity || 0),
     hsnCode: line.hsnCode || '',
+    taxRate: Number(line.taxPercentage || 0),
   })),
 });
 
@@ -174,13 +175,26 @@ export const procurementService = {
         unitPrice: item.unitPrice,
         materialId: item.itemId,
         hsnCode: item.hsnCode,
+        taxPercentage: item.taxRate,
       }))
     });
     return toFrontendPO(response.data.purchaseOrder || response.data);
   },
 
   updatePO: async (id: string, updates: any): Promise<void> => {
-    await api.put(`/purchase/orders/${id}`, updates);
+    const payload = { ...updates };
+    if (updates.items) {
+      payload.productLines = updates.items.map((item: any) => ({
+        product: item.itemName,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        materialId: item.itemId,
+        hsnCode: item.hsnCode,
+        taxPercentage: item.taxRate,
+      }));
+      delete payload.items;
+    }
+    await api.put(`/purchase/orders/${id}`, payload);
   },
 
   // --- GRN (Goods Receipt Note) ---
@@ -283,7 +297,8 @@ export const procurementService = {
         itemId: String(i.itemCode || i.itemId || ''),
         itemName: i.name || i.itemName || '',
         quantity: Number(i.qty || i.quantity || 0),
-        estimatedPrice: Number(i.unitPrice || i.estimatedPrice || 0),
+        hsnCode: i.hsnCode || i.hsn || '',
+        taxRate: Number(i.taxPercentage || 0),
       }))
     }));
   },

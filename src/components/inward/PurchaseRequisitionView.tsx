@@ -3,7 +3,8 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchPRs } from "@/store/slices/procurementSlice";
 import { procurementService } from "@/services/procurementService";
 import { productService } from "@/services/productService";
-import { PurchaseRequisition, InventoryItem } from "@/types";
+import { PurchaseRequisition, InventoryItem, HSN } from "@/types";
+import { NotionSelect } from "@/components/common/NotionSelect";
 import {
   ClipboardList,
   Plus,
@@ -37,6 +38,7 @@ const PurchaseRequisitionView: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPrId, setEditingPrId] = useState<string | null>(null);
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [hsns, setHsns] = useState<HSN[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [newPr, setNewPr] = useState({
     department: "",
@@ -44,17 +46,27 @@ const PurchaseRequisitionView: React.FC = () => {
     requiredDate: "",
     justification: "",
     items: [] as {
-      itemId: string;
       itemName: string;
       quantity: number;
-      estimatedPrice: number;
+      hsnCode: string;
+      taxRate: number;
     }[],
   });
 
   useEffect(() => {
     dispatch(fetchPRs());
     loadItems();
+    loadHSNs();
   }, [dispatch]);
+
+  const loadHSNs = async () => {
+    try {
+      const data = await productService.getHSN();
+      setHsns(data);
+    } catch (e) {
+      console.error("Failed to load HSNs", e);
+    }
+  };
 
   const loadItems = async () => {
     const data = await productService.getAllItems();
@@ -71,7 +83,8 @@ const PurchaseRequisitionView: React.FC = () => {
           itemId: item.id,
           itemName: item.name,
           quantity: 1,
-          estimatedPrice: item.unitPrice || 0,
+          hsnCode: item.hsnCode || '',
+          taxRate: item.taxRate || 0,
         },
       ],
     });
@@ -80,6 +93,22 @@ const PurchaseRequisitionView: React.FC = () => {
   const updateItemQty = (index: number, qty: number) => {
     const updated = [...newPr.items];
     updated[index].quantity = Math.max(1, qty);
+    setNewPr({ ...newPr, items: updated });
+  };
+
+  const updateItemHSN = (index: number, code: string) => {
+    const updated = [...newPr.items];
+    const hsn = hsns.find(h => (h.code === code || (h as any).hsnCode === code));
+    updated[index].hsnCode = code;
+    if (hsn) {
+      updated[index].taxRate = hsn.taxRate ?? (hsn as any).taxPercentage ?? 0;
+    }
+    setNewPr({ ...newPr, items: updated });
+  };
+
+  const updateItemTax = (index: number, rate: number) => {
+    const updated = [...newPr.items];
+    updated[index].taxRate = rate;
     setNewPr({ ...newPr, items: updated });
   };
 
@@ -110,7 +139,8 @@ const PurchaseRequisitionView: React.FC = () => {
         itemId: i.itemId,
         itemName: i.itemName,
         quantity: i.quantity,
-        estimatedPrice: i.estimatedPrice ?? 0,
+        hsnCode: i.hsnCode || '',
+        taxRate: i.taxRate || 0,
       })),
     });
     setEditingPrId(pr.id);
@@ -605,9 +635,29 @@ const PurchaseRequisitionView: React.FC = () => {
                                 <h5 className="font-black text-slate-900 text-lg leading-tight">
                                   {item.itemName}
                                 </h5>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                  Est. Price: ₹{item.estimatedPrice}
-                                </p>
+                                <div className="flex flex-wrap gap-4 mt-2">
+                                  <div className="flex flex-col gap-1 min-w-[120px]">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">HSN / SAC</label>
+                                    <NotionSelect 
+                                      value={item.hsnCode} 
+                                      onValueChange={(val) => updateItemHSN(idx, val)}
+                                      placeholder="Select HSN"
+                                      options={hsns.map(h => ({
+                                        label: `${h.code || (h as any).hsnCode} — ${h.taxRate ?? (h as any).taxPercentage ?? 0}%`,
+                                        value: h.code || (h as any).hsnCode
+                                      }))}
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1 w-20">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">GST %</label>
+                                    <input 
+                                      type="number"
+                                      className="h-9 bg-slate-50 border-2 border-slate-100 rounded-lg px-2 text-xs font-bold text-slate-700 focus:bg-white outline-none"
+                                      value={item.taxRate}
+                                      onChange={(e) => updateItemTax(idx, Number(e.target.value))}
+                                    />
+                                  </div>
+                                </div>
                               </div>
                               <div className="flex items-center gap-4 bg-slate-50 p-2 pr-6 rounded-2xl">
                                 <div className="flex flex-col items-center gap-1">

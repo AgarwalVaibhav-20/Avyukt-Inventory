@@ -3,15 +3,17 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPOs, fetchVendors, fetchPRs } from '@/store/slices/procurementSlice';
 import { procurementService } from '@/services/procurementService';
 import { productService } from '@/services/productService';
-import { PurchaseOrder, Vendor, InventoryItem, POItem, PurchaseRequisition } from '@/types';
-import { Plus, FileText, Calendar, User, Loader2, Check, AlertCircle, ShoppingCart, Tag, Package, Hash, ClipboardList, Search, Filter } from 'lucide-react';
+import { PurchaseOrder, Vendor, InventoryItem, POItem, PurchaseRequisition, VendorItemMap } from '@/types';
+import { Plus, FileText, Calendar, User, Loader2, Check, AlertCircle, ShoppingCart, Tag, Package, Hash, ClipboardList, Search, Filter, IndianRupee } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import { useListControls } from '@/hooks/useListControls';
+import { vendorService } from '@/services/vendorService';
 
 const PurchaseOrderView: React.FC = () => {
   const dispatch = useAppDispatch();
   const { pos, vendors, prs, loading, error } = useAppSelector((state) => state.procurement);
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [priceMaps, setPriceMaps] = useState<VendorItemMap[]>([]);
   const [localLoading, setLocalLoading] = useState(false);
   
   const [isCreating, setIsCreating] = useState(false);
@@ -33,7 +35,17 @@ const PurchaseOrderView: React.FC = () => {
     dispatch(fetchVendors());
     dispatch(fetchPRs());
     loadItems();
+    loadPriceMaps();
   }, [dispatch]);
+
+  const loadPriceMaps = async () => {
+    try {
+      const maps = await vendorService.getVendorItemMaps();
+      setPriceMaps(maps);
+    } catch (e) {
+      console.error("Failed to load price maps", e);
+    }
+  };
 
   const loadItems = async () => {
     try {
@@ -47,7 +59,7 @@ const PurchaseOrderView: React.FC = () => {
   const handleAddItem = () => {
     setNewPO({
         ...newPO,
-        items: [...newPO.items, { itemId: '', itemName: '', hsnCode: '', quantity: 1, unitPrice: 0, receivedQty: 0 }]
+        items: [...newPO.items, { itemId: '', itemName: '', hsnCode: '', quantity: 1, unitPrice: 0, receivedQty: 0, taxRate: 0 }]
     });
   };
 
@@ -61,13 +73,15 @@ const PurchaseOrderView: React.FC = () => {
     // Map PR items to PO items
     const poItems: POItem[] = pr.items.map(item => {
         const product = items.find(i => i.id === item.itemId);
+        const vendorPrice = priceMaps.find(m => m.vendorId === newPO.vendorId && m.itemId === item.itemId);
         return {
             itemId: item.itemId,
             itemName: item.itemName,
-            hsnCode: product?.hsnCode || '',
+            hsnCode: item.hsnCode || product?.hsnCode || '',
             quantity: item.quantity,
-            unitPrice: item.estimatedPrice || product?.unitPrice || 0,
-            receivedQty: 0
+            unitPrice: vendorPrice?.price || product?.unitPrice || 0,
+            receivedQty: 0,
+            taxRate: item.taxRate || product?.taxRate || 0
         };
     });
 
@@ -81,12 +95,17 @@ const PurchaseOrderView: React.FC = () => {
     const updatedItems = [...newPO.items];
     if (field === 'itemId') {
         const selectedItem = items.find(i => i.id === value);
+        const vendorPrice = priceMaps.find(m => 
+            m.vendorId === newPO.vendorId && 
+            (m.itemId === value || (m.itemName === selectedItem?.name))
+        );
         updatedItems[index] = {
             ...updatedItems[index],
             itemId: value,
             itemName: selectedItem?.name || '',
             hsnCode: selectedItem?.hsnCode || '',
-            unitPrice: selectedItem?.unitPrice || 0
+            unitPrice: vendorPrice?.price || selectedItem?.unitPrice || 0,
+            taxRate: selectedItem?.taxRate || 0
         };
     } else {
         // @ts-ignore
@@ -141,7 +160,9 @@ const PurchaseOrderView: React.FC = () => {
           await procurementService.updatePO(selectedPO.id, {
               vendorId: updatingVendorId,
               vendor: vendor?.name || '',
-              status: 'Pending' // Submit for approval using backend-supported status
+              status: 'Pending', // Use a status allowed by the schema enum
+              items: selectedPO.items, // Pass the updated items from local state
+              totalAmount: selectedPO.totalAmount
           });
           setIsDetailModalOpen(false);
           dispatch(fetchPOs());
@@ -222,7 +243,20 @@ const PurchaseOrderView: React.FC = () => {
                      <select 
                         className="w-full border-2 border-slate-100 rounded-2xl p-4 text-sm bg-slate-50/50 focus:bg-white focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-700 appearance-none shadow-sm"
                         value={newPO.vendorId}
-                        onChange={e => setNewPO({...newPO, vendorId: e.target.value})}
+                        onChange={e => {
+                            const vId = e.target.value;
+                            const updatedItems = newPO.items.map(item => {
+                                const vendorPrice = priceMaps.find(m => 
+                                    m.vendorId === vId && 
+                                    (m.itemId === item.itemId || (m.itemName === item.itemName))
+                                );
+                                if (vendorPrice) {
+                                    return { ...item, unitPrice: vendorPrice.price };
+                                }
+                                return item;
+                            });
+                            setNewPO({...newPO, vendorId: vId, items: updatedItems});
+                        }}
                      >
                         <option value="">Choose Supplier from Master</option>
                         {vendors.map(v => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
@@ -275,9 +309,10 @@ const PurchaseOrderView: React.FC = () => {
                         <thead className="bg-slate-50/80 text-slate-400 font-black uppercase text-[10px] tracking-[0.2em] border-b border-slate-100">
                             <tr>
                                 <th className="px-6 py-5">SKU / Item Details</th>
-                                <th className="px-6 py-5 w-48">HSN / SAC Code</th>
-                                <th className="px-6 py-5 w-32">Quantity</th>
-                                <th className="px-6 py-5 w-40">Unit Cost (₹)</th>
+                                <th className="px-6 py-5 w-40">HSN / SAC</th>
+                                <th className="px-6 py-5 w-24 text-center">Qty</th>
+                                <th className="px-6 py-5 w-32">Unit Cost</th>
+                                <th className="px-6 py-5 w-24 text-center">GST %</th>
                                 <th className="px-6 py-5 w-40 text-right">Row Total</th>
                                 <th className="px-6 py-5 w-16"></th>
                             </tr>
@@ -349,7 +384,19 @@ const PurchaseOrderView: React.FC = () => {
                                                 value={item.unitPrice}
                                                 onChange={e => updateItem(idx, 'unitPrice', Number(e.target.value))}
                                             />
+                                            {priceMaps.some(m => m.vendorId === newPO.vendorId && m.itemId === item.itemId && m.price === item.unitPrice) && (
+                                                <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm z-10 animate-in zoom-in duration-300">
+                                                    VPL
+                                                </div>
+                                            )}
                                         </div>
+                                    </td>
+                                    <td className="px-6 py-6">
+                                        <input 
+                                            type="number" className="w-full border-2 border-slate-50 rounded-xl p-3 text-sm bg-slate-50 focus:bg-white focus:border-blue-500/30 outline-none font-bold text-slate-700 text-center transition-all"
+                                            value={item.taxRate || 0}
+                                            onChange={e => updateItem(idx, 'taxRate', Number(e.target.value))}
+                                        />
                                     </td>
                                     <td className="px-6 py-6 text-right font-black text-slate-900 text-lg">
                                         ₹{(item.quantity * item.unitPrice).toLocaleString("en-IN")}
@@ -598,7 +645,28 @@ const PurchaseOrderView: React.FC = () => {
                                       <select 
                                           className="w-full border-2 border-white rounded-2xl p-4 text-sm bg-white focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-black text-slate-800 shadow-sm"
                                           value={updatingVendorId}
-                                          onChange={e => setUpdatingVendorId(e.target.value)}
+                                          onChange={e => {
+                                              const vId = e.target.value;
+                                              setUpdatingVendorId(vId);
+                                              if (selectedPO) {
+                                                  const updatedItems = selectedPO.items.map(item => {
+                                                      const vendorPrice = priceMaps.find(m => 
+                                                          m.vendorId === vId && 
+                                                          (m.itemId === item.itemId || (m.itemName === item.itemName))
+                                                      );
+                                                      return {
+                                                          ...item,
+                                                          unitPrice: vendorPrice?.price || item.unitPrice
+                                                      };
+                                                  });
+                                                  const newTotal = updatedItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                                                  setSelectedPO({
+                                                      ...selectedPO,
+                                                      items: updatedItems,
+                                                      totalAmount: newTotal
+                                                  });
+                                              }
+                                          }}
                                       >
                                           <option value="">Select Target Vendor</option>
                                           {vendors.map(v => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}

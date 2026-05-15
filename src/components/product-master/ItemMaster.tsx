@@ -75,15 +75,15 @@ import {
 import { cn } from "@/lib/utils";
 import Pagination from "@/components/common/Pagination";
 import { useListControls } from "@/hooks/useListControls";
-
+import { NotionSelect, inputCls } from "@/components/common/NotionSelect";
 
 const buildTree = (items: any[]) => {
   const map: any = {};
   const roots: any[] = [];
-  items.forEach(item => {
+  items.forEach((item) => {
     map[item.id] = { ...item, children: [] };
   });
-  items.forEach(item => {
+  items.forEach((item) => {
     if (item.parentId && map[item.parentId]) {
       map[item.parentId].children.push(map[item.id]);
     } else {
@@ -95,8 +95,12 @@ const buildTree = (items: any[]) => {
 
 const flattenTree = (tree: any[], level = 0): any[] => {
   let result: any[] = [];
-  tree.forEach(node => {
-    result.push({ ...node, label: "  ".repeat(level) + (level > 0 ? "└─ " : "") + node.name, value: node.name });
+  tree.forEach((node) => {
+    result.push({
+      ...node,
+      label: "  ".repeat(level) + (level > 0 ? "└─ " : "") + node.name,
+      value: node.name,
+    });
     if (node.children) {
       result = result.concat(flattenTree(node.children, level + 1));
     }
@@ -206,7 +210,7 @@ const ItemMaster: React.FC = () => {
   const [hsns, setHsns] = useState<HSN[]>([]);
   const [attributes, setAttributes] = useState<Attribute[]>([]);
 
-    useEffect(() => {
+  useEffect(() => {
     loadMasterData();
   });
 
@@ -294,11 +298,15 @@ const ItemMaster: React.FC = () => {
       (item.barcode || "").toLowerCase().includes(term),
     filterFn: (item, activeFilters) => {
       const matchesCategory =
-        activeFilters.category === "all" || item.category === activeFilters.category;
+        activeFilters.category === "all" ||
+        item.category === activeFilters.category;
       const matchesBrand =
-        activeFilters.brand === "all" || (activeFilters.brand.length === 0 || activeFilters.brand.includes(item.brand));
+        activeFilters.brand === "all" ||
+        activeFilters.brand.length === 0 ||
+        activeFilters.brand.includes(item.brand);
       const matchesType =
-        activeFilters.itemType === "all" || item.itemType === activeFilters.itemType;
+        activeFilters.itemType === "all" ||
+        item.itemType === activeFilters.itemType;
 
       return matchesCategory && matchesBrand && matchesType;
     },
@@ -505,11 +513,11 @@ const ItemMaster: React.FC = () => {
     return { label: "In stock", color: "text-emerald-600 bg-emerald-50" };
   };
 
-  const activeFiltersCount = 
-    (filters.category !== "all" ? 1 : 0) + 
-    (filters.brand.length > 0 ? 1 : 0) + 
-    (filters.itemType !== "all" ? 1 : 0) + 
-    (filters.uom !== "all" ? 1 : 0) + 
+  const activeFiltersCount =
+    (filters.category !== "all" ? 1 : 0) +
+    (filters.brand.length > 0 ? 1 : 0) +
+    (filters.itemType !== "all" ? 1 : 0) +
+    (filters.uom !== "all" ? 1 : 0) +
     (filters.hsnCode !== "" ? 1 : 0);
 
   return (
@@ -618,91 +626,103 @@ const ItemMaster: React.FC = () => {
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-semibold text-gray-900">Filters</h4>
                 {activeFiltersCount > 0 && (
-                    <button
-                      onClick={() =>
-                        setFilters({
-                          category: "all",
-                          brand: [],
-                          itemType: "all",
-                          uom: "all",
-                          hsnCode: "",
-                        })
-                      }
-                      className="text-[10px] text-blue-600 hover:underline font-medium"
-                    >
-                      Clear all
-                    </button>
-                  )}
+                  <button
+                    onClick={() =>
+                      setFilters({
+                        category: "all",
+                        brand: [],
+                        itemType: "all",
+                        uom: "all",
+                        hsnCode: "",
+                      })
+                    }
+                    className="text-[10px] text-blue-600 hover:underline font-medium"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Category
+                  </label>
+                  <NotionSelect
+                    value={filters.category}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({ ...f, category: v }))
+                    }
+                    placeholder="Category"
+                    options={[
+                      { label: "All Categories", value: "all" },
+                      ...flattenTree(buildTree(categories)),
+                    ]}
+                  />
                 </div>
-  
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      Category
-                    </label>
-                    <NotionSelect
-                      value={filters.category}
-                      onValueChange={(v) =>
-                        setFilters((f) => ({ ...f, category: v }))
-                      }
-                      placeholder="Category"
-                      options={[{ label: "All Categories", value: "all" }, ...flattenTree(buildTree(categories))]}
-                    />
-                  </div>
-  
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      Brand
-                    </label>
-                    <div className="flex flex-wrap gap-1 mb-1">
-                      {filters.brand.map(b => (
-                        <ChipTag key={b} onRemove={() => setFilters(f => ({ ...f, brand: f.brand.filter(x => x !== b) }))}>
-                          {b}
-                        </ChipTag>
-                      ))}
-                    </div>
-                    <NotionSelect
-                      value=""
-                      onValueChange={(v) => {
-                        if (v === "all") setFilters(f => ({ ...f, brand: [] }));
-                        else if (!filters.brand.includes(v)) setFilters(f => ({ ...f, brand: [...f.brand, v] }));
-                      }}
-                      placeholder="Add Brand"
-                      options={[
-                        { label: "All Brands", value: "all" },
-                        ...brands.map((b) => ({ label: b.name, value: b.name })),
-                      ]}
-                    />
-                  </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      UoM
-                    </label>
-                    <NotionSelect
-                      value={filters.uom}
-                      onValueChange={(v) =>
-                        setFilters((f) => ({ ...f, uom: v }))
-                      }
-                      placeholder="UoM"
-                      options={[
-                        { label: "All UoM", value: "all" },
-                        ...uoms.map((u) => ({ label: u.name, value: u.code })),
-                      ]}
-                    />
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Brand
+                  </label>
+                  <div className="flex flex-wrap gap-1 mb-1">
+                    {filters.brand.map((b) => (
+                      <ChipTag
+                        key={b}
+                        onRemove={() =>
+                          setFilters((f) => ({
+                            ...f,
+                            brand: f.brand.filter((x) => x !== b),
+                          }))
+                        }
+                      >
+                        {b}
+                      </ChipTag>
+                    ))}
                   </div>
+                  <NotionSelect
+                    value=""
+                    onValueChange={(v) => {
+                      if (v === "all") setFilters((f) => ({ ...f, brand: [] }));
+                      else if (!filters.brand.includes(v))
+                        setFilters((f) => ({ ...f, brand: [...f.brand, v] }));
+                    }}
+                    placeholder="Add Brand"
+                    options={[
+                      { label: "All Brands", value: "all" },
+                      ...brands.map((b) => ({ label: b.name, value: b.name })),
+                    ]}
+                  />
+                </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                      HSN Code
-                    </label>
-                    <Input 
-                      placeholder="Search HSN..."
-                      value={filters.hsnCode}
-                      onChange={(e) => setFilters(f => ({ ...f, hsnCode: e.target.value }))}
-                      className="h-8 text-xs border-gray-200"
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    UoM
+                  </label>
+                  <NotionSelect
+                    value={filters.uom}
+                    onValueChange={(v) => setFilters((f) => ({ ...f, uom: v }))}
+                    placeholder="UoM"
+                    options={[
+                      { label: "All UoM", value: "all" },
+                      ...uoms.map((u) => ({ label: u.name, value: u.code })),
+                    ]}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    HSN Code
+                  </label>
+                  <Input
+                    placeholder="Search HSN..."
+                    value={filters.hsnCode}
+                    onChange={(e) =>
+                      setFilters((f) => ({ ...f, hsnCode: e.target.value }))
+                    }
+                    className="h-8 text-xs border-gray-200"
+                  />
+                </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
@@ -860,10 +880,10 @@ const ItemMaster: React.FC = () => {
                     {/* Pricing */}
                     <td className="py-3 pr-6">
                       <div className="text-sm font-medium text-gray-800">
-                        â‚¹{(item.salePrice || 0).toLocaleString()}
+                        {(item.salePrice || 0).toLocaleString()}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Cost â‚¹{(item.unitPrice || 0).toLocaleString()}
+                        Cost {(item.unitPrice || 0).toLocaleString()}
                       </div>
                     </td>
 
@@ -1012,7 +1032,10 @@ const ItemMaster: React.FC = () => {
                           setField("itemType", v as InventoryItem["itemType"])
                         }
                         placeholder="Select type"
-                        options={ITEM_TYPES.map((t) => ({ label: t, value: t }))}
+                        options={ITEM_TYPES.map((t) => ({
+                          label: t,
+                          value: t,
+                        }))}
                       />
                     </NField>
                   </Row3>
@@ -1545,8 +1568,7 @@ const ItemMaster: React.FC = () => {
 };
 
 // -- Shared UI components --
-const inputCls =
-  "h-9 text-sm border-gray-200 bg-white focus-visible:ring-1 focus-visible:ring-gray-300 focus-visible:ring-offset-0 rounded-md placeholder:text-gray-300 transition-all";
+
 
 const ActionBtn: React.FC<{
   title: string;
@@ -1617,82 +1639,15 @@ const UomSel: React.FC<{
       value={value}
       onValueChange={onChange}
       placeholder="UoM"
-      options={uoms.map((u) => ({ label: `${u.name} (${u.code})`, value: u.code }))}
+      options={uoms.map((u) => ({
+        label: `${u.name} (${u.code})`,
+        value: u.code,
+      }))}
     />
   </NField>
 );
 
-const NotionSelect: React.FC<{
-  value: string;
-  onValueChange: (v: string) => void;
-  placeholder: string;
-  options: { label: string; value: string }[];
-  className?: string;
-}> = ({ value, onValueChange, placeholder, options, className }) => {
-  const [open, setOpen] = React.useState(false);
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            inputCls,
-            "w-full justify-between font-normal px-3",
-            className,
-          )}
-        >
-          <span className="truncate">
-            {value
-              ? options.find((o) => o.value === value)?.label || value
-              : placeholder}
-          </span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        className="p-0 bg-white border border-gray-100 shadow-md rounded-lg overflow-hidden"
-        style={{ width: "var(--radix-popover-trigger-width)" }}
-        align="start"
-      >
-        <Command>
-          <CommandInput
-            placeholder={`Search ${placeholder.toLowerCase()}...`}
-            className="h-9 border-none focus:ring-0"
-          />
-          <CommandList className="max-h-[300px] overflow-y-auto">
-            <CommandEmpty className="py-3 text-center text-xs text-gray-400">
-              No results found.
-            </CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={(v) => {
-                    onValueChange(option.value);
-                    setOpen(false);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 data-[selected=true]:bg-gray-100"
-                >
-                  <Check
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      value === option.value ? "opacity-100" : "opacity-0",
-                    )}
-                  />
-                  <span className="truncate">{option.label}</span>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 const ChipTag: React.FC<{
   children: React.ReactNode;

@@ -7,6 +7,7 @@ interface ItemVariant {
   variantName: string;
   sku: string;
   barcode: string;
+  unit?: string;
   attributes: { name: string; value: string }[];
   price: number;
   stocks: { warehouseId: string; quantity: number }[];

@@ -292,7 +292,8 @@ export interface PRItem {
   itemId: string;
   itemName: string;
   quantity: number;
-  estimatedPrice?: number;
+  hsnCode?: string;
+  taxRate?: number;
 }
 
 export interface PurchaseOrder {
@@ -317,6 +318,7 @@ export interface POItem {
   unitPrice: number;
   receivedQty: number;
   hsnCode: string;
+  taxRate?: number;
 }
 
 export interface GRN {

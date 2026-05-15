@@ -32,9 +32,9 @@ const toBackendVendor = (vendor: Partial<Vendor>) => ({
 
 const toFrontendPriceEntry = (entry: any): VendorItemMap => ({
   id: entry.id || entry._id,
-  vendorId: String(entry.vendorId || ''),
+  vendorId: String(entry.vendorId?._id || entry.vendorId || ''),
   vendorName: entry.vendor || entry.vendorName || '',
-  itemId: String(entry.itemId || ''),
+  itemId: String(entry.itemId?._id || entry.itemId || ''),
   itemName: entry.item || entry.itemName || '',
   sku: entry.sku || '',
   vendorSku: entry.vendorSku || '',
@@ -93,6 +93,7 @@ export const vendorService = {
   saveVendorItemMap: async (data: Omit<VendorItemMap, 'id' | 'lastUpdated'>): Promise<VendorItemMap> => {
     const payload = {
       item: data.itemName,
+      itemId: data.itemId,
       sku: data.sku,
       vendorId: data.vendorId,
       vendor: data.vendorName,

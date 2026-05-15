@@ -24,9 +24,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { productService } from '@/services/productService';
+import { warehouseService } from '@/services/warehouseService';
 import { InventoryItem } from '@/types';
 import Pagination from '@/components/common/Pagination';
 import { useListControls } from '@/hooks/useListControls';
+import { NotionSelect } from '@/components/common/NotionSelect';
 
 const ItemVariantPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -38,27 +40,38 @@ const ItemVariantPage: React.FC = () => {
   const [productFilter, setProductFilter] = useState('All');
   const [stockFilter, setStockFilter] = useState('All');
   const [attributeFilter, setAttributeFilter] = useState('');
+  const [unitFilter, setUnitFilter] = useState('All');
   const [minPriceFilter, setMinPriceFilter] = useState('');
   const [maxPriceFilter, setMaxPriceFilter] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [uoms, setUoms] = useState<any[]>([]);
+  const [allWarehouses, setAllWarehouses] = useState<any[]>([]);
   const [newVariant, setNewVariant] = useState({
     productId: '',
     variantName: '',
     sku: '',
     barcode: '',
+    unit: '',
     price: 0,
-    attributes: [{ name: '', value: '' }]
+    attributes: [{ name: '', value: '' }],
+    stocks: [{ warehouseId: '', quantity: 0 }]
   });
 
   useEffect(() => {
     dispatch(fetchVariants());
-    const loadProducts = async () => {
-      const data = await productService.getAllItems();
-      setProducts(data);
+    const loadData = async () => {
+      const [productData, uomData, warehouseData] = await Promise.all([
+        productService.getAllItems(),
+        productService.getUOMs(),
+        warehouseService.getAllWarehouses()
+      ]);
+      setProducts(productData);
+      setUoms(uomData);
+      setAllWarehouses(warehouseData);
     };
-    loadProducts();
+    loadData();
   }, [dispatch]);
 
   useEffect(() => {
@@ -105,8 +118,10 @@ const ItemVariantPage: React.FC = () => {
       variantName: variant.variantName,
       sku: variant.sku,
       barcode: variant.barcode || '',
+      unit: variant.unit || '',
       price: variant.price || 0,
-      attributes: variant.attributes.length > 0 ? variant.attributes : [{ name: '', value: '' }]
+      attributes: variant.attributes.length > 0 ? variant.attributes : [{ name: '', value: '' }],
+      stocks: variant.stocks && variant.stocks.length > 0 ? variant.stocks : [{ warehouseId: '', quantity: 0 }]
     });
     setIsAddDialogOpen(true);
   };
@@ -119,8 +134,10 @@ const ItemVariantPage: React.FC = () => {
       variantName: '',
       sku: '',
       barcode: '',
+      unit: '',
       price: 0,
-      attributes: [{ name: '', value: '' }]
+      attributes: [{ name: '', value: '' }],
+      stocks: [{ warehouseId: '', quantity: 0 }]
     });
   };
 
@@ -130,10 +147,15 @@ const ItemVariantPage: React.FC = () => {
       return;
     }
     
+    const payload = {
+      ...newVariant,
+      stocks: newVariant.stocks.filter(s => s.warehouseId && s.quantity >= 0)
+    };
+
     if (isEditing && editingId) {
-      await dispatch(updateVariant({ id: editingId, data: newVariant }));
+      await dispatch(updateVariant({ id: editingId, data: payload }));
     } else {
-      await dispatch(createVariant(newVariant));
+      await dispatch(createVariant(payload));
     }
     
     setIsAddDialogOpen(false);
@@ -168,6 +190,7 @@ const ItemVariantPage: React.FC = () => {
       productFilter,
       stockFilter,
       attributeFilter,
+      unitFilter,
       minPriceFilter,
       maxPriceFilter,
     },
@@ -199,10 +222,11 @@ const ItemVariantPage: React.FC = () => {
         (v.attributes || []).some((attr) =>
           `${attr.name || ''} ${attr.value || ''}`.toLowerCase().includes(attributeTerm),
         );
+      const matchesUnit = filters.unitFilter === 'All' || v.unit === filters.unitFilter;
       const matchesMinPrice = !filters.minPriceFilter || price >= Number(filters.minPriceFilter);
       const matchesMaxPrice = !filters.maxPriceFilter || price <= Number(filters.maxPriceFilter);
 
-      return matchesProduct && matchesStock && matchesAttribute && matchesMinPrice && matchesMaxPrice;
+      return matchesProduct && matchesStock && matchesAttribute && matchesUnit && matchesMinPrice && matchesMaxPrice;
     },
   });
 
@@ -211,9 +235,14 @@ const ItemVariantPage: React.FC = () => {
     setProductFilter(linkedItemId || 'All');
     setStockFilter('All');
     setAttributeFilter('');
+    setUnitFilter('All');
     setMinPriceFilter('');
     setMaxPriceFilter('');
   };
+
+  // Stats calculations
+  const outOfStockCount = variants.filter(v => getVariantStock(v) === 0).length;
+  const totalStockValue = variants.reduce((acc, v) => acc + (v.price || 0) * getVariantStock(v), 0);
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-6 space-y-8">
@@ -249,19 +278,12 @@ const ItemVariantPage: React.FC = () => {
               <div className="grid grid-cols-2 gap-6 py-4">
                 <div className="space-y-2">
                   <Label>Parent Product</Label>
-                  <Select 
+                  <NotionSelect 
                     value={newVariant.productId} 
                     onValueChange={(val) => setNewVariant(prev => ({...prev, productId: val}))}
-                  >
-                    <SelectTrigger className="bg-slate-50/50">
-                      <SelectValue placeholder="Select Product" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      {products.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    placeholder="Select Product"
+                    options={products.map(p => ({ label: p.name, value: p.id }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Variant Name</Label>
@@ -285,6 +307,15 @@ const ItemVariantPage: React.FC = () => {
                     placeholder="Universal Barcode" 
                     value={newVariant.barcode}
                     onChange={(e) => setNewVariant(prev => ({...prev, barcode: e.target.value}))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unit of Measure</Label>
+                  <NotionSelect 
+                    value={newVariant.unit} 
+                    onValueChange={(val) => setNewVariant(prev => ({...prev, unit: val}))}
+                    placeholder="Select Unit"
+                    options={uoms.map(u => ({ label: `${u.name} (${u.code})`, value: u.code }))}
                   />
                 </div>
                 <div className="space-y-2">
@@ -330,6 +361,55 @@ const ItemVariantPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
+
+                <div className="col-span-2">
+                  <div className="flex justify-between items-center mb-2 pt-2 border-t border-slate-100">
+                    <Label className="text-base font-semibold">Warehouse Stock (Initial)</Label>
+                    <Button variant="ghost" size="sm" onClick={() => setNewVariant(prev => ({ ...prev, stocks: [...prev.stocks, { warehouseId: '', quantity: 0 }] }))} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                      <Plus size={16} /> Add Warehouse
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {newVariant.stocks.map((stock, idx) => (
+                      <div key={idx} className="flex gap-4 items-center animate-in fade-in slide-in-from-top-1">
+                        <NotionSelect 
+                          value={stock.warehouseId} 
+                          onValueChange={(val) => {
+                            const updated = [...newVariant.stocks];
+                            updated[idx] = { ...updated[idx], warehouseId: val };
+                            setNewVariant(prev => ({ ...prev, stocks: updated }));
+                          }}
+                          placeholder="Select Warehouse"
+                          options={allWarehouses.map(w => ({ label: w.name, value: w.id }))}
+                          className="flex-1"
+                        />
+                        <Input 
+                          type="number"
+                          placeholder="Quantity" 
+                          className="w-32"
+                          value={stock.quantity || ''}
+                          onChange={(e) => {
+                            const updated = [...newVariant.stocks];
+                            updated[idx] = { ...updated[idx], quantity: parseFloat(e.target.value) || 0 };
+                            setNewVariant(prev => ({ ...prev, stocks: updated }));
+                          }}
+                        />
+                        {idx > 0 && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-slate-400 hover:text-red-500"
+                            onClick={() => {
+                              setNewVariant(prev => ({ ...prev, stocks: prev.stocks.filter((_, i) => i !== idx) }));
+                            }}
+                          >
+                            <Trash2 size={18} />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
@@ -362,7 +442,7 @@ const ItemVariantPage: React.FC = () => {
             <Package className="text-amber-600" size={20} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">0</div>
+            <div className="text-3xl font-bold">{outOfStockCount}</div>
             <p className="text-xs text-slate-400 mt-1">Requires attention</p>
           </CardContent>
         </Card>
@@ -372,7 +452,7 @@ const ItemVariantPage: React.FC = () => {
             <BarChart3 className="text-emerald-600" size={20} />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">₹0.00</div>
+            <div className="text-3xl font-bold">₹{totalStockValue.toLocaleString()}</div>
             <p className="text-xs text-slate-400 mt-1">Estimated inventory value</p>
           </CardContent>
         </Card>
@@ -408,34 +488,36 @@ const ItemVariantPage: React.FC = () => {
         </div>
         {showFilters && (
           <div className="grid gap-3 border-b border-slate-100 bg-slate-50/60 px-6 py-4 md:grid-cols-5">
-            <Select value={productFilter} onValueChange={setProductFilter} disabled={!!linkedItemId}>
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder="Product" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="All">All Products</SelectItem>
-                {products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={stockFilter} onValueChange={setStockFilter}>
-              <SelectTrigger className="bg-white">
-                <SelectValue placeholder="Stock" />
-              </SelectTrigger>
-              <SelectContent className="bg-white">
-                <SelectItem value="All">All Stock</SelectItem>
-                <SelectItem value="in-stock">In Stock</SelectItem>
-                <SelectItem value="low-stock">Low Stock</SelectItem>
-                <SelectItem value="out-of-stock">Out of Stock</SelectItem>
-              </SelectContent>
-            </Select>
+            <NotionSelect 
+              value={productFilter} 
+              onValueChange={setProductFilter} 
+              placeholder="Product"
+              options={[{ label: "All Products", value: "All" }, ...products.map(p => ({ label: p.name, value: p.id }))]}
+              className="bg-white"
+            />
+            <NotionSelect 
+              value={stockFilter} 
+              onValueChange={setStockFilter}
+              placeholder="Stock"
+              options={[
+                { label: "All Stock", value: "All" },
+                { label: "In Stock", value: "in-stock" },
+                { label: "Low Stock", value: "low-stock" },
+                { label: "Out of Stock", value: "out-of-stock" }
+              ]}
+              className="bg-white"
+            />
             <Input
               value={attributeFilter}
               onChange={(event) => setAttributeFilter(event.target.value)}
               placeholder="Attribute name/value"
+              className="bg-white"
+            />
+            <NotionSelect 
+              value={unitFilter} 
+              onValueChange={setUnitFilter}
+              placeholder="Unit"
+              options={[{ label: "All Units", value: "All" }, ...uoms.map(u => ({ label: u.name, value: u.code }))]}
               className="bg-white"
             />
             <div className="grid grid-cols-2 gap-2">
@@ -502,8 +584,17 @@ const ItemVariantPage: React.FC = () => {
                             {variant.variantName.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">{variant.variantName}</div>
-                            <div className="text-xs text-slate-400 mt-0.5">Parent: {variant.productId?.name || 'Unknown'}</div>
+                            <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              {variant.variantName}
+                              {variant.unit && (
+                                <span className="ml-2 text-[10px] font-normal px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 uppercase">
+                                  {variant.unit}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-slate-400 mt-0.5">
+                              Parent: {variant.productId?.name || products.find(p => p.id === (variant.productId?._id || variant.productId))?.name || 'Unknown'}
+                            </div>
                           </div>
                         </div>
                       </td>
