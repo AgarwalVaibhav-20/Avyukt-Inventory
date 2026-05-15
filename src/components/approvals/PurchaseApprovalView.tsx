@@ -32,8 +32,8 @@ const PurchaseApprovalView: React.FC = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [prSearch, setPRSearch] = useState('');
   const [poSearch, setPOSearch] = useState('');
-  const [prFilters, setPRFilters] = useState({ status: 'all' });
-  const [poFilters, setPOFilters] = useState({ status: 'all' });
+  const [prFilters, setPRFilters] = useState({ status: 'all', sortOrder: 'newest' });
+  const [poFilters, setPOFilters] = useState({ status: 'all', sortOrder: 'newest' });
 
   useEffect(() => {
     loadData();
@@ -179,13 +179,24 @@ const PurchaseApprovalView: React.FC = () => {
                   <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <select
                     value={prFilters.status}
-                    onChange={(e) => setPRFilters({ status: e.target.value })}
+                    onChange={(e) => setPRFilters({ ...prFilters, status: e.target.value })}
                     className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
                   >
                     <option value="all">All statuses</option>
                     <option value="Pending">Pending</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="relative w-full sm:w-44">
+                  <Clock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={prFilters.sortOrder}
+                    onChange={(e) => setPRFilters({ ...prFilters, sortOrder: e.target.value })}
+                    className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="earliest">Earliest first</option>
                   </select>
                 </div>
               </div>
@@ -312,7 +323,7 @@ const PurchaseApprovalView: React.FC = () => {
                   <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                   <select
                     value={poFilters.status}
-                    onChange={(e) => setPOFilters({ status: e.target.value })}
+                    onChange={(e) => setPOFilters({ ...poFilters, status: e.target.value })}
                     className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
                   >
                     <option value="all">All statuses</option>
@@ -321,6 +332,17 @@ const PurchaseApprovalView: React.FC = () => {
                     <option value="Pending Approval">Pending Approval</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="relative w-full sm:w-44">
+                  <Clock size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={poFilters.sortOrder}
+                    onChange={(e) => setPOFilters({ ...poFilters, sortOrder: e.target.value })}
+                    className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
+                  >
+                    <option value="newest">Newest first</option>
+                    <option value="earliest">Earliest first</option>
                   </select>
                 </div>
               </div>

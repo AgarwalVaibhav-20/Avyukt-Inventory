@@ -61,7 +61,52 @@ export const productService = {
 
   getAllItems: async (filters?: Record<string, any>): Promise<InventoryItem[]> => {
     const orgId = getOrgId();
-    if (!orgId) return [];
+    if (!orgId) {
+      // In dev, allow fetching global products without orgId
+      if (import.meta.env.DEV) {
+        const response = await api.get(`/inventory/product/all`);
+        const products = response.data.products || [];
+        return products.map((item: any) => {
+          const totalStock = (item.stocks || []).reduce(
+            (acc: number, s: any) => acc + (s.quantity || 0),
+            0,
+          );
+          return {
+            ...item,
+            id: item._id,
+            itemCode: item.itemCode || item.sku,
+            itemType: item.itemType || item.inventoryItemType || "Trading",
+            uom: item.uom || item.stockUom || item.unitOfMeasure || "",
+            stockUom: item.stockUom || item.uom || item.unitOfMeasure || "",
+            purchaseUom: item.purchaseUom || item.uom || item.unitOfMeasure || "",
+            salesUom: item.salesUom || item.uom || item.unitOfMeasure || "",
+            reorderLevel: item.minStock || 0,
+            minimumStockLevel: item.minimumStockLevel ?? item.minStock ?? 0,
+            maximumStockLevel: item.maximumStockLevel ?? 0,
+            reorderQuantity: item.reorderQuantity ?? 0,
+            stock: totalStock,
+            stocks: item.stocks || [],
+            warehouseId: item.warehouseId || item.stocks?.[0]?.warehouseId || "",
+            quantity: item.quantity ?? item.stocks?.[0]?.quantity ?? 0,
+            unitCost: item.unitCost ?? item.stocks?.[0]?.unitCost ?? 0,
+            binCode: item.binCode || item.bins?.[0] || "",
+            salePrice: item.salesPrice || 0,
+            mrp: item.mrp || 0,
+            unitPrice: item.purchasePrice || 0,
+            taxRate: item.taxRate ?? item.salesTax ?? 0,
+            barcodes: item.barcodes || (item.barcode ? [item.barcode] : []),
+            images: item.images || [],
+            status:
+              totalStock === 0
+                ? "Out of Stock"
+                : totalStock <= (item.minStock || 0)
+                  ? "Low Stock"
+                  : "In Stock",
+          } as InventoryItem;
+        });
+      }
+      return [];
+    }
     
     // Construct query parameters
     const params = new URLSearchParams();

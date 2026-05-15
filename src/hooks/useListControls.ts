@@ -7,6 +7,7 @@ interface UseListControlsOptions<T> {
   filters?: Record<string, any>;
   searchFn?: (item: T, searchTerm: string) => boolean;
   filterFn?: (item: T, filters: Record<string, any>) => boolean;
+  sortFn?: (a: T, b: T, sortOrder: "newest" | "earliest") => number;
 }
 
 export const useListControls = <T,>({
@@ -16,15 +17,42 @@ export const useListControls = <T,>({
   filters = {},
   searchFn,
   filterFn,
+  sortFn,
 }: UseListControlsOptions<T>) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
+  const [sortOrder, setSortOrder] = useState<"newest" | "earliest">("newest");
   const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
+
+  const getComparableDate = (item: T) => {
+    const record = item as Record<string, any>;
+    const candidates = [
+      record.date && record.timestamp ? `${record.date} ${record.timestamp}` : undefined,
+      record.createdAt,
+      record.updatedAt,
+      record.lastUpdated,
+      record.uploadDate,
+      record.generatedDate,
+      record.date,
+      record.dueDate,
+      record.requiredDate,
+      record.expiryDate,
+      record.timestamp,
+    ];
+
+    for (const value of candidates) {
+      if (!value) continue;
+      const time = new Date(value).getTime();
+      if (!Number.isNaN(time)) return time;
+    }
+
+    return 0;
+  };
 
   const controlledItems = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    return items.filter((item) => {
+    const filtered = items.filter((item) => {
       const matchesSearch =
         !normalizedSearch ||
         (searchFn
@@ -37,7 +65,19 @@ export const useListControls = <T,>({
 
       return matchesSearch && matchesFilters;
     });
-  }, [items, searchTerm, filtersKey, searchFn, filterFn]);
+
+    const activeSortOrder = filters.sortOrder as "newest" | "earliest" | undefined;
+    const listSortOrder = activeSortOrder || sortOrder;
+    if (listSortOrder !== "newest" && listSortOrder !== "earliest") return filtered;
+
+    return [...filtered].sort((a, b) => {
+      if (sortFn) return sortFn(a, b, listSortOrder);
+
+      const left = getComparableDate(a);
+      const right = getComparableDate(b);
+      return listSortOrder === "newest" ? right - left : left - right;
+    });
+  }, [items, searchTerm, filtersKey, searchFn, filterFn, sortFn, sortOrder]);
 
   const totalItems = controlledItems.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -66,5 +106,7 @@ export const useListControls = <T,>({
     totalPages,
     setPage,
     setPageSize,
+    sortOrder,
+    setSortOrder,
   };
 };

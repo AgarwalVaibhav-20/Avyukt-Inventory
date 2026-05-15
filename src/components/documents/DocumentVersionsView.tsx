@@ -38,6 +38,7 @@ const DocumentVersionsView: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('All');
   const [filterTag, setFilterTag] = useState('All');
   const [filterReferenceType, setFilterReferenceType] = useState('All');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'earliest'>('newest');
   const [referenceType, setReferenceType] =
     useState<DocumentAttachment['referenceType']>('General');
   const [referenceId, setReferenceId] = useState('');
@@ -86,7 +87,7 @@ const DocumentVersionsView: React.FC = () => {
     items: files,
     initialPageSize: 12,
     searchTerm: search,
-    filters: { filterCategory, filterTag, filterReferenceType, referenceId },
+    filters: { filterCategory, filterTag, filterReferenceType, referenceId, sortOrder },
     searchFn: (file, term) =>
       file.fileName.toLowerCase().includes(term) ||
       (file.referenceLabel || '').toLowerCase().includes(term) ||
@@ -191,7 +192,7 @@ const DocumentVersionsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-4">
+        <div className="mb-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-4 md:grid-cols-5">
           <select
             value={filterCategory}
             onChange={(event) => setFilterCategory(event.target.value)}
@@ -222,6 +223,14 @@ const DocumentVersionsView: React.FC = () => {
               <option key={value} value={value}>{value === 'CustomerStock' ? 'Customer Stock' : value}</option>
             ))}
           </select>
+          <select
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value as 'newest' | 'earliest')}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="newest">Newest first</option>
+            <option value="earliest">Earliest first</option>
+          </select>
           <button
             type="button"
             onClick={() => {
@@ -230,6 +239,7 @@ const DocumentVersionsView: React.FC = () => {
               setFilterTag('All');
               setFilterReferenceType('All');
               setReferenceId('');
+              setSortOrder('newest');
             }}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >

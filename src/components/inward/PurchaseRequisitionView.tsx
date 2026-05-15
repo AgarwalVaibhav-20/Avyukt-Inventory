@@ -30,6 +30,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import Pagination from "@/components/common/Pagination";
+import { useListControls } from "@/hooks/useListControls";
 
 const PurchaseRequisitionView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -40,6 +42,12 @@ const PurchaseRequisitionView: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [hsns, setHsns] = useState<HSN[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [prSearch, setPrSearch] = useState("");
+  const [filters, setFilters] = useState({
+    status: "all",
+    source: "all",
+    sortOrder: "newest",
+  });
   const [newPr, setNewPr] = useState({
     department: "",
     requestedBy: "",
@@ -214,6 +222,38 @@ const PurchaseRequisitionView: React.FC = () => {
       item.sku.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  const {
+    filteredItems: filteredPRs,
+    pagedItems: pagedPRs,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = useListControls({
+    items: prs,
+    searchTerm: prSearch,
+    filters,
+    initialPageSize: 10,
+    searchFn: (pr, term) =>
+      (pr.prNumber || "").toLowerCase().includes(term) ||
+      (pr.department || "").toLowerCase().includes(term) ||
+      (pr.requestedBy || "").toLowerCase().includes(term) ||
+      (pr.justification || "").toLowerCase().includes(term) ||
+      (pr.status || "").toLowerCase().includes(term) ||
+      (pr.source || "").toLowerCase().includes(term) ||
+      pr.items.some((item) => (item.itemName || "").toLowerCase().includes(term)),
+    filterFn: (pr, activeFilters) => {
+      const matchesStatus =
+        activeFilters.status === "all" || pr.status === activeFilters.status;
+      const matchesSource =
+        activeFilters.source === "all" || pr.source === activeFilters.source;
+
+      return matchesStatus && matchesSource;
+    },
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       {/* Header */}
@@ -305,21 +345,65 @@ const PurchaseRequisitionView: React.FC = () => {
             />
             <input
               type="text"
-              placeholder="Search by PR Number or Department..."
+              placeholder="Search PR, department, requester, item..."
+              value={prSearch}
+              onChange={(e) => setPrSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl text-sm focus:ring-4 focus:ring-indigo-500/10 outline-none font-medium"
             />
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              className="rounded-xl text-slate-500 font-bold"
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Filter
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={16}
+              />
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((current) => ({
+                    ...current,
+                    status: e.target.value,
+                  }))
+                }
+                className="appearance-none pl-11 pr-9 py-3 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-slate-600"
+              >
+                <option value="all">All statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Pending Approval">Pending Approval</option>
+                <option value="Approved">Approved</option>
+                <option value="PO Created">PO Created</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+            <select
+              value={filters.source}
+              onChange={(e) =>
+                setFilters((current) => ({
+                  ...current,
+                  source: e.target.value,
+                }))
+              }
+              className="appearance-none px-4 py-3 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-slate-600"
             >
-              <Filter size={18} className="mr-2" /> Filter
-            </Button>
+              <option value="all">All sources</option>
+              <option value="Manual">Manual</option>
+              <option value="Stock Alert">Stock Alert</option>
+              <option value="Production Plan">Production Plan</option>
+            </select>
             <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block" />
-            <p className="text-xs font-bold text-slate-400">
-              Sort by: <span className="text-slate-800">Newest First</span>
-            </p>
+            <select
+              value={filters.sortOrder}
+              onChange={(e) =>
+                setFilters((current) => ({
+                  ...current,
+                  sortOrder: e.target.value,
+                }))
+              }
+              className="appearance-none px-4 py-3 bg-slate-50 border-none rounded-2xl text-sm outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-slate-600"
+            >
+              <option value="newest">Newest first</option>
+              <option value="earliest">Earliest first</option>
+            </select>
           </div>
         </div>
 
@@ -336,7 +420,32 @@ const PurchaseRequisitionView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {prs.map((pr) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center">
+                    <Loader2 className="mx-auto animate-spin text-indigo-600" size={32} />
+                    <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-400">
+                      Loading requisitions...
+                    </p>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center">
+                    <AlertCircle className="mx-auto mb-4 text-red-400" size={36} />
+                    <p className="text-sm font-bold text-red-500">{error}</p>
+                  </td>
+                </tr>
+              ) : filteredPRs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-20 text-center">
+                    <ClipboardList className="mx-auto mb-4 text-slate-200" size={48} />
+                    <p className="text-sm font-black uppercase tracking-widest text-slate-400">
+                      No requisitions match the current filters
+                    </p>
+                  </td>
+                </tr>
+              ) : pagedPRs.map((pr) => (
                 <tr
                   key={pr.id}
                   className="hover:bg-slate-50/50 transition-colors group"
@@ -441,6 +550,18 @@ const PurchaseRequisitionView: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {totalItems > 0 && (
+          <div className="px-8 py-4 border-t border-slate-100">
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalItems}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modern Drag & Drop Create Modal */}

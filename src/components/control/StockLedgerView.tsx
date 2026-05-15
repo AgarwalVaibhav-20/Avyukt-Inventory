@@ -14,6 +14,7 @@ const StockLedgerView: React.FC = () => {
   const { ledger, loading, error } = useAppSelector((state) => state.stockControl);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'earliest'>('newest');
 
   useEffect(() => {
     dispatch(fetchStockControlData());
@@ -31,7 +32,7 @@ const StockLedgerView: React.FC = () => {
   } = useListControls({
     items: ledger,
     searchTerm,
-    filters: { type: typeFilter },
+    filters: { type: typeFilter, sortOrder },
     initialPageSize: 10,
     searchFn: (entry, term) =>
       entry.itemName.toLowerCase().includes(term) ||
@@ -131,6 +132,14 @@ const StockLedgerView: React.FC = () => {
                                 </button>
                             ))}
                         </div>
+                        <select
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value as 'newest' | 'earliest')}
+                            className="bg-slate-50 border-2 border-slate-50 rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-500 outline-none focus:bg-white focus:border-blue-500/20"
+                        >
+                            <option value="newest">Newest first</option>
+                            <option value="earliest">Earliest first</option>
+                        </select>
                     </div>
                 </div>
 

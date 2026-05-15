@@ -92,6 +92,7 @@ const toFrontendPO = (po: any): PurchaseOrder => ({
   vendorId: String(po.vendorId?._id || po.vendorId || ''),
   vendorName: po.vendor || '',
   date: (po.orderDate || po.createdAt || new Date().toISOString()).toString().slice(0, 10),
+  deliveryDate: (po.deliveryDate || po.scheduledDeliveryDate || '').toString().slice(0, 10),
   totalAmount: Number(po.totalAmount || 0),
   status: po.status ? po.status.charAt(0).toUpperCase() + po.status.slice(1) : 'Open',
   items: (po.productLines || []).map((line: any) => ({
@@ -169,12 +170,14 @@ export const procurementService = {
       organisationId,
       vendor: po.vendorName,
       orderDate: po.date,
+      deliveryDate: po.deliveryDate,
+      scheduledDeliveryDate: po.deliveryDate,
       productLines: po.items.map(item => ({
         product: item.itemName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         materialId: item.itemId,
-        hsnCode: item.hsnCode,
+        hsnCode: item.hsnCode || '',
         taxPercentage: item.taxRate,
       }))
     });

@@ -10,6 +10,7 @@ const UserActivityLogView: React.FC = () => {
   const { logs, loading, error } = useAppSelector(state => state.audit);
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'earliest'>('newest');
 
   useEffect(() => {
     dispatch(fetchAuditLogs());
@@ -32,7 +33,7 @@ const UserActivityLogView: React.FC = () => {
   } = useListControls({
       items: logs,
       searchTerm: search,
-      filters: { action: actionFilter },
+      filters: { action: actionFilter, sortOrder },
       initialPageSize: 10,
       searchFn: (l, term) =>
         l.user.toLowerCase().includes(term) ||
@@ -75,6 +76,14 @@ const UserActivityLogView: React.FC = () => {
                         <option value="Reject">Reject</option>
                         <option value="Login">Login</option>
                         <option value="Export">Export</option>
+                    </select>
+                    <select
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as 'newest' | 'earliest')}
+                        className="px-3 py-2 border rounded-lg text-sm"
+                    >
+                        <option value="newest">Newest first</option>
+                        <option value="earliest">Earliest first</option>
                     </select>
                     <button
                         onClick={() => dispatch(fetchAuditLogs())}

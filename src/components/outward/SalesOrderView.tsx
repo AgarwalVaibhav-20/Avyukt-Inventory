@@ -24,7 +24,7 @@ const SalesOrderView: React.FC = () => {
     items: [],
   });
   const [search, setSearch] = useState('');
-  const [filters, setFilters] = useState({ status: 'all' });
+  const [filters, setFilters] = useState({ status: 'all', sortOrder: 'newest' });
 
   const organisationId = localStorage.getItem('organisationId');
   
@@ -322,13 +322,24 @@ const SalesOrderView: React.FC = () => {
               <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
               <select
                 value={filters.status}
-                onChange={(e) => setFilters({ status: e.target.value })}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 className="w-full appearance-none rounded-lg border border-slate-300 bg-white py-2.5 pl-11 pr-4 text-sm outline-none focus:border-blue-500"
               >
                 <option value="all">All statuses</option>
                 <option value="Draft">Draft</option>
                 <option value="Confirmed">Confirmed</option>
                 <option value="Dispatched">Dispatched</option>
+              </select>
+            </div>
+            <div className="relative w-full sm:w-44">
+              <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <select
+                value={filters.sortOrder}
+                onChange={(e) => setFilters({ ...filters, sortOrder: e.target.value })}
+                className="w-full appearance-none rounded-lg border border-slate-300 bg-white py-2.5 pl-11 pr-4 text-sm outline-none focus:border-blue-500"
+              >
+                <option value="newest">Newest first</option>
+                <option value="earliest">Earliest first</option>
               </select>
             </div>
           </div>

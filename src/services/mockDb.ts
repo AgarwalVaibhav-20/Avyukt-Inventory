@@ -151,7 +151,7 @@ const SEED_DATA = {
       vendorId: 'v1',
       vendorName: 'Global Components Inc',
       date: '2023-10-15',
-      expectedDate: '2023-10-25',
+      deliveryDate: '2023-10-25',
       status: 'Sent',
       totalAmount: 5000,
       items: [
@@ -164,7 +164,7 @@ const SEED_DATA = {
       vendorId: 'v3',
       vendorName: 'Machinery World',
       date: '2023-10-18',
-      expectedDate: '2023-10-30',
+      deliveryDate: '2023-10-30',
       status: 'Draft',
       totalAmount: 12500,
       items: [

@@ -14,6 +14,7 @@ const InvoicesView: React.FC = () => {
   const [selectedSOId, setSelectedSOId] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'earliest'>('newest');
 
   useEffect(() => {
     loadData();
@@ -73,7 +74,7 @@ const InvoicesView: React.FC = () => {
   } = useListControls({
     items: invoices,
     searchTerm: search,
-    filters: { statusFilter },
+    filters: { statusFilter, sortOrder },
     searchFn: (inv, term) =>
       (inv.invoiceNumber || '').toLowerCase().includes(term) ||
       (inv.customerName || '').toLowerCase().includes(term) ||
@@ -96,6 +97,10 @@ const InvoicesView: React.FC = () => {
                     <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
                         <option value="All">All Statuses</option>
                         {[...new Set(invoices.map((inv) => inv.status).filter(Boolean))].map((status) => <option key={status} value={status}>{status}</option>)}
+                    </select>
+                    <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'newest' | 'earliest')} className="rounded-lg border px-3 py-2 text-sm">
+                        <option value="newest">Newest first</option>
+                        <option value="earliest">Earliest first</option>
                     </select>
                     <button onClick={() => setIsCreating(!isCreating)} className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium flex gap-2">
                         <Plus size={16}/> Generate Invoice

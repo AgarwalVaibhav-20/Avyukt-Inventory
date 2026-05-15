@@ -18,9 +18,11 @@ const PurchaseOrderView: React.FC = () => {
   
   const [isCreating, setIsCreating] = useState(false);
   const [selectedPRId, setSelectedPRId] = useState<string>('');
-  const [newPO, setNewPO] = useState<{vendorId: string, date: string, items: POItem[]}>({
+  const defaultDeliveryDate = () => new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+  const [newPO, setNewPO] = useState<{vendorId: string, date: string, deliveryDate: string, items: POItem[]}>({
     vendorId: '',
     date: new Date().toISOString().split('T')[0],
+    deliveryDate: defaultDeliveryDate(),
     items: []
   });
 
@@ -28,7 +30,7 @@ const PurchaseOrderView: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [updatingVendorId, setUpdatingVendorId] = useState('');
     const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState({ status: 'all' });
+    const [filters, setFilters] = useState({ status: 'all', sortOrder: 'newest' });
 
   useEffect(() => {
     dispatch(fetchPOs());
@@ -116,6 +118,8 @@ const PurchaseOrderView: React.FC = () => {
 
   const handleCreate = async () => {
     if (!newPO.vendorId || newPO.items.length === 0) return alert("Please select vendor and items");
+    if (newPO.items.some(item => !item.itemId || !item.itemName)) return alert("Please select an item for every PO line");
+    if (newPO.items.some(item => item.quantity <= 0 || item.unitPrice < 0)) return alert("Please enter valid quantity and unit cost for every PO line");
     const vendor = vendors.find(v => v.id === newPO.vendorId);
     
     setLocalLoading(true);
@@ -127,19 +131,23 @@ const PurchaseOrderView: React.FC = () => {
           vendorId: newPO.vendorId,
           vendorName: vendor?.name || '',
           date: newPO.date,
-          expectedDate: new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+          deliveryDate: newPO.deliveryDate,
           totalAmount,
           items: newPO.items,
           prId: selectedPRId || undefined
       });
       
       setIsCreating(false);
-      setNewPO({ vendorId: '', date: new Date().toISOString().split('T')[0], items: [] });
+      setNewPO({ vendorId: '', date: new Date().toISOString().split('T')[0], deliveryDate: defaultDeliveryDate(), items: [] });
       setSelectedPRId('');
       dispatch(fetchPOs());
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to create Purchase Order");
+      const errors = e.response?.data?.errors;
+      const detail = errors
+        ? Object.entries(errors).map(([field, message]) => `${field}: ${message}`).join('\n')
+        : e.response?.data?.message || e.message;
+      alert(`Failed to create Purchase Order${detail ? `\n${detail}` : ''}`);
     } finally {
       setLocalLoading(false);
     }
@@ -235,7 +243,7 @@ const PurchaseOrderView: React.FC = () => {
                  </button>
              </div>
              
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-10">
+             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-10">
                  <div className="space-y-3">
                      <label className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
                          <User size={14} className="text-blue-500"/> Select Vendor / Supplier *
@@ -288,6 +296,20 @@ const PurchaseOrderView: React.FC = () => {
                             className="w-full border-2 border-slate-100 rounded-2xl pl-12 p-4 text-sm bg-slate-50/50 focus:bg-white focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-700 shadow-sm"
                             value={newPO.date}
                             onChange={e => setNewPO({...newPO, date: e.target.value})}
+                        />
+                     </div>
+                 </div>
+                 <div className="space-y-3">
+                     <label className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
+                         <Calendar size={14} className="text-blue-500"/> Delivery Date
+                     </label>
+                     <div className="relative">
+                        <Calendar className="absolute left-4 top-4 text-slate-400" size={18}/>
+                        <input
+                            type="date"
+                            className="w-full border-2 border-slate-100 rounded-2xl pl-12 p-4 text-sm bg-slate-50/50 focus:bg-white focus:border-blue-500/50 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-bold text-slate-700 shadow-sm"
+                            value={newPO.deliveryDate}
+                            onChange={e => setNewPO({...newPO, deliveryDate: e.target.value})}
                         />
                      </div>
                  </div>
@@ -478,7 +500,7 @@ const PurchaseOrderView: React.FC = () => {
                     <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                     <select
                         value={filters.status}
-                        onChange={(e) => setFilters({ status: e.target.value })}
+                        onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                         className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
                     >
                         <option value="all">All statuses</option>
@@ -490,6 +512,17 @@ const PurchaseOrderView: React.FC = () => {
                         <option value="Partial">Partial</option>
                         <option value="Completed">Completed</option>
                         <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <div className="relative w-full sm:w-44">
+                    <Calendar size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <select
+                        value={filters.sortOrder}
+                        onChange={(e) => setFilters({ ...filters, sortOrder: e.target.value })}
+                        className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
+                    >
+                        <option value="newest">Newest first</option>
+                        <option value="earliest">Earliest first</option>
                     </select>
                 </div>
                 <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
@@ -565,9 +598,9 @@ const PurchaseOrderView: React.FC = () => {
                             <td className="px-8 py-7">
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2 text-slate-600 font-black text-xs uppercase tracking-tighter">
-                                        <Calendar size={14} className="text-blue-400"/> {po.date}
+                                        <Calendar size={14} className="text-blue-400"/> {po.deliveryDate || po.date}
                                     </div>
-                                    <span className="text-[9px] text-slate-300 font-bold uppercase tracking-widest ml-5">Scheduled Dispatch</span>
+                                    <span className="text-[9px] text-slate-300 font-bold uppercase tracking-widest ml-5">Delivery Date</span>
                                 </div>
                             </td>
                             <td className="px-8 py-7 text-right">
@@ -628,7 +661,13 @@ const PurchaseOrderView: React.FC = () => {
                                           {selectedPO.status}
                                       </span>
                                       <span className="text-slate-300">|</span>
-                                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedPO.date}</span>
+                                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Order: {selectedPO.date}</span>
+                                      {selectedPO.deliveryDate && (
+                                          <>
+                                              <span className="text-slate-300">|</span>
+                                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Delivery: {selectedPO.deliveryDate}</span>
+                                          </>
+                                      )}
                                   </div>
                               </div>
                           </div>

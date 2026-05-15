@@ -111,7 +111,9 @@ export const dashboardService = {
       console.log('🔔 Fetching expiry alerts from backend...');
       const response = await api.get('/inventory/batches/expiring', {
         params: { days: 90, organisationId: orgId }
-      }).catch(() => api.get(`/stockcontrol/expiry-tracking/${orgId}`).catch(() => ({ data: { data: [] } })));
+      }).catch(() => api.get('/api/stockcontrol/expiry-tracking', {
+        params: { organisationId: orgId, limit: 1000 }
+      }).catch(() => ({ data: { data: [] } })));
 
       const batches = response.data.data || response.data.batches || [];
       console.log(`✅ Fetched ${batches.length} expiring batches`);
@@ -120,9 +122,9 @@ export const dashboardService = {
         id: String(batch._id || batch.id),
         batchNumber: batch.batchNumber || batch.batchNo || batch.batch || '',
         itemId: String(batch.materialId || batch.productId || batch.itemId || ''),
-        itemName: batch.itemName || batch.name || '',
-        expiryDate: batch.expiryDate || batch.expDate || '',
-        quantity: Number(batch.quantity || batch.remainingQuantity || 0),
+        itemName: batch.itemName || batch.item || batch.name || '',
+        expiryDate: batch.expiryDate || batch.expDate || batch.expiry || '',
+        quantity: Number(batch.quantity || batch.remainingQuantity || batch.qty || 0),
         mfgDate: batch.mfgDate || batch.manufacturingDate || '',
         costPrice: Number(batch.costPrice || batch.unitCost || 0),
         warehouseId: batch.warehouseId || batch.warehouse?._id || batch.locationId || '',

@@ -302,7 +302,7 @@ export interface PurchaseOrder {
   vendorId: string;
   vendorName: string;
   date: string;
-  expectedDate: string;
+  deliveryDate: string;
   status: 'Draft' | 'Pending' | 'Pending Approval' | 'Sent' | 'Approved' | 'Partially Received' | 'Completed' | 'Cancelled' | 'Rejected';
   totalAmount: number;
   items: POItem[];

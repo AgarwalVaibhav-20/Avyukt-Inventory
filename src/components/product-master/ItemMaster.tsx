@@ -202,6 +202,7 @@ const ItemMaster: React.FC = () => {
     itemType: "all",
     uom: "all",
     hsnCode: "",
+    sortOrder: "newest",
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -517,7 +518,7 @@ const ItemMaster: React.FC = () => {
     (filters.category !== "all" ? 1 : 0) +
     (filters.brand.length > 0 ? 1 : 0) +
     (filters.itemType !== "all" ? 1 : 0) +
-    (filters.uom !== "all" ? 1 : 0) +
+    (filters.uom !== "all" && v !== "newest" ? 1 : 0) +
     (filters.hsnCode !== "" ? 1 : 0);
 
   return (
@@ -634,6 +635,7 @@ const ItemMaster: React.FC = () => {
                         itemType: "all",
                         uom: "all",
                         hsnCode: "",
+                        sortOrder: "newest",
                       })
                     }
                     className="text-[10px] text-blue-600 hover:underline font-medium"
@@ -740,6 +742,23 @@ const ItemMaster: React.FC = () => {
                     ]}
                   />
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    Sort
+                  </label>
+                  <NotionSelect
+                    value={filters.sortOrder}
+                    onValueChange={(v) =>
+                      setFilters((f) => ({ ...f, sortOrder: v }))
+                    }
+                    placeholder="Sort"
+                    options={[
+                      { label: "Newest first", value: "newest" },
+                      { label: "Earliest first", value: "earliest" },
+                    ]}
+                  />
+                </div>
               </div>
             </div>
           </PopoverContent>
@@ -748,7 +767,7 @@ const ItemMaster: React.FC = () => {
         {activeFiltersCount > 0 && (
           <button
             onClick={() =>
-              setFilters({ category: "all", brand: "all", itemType: "all" })
+              setFilters({ category: "all", brand: "all", itemType: "all", sortOrder: "newest" })
             }
             className="text-xs text-gray-400 hover:text-gray-600 font-medium"
           >

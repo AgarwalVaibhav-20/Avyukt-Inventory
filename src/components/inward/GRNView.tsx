@@ -20,7 +20,7 @@ const GRNView: React.FC = () => {
   const [receivedItems, setReceivedItems] = useState<GRNItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
     const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState({ status: 'all' });
+    const [filters, setFilters] = useState({ status: 'all', sortOrder: 'newest' });
 
   useEffect(() => {
     dispatch(fetchPOs());
@@ -167,6 +167,11 @@ const GRNView: React.FC = () => {
                                     <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-white/60 px-2 py-0.5 rounded shadow-sm">
                                         <FileText size={10} className="text-blue-400"/> {selectedPO.date}
                                     </p>
+                                    {selectedPO.deliveryDate && (
+                                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-white/60 px-2 py-0.5 rounded shadow-sm">
+                                            <Truck size={10} className="text-blue-400"/> {selectedPO.deliveryDate}
+                                        </p>
+                                    )}
                                     <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1 bg-white/60 px-2 py-0.5 rounded shadow-sm">
                                         <Box size={10} className="text-blue-400"/> {selectedPO.items.length} SKUs
                                     </p>
@@ -290,12 +295,23 @@ const GRNView: React.FC = () => {
                                                     <Filter size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                                     <select
                                                         value={filters.status}
-                                                        onChange={(e) => setFilters({ status: e.target.value })}
+                                                        onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                                                         className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
                                                     >
                                                         <option value="all">All statuses</option>
                                                         <option value="Pending QC">Pending QC</option>
                                                         <option value="QC Completed">QC Completed</option>
+                                                    </select>
+                                                </div>
+                                                <div className="relative w-full sm:w-44">
+                                                    <Truck size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <select
+                                                        value={filters.sortOrder}
+                                                        onChange={(e) => setFilters({ ...filters, sortOrder: e.target.value })}
+                                                        className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/10"
+                                                    >
+                                                        <option value="newest">Newest first</option>
+                                                        <option value="earliest">Earliest first</option>
                                                     </select>
                                                 </div>
                                          </div>
