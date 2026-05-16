@@ -13,7 +13,7 @@ export const exportService = {
         responseType: 'blob'
       });
 
-      console.log('âœ… Response received:', response.status, response.headers);
+      console.log('âœ... Response received:', response.status, response.headers);
       console.log('ğŸ“Š Blob size:', response.data.size, 'bytes');
       
       if (!response.data || response.data.size === 0) {
@@ -24,7 +24,7 @@ export const exportService = {
       // Don't wrap it again, use it directly
       const fileName = `stock-summary-${period}.${format === 'excel' ? 'xlsx' : 'csv'}`;
       triggerDownload(response.data, fileName);
-      console.log(`âœ… Stock Summary exported as ${format}`);
+      console.log(`âœ... Stock Summary exported as ${format}`);
       return true;
     } catch (error: any) {
       console.error('âŒ Error exporting stock summary:', error);
@@ -45,10 +45,10 @@ export const exportService = {
         responseType: 'blob'
       });
 
-      console.log('âœ… Response received:', response.status, response.headers);
+      console.log('âœ... Response received:', response.status, response.headers);
       const fileName = `item-stock-${period}.${format === 'excel' ? 'xlsx' : 'csv'}`;
       triggerDownload(response.data, fileName);
-      console.log(`âœ… Item Stock exported as ${format}`);
+      console.log(`âœ... Item Stock exported as ${format}`);
       return true;
     } catch (error: any) {
       console.error('âŒ Error exporting item stock:', error);
@@ -68,10 +68,10 @@ export const exportService = {
         responseType: 'blob'
       });
 
-      console.log('âœ… Response received:', response.status, response.headers);
+      console.log('âœ... Response received:', response.status, response.headers);
       const fileName = `warehouse-report-${period}.${format === 'excel' ? 'xlsx' : 'csv'}`;
       triggerDownload(response.data, fileName);
-      console.log(`âœ… Warehouse Report exported as ${format}`);
+      console.log(`âœ... Warehouse Report exported as ${format}`);
       return true;
     } catch (error: any) {
       console.error('âŒ Error exporting warehouse report:', error);
@@ -214,7 +214,7 @@ const triggerDownload = (blob: Blob, fileName: string) => {
     
     // Trigger click
     link.click();
-    console.log('âœ… Click triggered');
+    console.log('âœ... Click triggered');
     
     // Use longer cleanup timeout and dispatch click event
     setTimeout(() => {
@@ -223,7 +223,7 @@ const triggerDownload = (blob: Blob, fileName: string) => {
           document.body.removeChild(link);
         }
         window.URL.revokeObjectURL(url);
-        console.log('âœ… Cleanup complete');
+        console.log('âœ... Cleanup complete');
       } catch (e) {
         console.error('âŒ Cleanup error:', e);
       }
@@ -243,10 +243,10 @@ const triggerDownload = (blob: Blob, fileName: string) => {
       params: { period: 'monthly', format: 'csv' },
       responseType: 'blob'
     });
-    console.log('âœ… API Response status:', response.status);
+    console.log('âœ... API Response status:', response.status);
     console.log('ğŸ“Š Blob size:', response.data.size);
     console.log('ğŸ¯ Blob type:', response.data.type);
-    console.log('âœ… Full blob data:', response.data);
+    console.log('âœ... Full blob data:', response.data);
     return response.data;
   } catch (error) {
     console.error('âŒ API Error:', error);

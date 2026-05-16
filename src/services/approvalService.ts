@@ -66,7 +66,7 @@ export const approvalService = {
       console.log("🌐 Fetching pending PRs from API...");
       const response = await api.get('/purchase/requisitions/pending');
       const data = response.data.data ?? [];
-      console.log(`✅ API Success: Found ${data.length} pending PRs`);
+      console.log(`�... API Success: Found ${data.length} pending PRs`);
       return data.map((pr: any) => ({
         ...pr,
         id: String(pr._id || pr.id || ''),

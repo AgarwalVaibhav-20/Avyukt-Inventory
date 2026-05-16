@@ -115,7 +115,7 @@ export const delegatedAccessService = {
   },
 
   /**
-   * Start a delegated session for an approved request — returns a token
+   * Start a delegated session for an approved request - returns a token
    * the frontend should swap in to act as the target user.
    */
   useAccess: async (requestId: string) => {

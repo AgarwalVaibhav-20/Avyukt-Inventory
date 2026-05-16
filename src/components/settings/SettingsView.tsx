@@ -66,7 +66,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ defaultTab = 'inventory' })
     { id: 'autoreorder', label: 'Auto Reorder Rules', icon: Zap, color: 'from-amber-600 to-amber-700', description: 'Configures the automated replenishment engine: which items trigger automatic PO creation, when (at reorder point or safety stock breach), how much to order (EOQ formula or fixed quantity), and which vendor to use.' },
     { id: 'tax', label: 'Tax & GST Configuration', icon: Sliders, color: 'from-emerald-600 to-emerald-700', description: 'Set up GST rate slabs, HSN-code-to-tax-rate mapping, CGST/SGST/IGST applicability rules, reverse charge items, and GST registration details for each warehouse/plant location.' },
     { id: 'number', label: 'Number Series', icon: Hash, color: 'from-purple-600 to-purple-700', description: 'Define auto-numbering formats and sequences for every document type. PO/2025-26/00001, GRN/W1/2025/00001, etc. Supports prefix/suffix, fiscal year reset, and warehouse-specific series.' },
-    { id: 'custom', label: 'Custom Fields', icon: LayoutGrid, color: 'from-pink-600 to-pink-700', description: 'Allows administrators to add custom data fields to any module\'s forms without code changes — text fields, dropdowns, dates, checkboxes. These appear in forms, reports, and exports.' },
+    { id: 'custom', label: 'Custom Fields', icon: LayoutGrid, color: 'from-pink-600 to-pink-700', description: 'Allows administrators to add custom data fields to any module\'s forms without code changes - text fields, dropdowns, dates, checkboxes. These appear in forms, reports, and exports.' },
     { id: 'workflow', label: 'Workflow Rules', icon: Workflow, color: 'from-indigo-600 to-indigo-700', description: 'Configure event-driven automation: send email notification when stock goes below reorder level, auto-assign inspector when GRN created, escalate approval if pending >24 hours, etc.' },
   ];
 
@@ -265,9 +265,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ defaultTab = 'inventory' })
                   </div>
                 </div>
 
-                {/* Workflow Rules — Module */}
+                {/* Workflow Rules - Module */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Workflow Rules — Module</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Workflow Rules - Module</label>
                   <select
                     value={filters.workflowModule}
                     onChange={(e) => handleFilterChange('workflowModule', e.target.value)}
@@ -281,9 +281,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({ defaultTab = 'inventory' })
                   </select>
                 </div>
 
-                {/* Number Series — Type */}
+                {/* Number Series - Type */}
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Number Series — Type</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">Number Series - Type</label>
                   <select
                     value={filters.numberSeriesType}
                     onChange={(e) => handleFilterChange('numberSeriesType', e.target.value)}

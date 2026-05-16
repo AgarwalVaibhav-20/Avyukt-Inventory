@@ -95,7 +95,7 @@ const UserManagementView: React.FC = () => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return;
 
-    // Self-check first — your own email shouldn't fall through to the
+    // Self-check first - your own email shouldn't fall through to the
     // "not in your organisation" toast (you ARE in your org).
     const myEmail = String(currentUser?.email || '').trim().toLowerCase();
     if (myEmail && term === myEmail) {

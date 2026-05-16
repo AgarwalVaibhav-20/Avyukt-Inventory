@@ -245,7 +245,7 @@ const ExpiryAnalysisReportView: React.FC = () => {
                 Batch Expiry Details
               </CardTitle>
               <p className="text-xs text-slate-400 mt-0.5">
-                Sorted by expiry date — most critical first
+                Sorted by expiry date - most critical first
               </p>
             </div>
             <div className="flex gap-2 flex-wrap">

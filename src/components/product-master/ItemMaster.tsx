@@ -188,6 +188,14 @@ const ItemMaster: React.FC = () => {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRow = (id: string) => {
+    const next = new Set(expandedRows);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpandedRows(next);
+  };
 
   // Filter state
   const [filters, setFilters] = useState<{
@@ -806,7 +814,7 @@ const ItemMaster: React.FC = () => {
               <tr>
                 <td colSpan={6} className="py-24 text-center">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin text-gray-300" />
-                  <p className="text-xs text-gray-400 mt-2">Loadingâ€¦</p>
+                  <p className="text-xs text-gray-400 mt-2">Loading...</p>
                 </td>
               </tr>
             ) : filteredItems.length === 0 ? (
@@ -825,10 +833,10 @@ const ItemMaster: React.FC = () => {
               pagedItems.map((item) => {
                 const status = stockStatus(item);
                 return (
-                  <tr
-                    key={item.id}
-                    className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors group"
-                  >
+                  <React.Fragment key={item.id}>
+                    <tr
+                      className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors group"
+                    >
                     {/* Item details */}
                     <td className="py-3 pr-6">
                       <div className="flex items-center gap-3">
@@ -852,7 +860,7 @@ const ItemMaster: React.FC = () => {
                         {item.itemType || "Trading"}
                       </div>
                       <div className="text-xs text-gray-400">
-                        {item.category || "â€”"}
+                        {item.category || ""}
                       </div>
                     </td>
 
@@ -868,7 +876,7 @@ const ItemMaster: React.FC = () => {
                       </span>
                       <div className="text-xs text-gray-400 mt-1">
                         {item.stock} {item.stockUom || item.uom}
-                        {" Â· "}reorder {item.reorderLevel}
+                        {" - "}reorder {item.reorderLevel}
                       </div>
                       {getLinkedWarehouseName(item) && (
                         <div className="text-xs text-gray-300">
@@ -898,11 +906,27 @@ const ItemMaster: React.FC = () => {
 
                     {/* Pricing */}
                     <td className="py-3 pr-6">
-                      <div className="text-sm font-medium text-gray-800">
-                        {(item.salePrice || 0).toLocaleString()}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        Cost {(item.unitPrice || 0).toLocaleString()}
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5">
+                          <div className="text-sm font-bold text-slate-800">
+                            ₹{(item.salePrice || 0).toLocaleString()}
+                          </div>
+                          <button
+                            onClick={() => toggleRow(item.id)}
+                            className="p-1 hover:bg-slate-100 rounded-md text-slate-400 transition-colors"
+                          >
+                            <ChevronDown
+                              size={14}
+                              className={cn(
+                                "transition-transform duration-200",
+                                expandedRows.has(item.id) ? "rotate-180" : ""
+                              )}
+                            />
+                          </button>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                          Cost: ₹{(item.unitPrice || 0).toLocaleString()}
+                        </div>
                       </div>
                     </td>
 
@@ -977,6 +1001,35 @@ const ItemMaster: React.FC = () => {
                       </div>
                     </td>
                   </tr>
+                  {expandedRows.has(item.id) && (
+                    <tr className="bg-slate-50/50 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <td colSpan={6} className="px-8 py-4 border-b border-slate-100">
+                        <div className="grid grid-cols-4 gap-6">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Price</p>
+                            <p className="text-sm font-bold text-slate-700">₹{(item.salePrice || 0).toLocaleString()}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GST Rate</p>
+                            <p className="text-sm font-bold text-emerald-600">{item.taxRate || 0}%</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price Incl. GST</p>
+                            <p className="text-sm font-bold text-blue-600">
+                              ₹{((item.salePrice || 0) * (1 + (item.taxRate || 0) / 100)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Stock Value</p>
+                            <p className="text-sm font-bold text-slate-800">
+                              ₹{( (item.stock || 0) * (item.unitPrice || 0) ).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })
             )}
@@ -996,7 +1049,7 @@ const ItemMaster: React.FC = () => {
         />
       </div>
 
-      {/* â”€â”€ Dialog â”€â”€ */}
+      {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-7xl sm:max-w-7xl w-full p-0 gap-0 bg-white border border-gray-200 shadow-xl rounded-xl overflow-hidden">
           <form onSubmit={handleSubmit} className="flex h-[90vh] flex-col">
@@ -1006,7 +1059,7 @@ const ItemMaster: React.FC = () => {
                 <div>
                   <DialogTitle className="text-base font-semibold text-gray-900">
                     {editingItem
-                      ? `Edit â€” ${editingItem.name}`
+                      ? `Edit-${editingItem.name}`
                       : "New item record"}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-gray-400 mt-0.5">
@@ -1019,7 +1072,7 @@ const ItemMaster: React.FC = () => {
 
             {/* Scrollable body */}
             <div className="flex-1 overflow-y-auto px-7 py-8 space-y-12">
-              {/* â”€â”€ SECTION: IDENTITY â”€â”€ */}
+              {/* SECTION: IDENTITY */}
               <section className="space-y-6">
                 <SectionHead
                   title="Item Identity"
@@ -1083,7 +1136,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* â”€â”€ SECTION: CLASSIFICATION â”€â”€ */}
+              {/* SECTION: CLASSIFICATION */}
               <section className="space-y-6">
                 <SectionHead title="Classification" icon={<Tags size={14} />} />
                 <Row4>
@@ -1118,7 +1171,7 @@ const ItemMaster: React.FC = () => {
                         const code = h.code || (h as any).hsnCode;
                         const rate = h.taxRate ?? (h as any).taxPercentage ?? 0;
                         return {
-                          label: `${code} — ${rate}%`,
+                          label: `${code} - ${rate}%`,
                           value: code,
                         };
                       })}
@@ -1137,7 +1190,7 @@ const ItemMaster: React.FC = () => {
                 </Row4>
               </section>
 
-              {/* â”€â”€ SECTION: UOM & REPLENISHMENT â”€â”€ */}
+              {/* SECTION: UOM & REPLENISHMENT */}
               <section className="space-y-6">
                 <SectionHead
                   title="UoM & Replenishment"
@@ -1217,7 +1270,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* â”€â”€ SECTION: WAREHOUSE â”€â”€ */}
+              {/* SECTION: WAREHOUSE */}
               <section className="space-y-6">
                 <SectionHead
                   title="Warehouse Stock"
@@ -1275,7 +1328,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* â”€â”€ SECTION: PRICING â”€â”€ */}
+              {/* SECTION: PRICING */}
               <section className="space-y-6">
                 <SectionHead
                   title="Pricing & Valuation"
@@ -1284,17 +1337,12 @@ const ItemMaster: React.FC = () => {
                 <div className="space-y-6">
                   <Row4>
                     <NumFld
-                      label="Standard Cost"
+                      label="Standard Cost (Base)"
                       value={formData.unitPrice ?? 0}
                       onChange={(v) => setField("unitPrice", v)}
                     />
                     <NumFld
-                      label="Purchase Price"
-                      value={formData.unitPrice ?? 0}
-                      onChange={(v) => setField("unitPrice", v)}
-                    />
-                    <NumFld
-                      label="Selling Price"
+                      label="Selling Price (Base)"
                       value={formData.salePrice ?? 0}
                       onChange={(v) => setField("salePrice", v)}
                     />
@@ -1303,7 +1351,52 @@ const ItemMaster: React.FC = () => {
                       value={formData.mrp ?? 0}
                       onChange={(v) => setField("mrp", v)}
                     />
+                    <NField label="Currency">
+                      <Input
+                        value={formData.currency || "INR"}
+                        onChange={(e) => setField("currency", e.target.value)}
+                        className={inputCls}
+                      />
+                    </NField>
                   </Row4>
+
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Real-time Pricing Breakdown</h4>
+                    </div>
+                    <div className="grid grid-cols-4 gap-8">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Price Incl. GST</p>
+                        <p className="text-xl font-black text-blue-600">
+                          ₹{((formData.salePrice || 0) * (1 + (formData.taxRate || 0) / 100)).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-medium">Calculation: Base + {formData.taxRate || 0}% Tax</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Total Inventory Value</p>
+                        <p className="text-xl font-black text-slate-800">
+                          ₹{((formData.quantity || 0) * (formData.unitPrice || 0)).toLocaleString()}
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-medium">Based on Opening Stock</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Margin per Unit</p>
+                        <p className="text-xl font-black text-emerald-600">
+                          ₹{Math.max(0, (formData.salePrice || 0) - (formData.unitPrice || 0)).toLocaleString()}
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-medium">Base Price - Cost Price</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Profit %</p>
+                        <p className="text-xl font-black text-slate-900">
+                          {formData.unitPrice ? (((formData.salePrice || 0) - formData.unitPrice) / formData.unitPrice * 100).toFixed(1) : 0}%
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-medium">Gross Margin Ratio</p>
+                      </div>
+                    </div>
+                  </div>
+
                   <Row4>
                     <NumFld
                       label="Customer Price"
@@ -1315,13 +1408,7 @@ const ItemMaster: React.FC = () => {
                       value={formData.quantityBreakPrice ?? 0}
                       onChange={(v) => setField("quantityBreakPrice", v)}
                     />
-                    <NField label="Currency">
-                      <Input
-                        value={formData.currency || "INR"}
-                        onChange={(e) => setField("currency", e.target.value)}
-                        className={inputCls}
-                      />
-                    </NField>
+                    <div />
                     <NField label="Valuation Method">
                       <NotionSelect
                         value={formData.valuationMethod || ""}
@@ -1364,7 +1451,7 @@ const ItemMaster: React.FC = () => {
                 </div>
               </section>
 
-              {/* â”€â”€ SECTION: BARCODES & MEDIA â”€â”€ */}
+              {/* SECTION: BARCODES & MEDIA */}
               <section className="space-y-6">
                 <SectionHead
                   title="Barcodes & Media"
@@ -1588,7 +1675,6 @@ const ItemMaster: React.FC = () => {
 
 // -- Shared UI components --
 
-
 const ActionBtn: React.FC<{
   title: string;
   onClick: () => void;
@@ -1665,8 +1751,6 @@ const UomSel: React.FC<{
     />
   </NField>
 );
-
-
 
 const ChipTag: React.FC<{
   children: React.ReactNode;

@@ -156,7 +156,7 @@ const ValuationAnalysisView: React.FC = () => {
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm font-medium text-slate-500">Largest item</p>
           <p className="mt-1 text-lg font-bold text-slate-800">
-            {topItem?.itemName || "—"}
+            {topItem?.itemName || "-"}
           </p>
         </div>
       </div>

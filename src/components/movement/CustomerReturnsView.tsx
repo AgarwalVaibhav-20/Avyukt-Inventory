@@ -145,7 +145,7 @@ const CustomerReturnsView: React.FC = () => {
         <div>
           <h1 className="text-4xl font-bold text-slate-900">Customer Returns</h1>
           <p className="mt-2 text-base text-slate-600">
-            Process goods returned from customers — capture return reason, condition assessment, and route to appropriate disposition.
+            Process goods returned from customers - capture return reason, condition assessment, and route to appropriate disposition.
           </p>
         </div>
         <button
@@ -301,7 +301,7 @@ const CustomerReturnsView: React.FC = () => {
                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                       }`}
                     >
-                      {cond === 'Good' && '✅ '}
+                      {cond === 'Good' && '�... '}
                       {cond === 'Damaged' && '⚠️ '}
                       {cond === 'Defective' && '❌ '}
                       {cond === 'Expired' && '🕐 '}
@@ -324,7 +324,7 @@ const CustomerReturnsView: React.FC = () => {
                     <option key={d} value={d}>
                       {d === 'Restock' && '📦 '}
                       {d === 'Quality Inspection' && '🔍 '}
-                      {d === 'Scrap' && '🗑️ '}
+                      {d === 'Scrap' && '�-�️ '}
                       {d === 'Rework' && '🔧 '}
                       {d}
                     </option>

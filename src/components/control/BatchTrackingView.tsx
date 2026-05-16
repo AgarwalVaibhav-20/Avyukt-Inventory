@@ -110,7 +110,7 @@ const BatchTrackingView: React.FC = () => {
                                     onChange={e => setFormData({...formData, itemId: e.target.value})}
                                 >
                                     <option value="">Select Master Item</option>
-                                    {items.map(i => <option key={i.id} value={i.id}>{i.name} — {i.sku}</option>)}
+                                    {items.map(i => <option key={i.id} value={i.id}>{i.name} - {i.sku}</option>)}
                                 </select>
                             </div>
                             <div className="space-y-3">

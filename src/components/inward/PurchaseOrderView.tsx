@@ -81,7 +81,7 @@ const PurchaseOrderView: React.FC = () => {
             itemName: item.itemName,
             hsnCode: item.hsnCode || product?.hsnCode || '',
             quantity: item.quantity,
-            unitPrice: vendorPrice?.price || product?.unitPrice || 0,
+            unitPrice: vendorPrice?.price || 0,
             receivedQty: 0,
             taxRate: item.taxRate || product?.taxRate || 0
         };
@@ -106,7 +106,7 @@ const PurchaseOrderView: React.FC = () => {
             itemId: value,
             itemName: selectedItem?.name || '',
             hsnCode: selectedItem?.hsnCode || '',
-            unitPrice: vendorPrice?.price || selectedItem?.unitPrice || 0,
+            unitPrice: vendorPrice?.price || 0,
             taxRate: selectedItem?.taxRate || 0
         };
     } else {
@@ -124,8 +124,12 @@ const PurchaseOrderView: React.FC = () => {
     
     setLocalLoading(true);
     try {
-      // Calc total
-      const totalAmount = newPO.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      // Calc total including tax
+      const totalAmount = newPO.items.reduce((sum, item) => {
+        const base = item.quantity * item.unitPrice;
+        const tax = base * (item.taxRate / 100);
+        return sum + base + tax;
+      }, 0);
 
       await procurementService.createPO({
           vendorId: newPO.vendorId,
@@ -364,7 +368,7 @@ const PurchaseOrderView: React.FC = () => {
                                                 <option value="">Select Material / Product</option>
                                                 {items.map(i => (
                                                     <option key={i.id} value={i.id}>
-                                                        {i.name} — {i.sku}
+                                                        {i.name} - {i.sku}
                                                     </option>
                                                 ))}
                                             </select>
@@ -420,8 +424,13 @@ const PurchaseOrderView: React.FC = () => {
                                             onChange={e => updateItem(idx, 'taxRate', Number(e.target.value))}
                                         />
                                     </td>
-                                    <td className="px-6 py-6 text-right font-black text-slate-900 text-lg">
-                                        ₹{(item.quantity * item.unitPrice).toLocaleString("en-IN")}
+                                    <td className="px-6 py-6 text-right tabular-nums">
+                                        <div className="font-black text-slate-900 text-lg">
+                                            ₹{((item.quantity * item.unitPrice) * (1 + (item.taxRate || 0) / 100)).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        </div>
+                                        <div className="text-[10px] text-emerald-600 font-black uppercase tracking-tighter mt-1">
+                                            Incl. ₹{((item.quantity * item.unitPrice) * ((item.taxRate || 0) / 100)).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Tax
+                                        </div>
                                     </td>
                                     <td className="px-6 py-6 text-center">
                                         <button 
@@ -440,9 +449,33 @@ const PurchaseOrderView: React.FC = () => {
                         {newPO.items.length > 0 && (
                             <tfoot className="bg-slate-50/50 border-t-4 border-slate-100">
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-right text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">Net Procurement Total:</td>
-                                    <td className="px-6 py-8 text-right text-3xl font-black text-blue-600 tabular-nums drop-shadow-sm">
-                                        ₹{newPO.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0).toLocaleString("en-IN")}
+                                    <td colSpan={3} className="px-6 py-4"></td>
+                                    <td colSpan={2} className="px-6 py-4">
+                                        <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                                            <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                                <span>Net Total:</span>
+                                                <span className="text-slate-600">
+                                                    ₹{newPO.items.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-xs font-bold text-emerald-500 uppercase tracking-widest">
+                                                <span>Total Tax:</span>
+                                                <span>
+                                                    ₹{newPO.items.reduce((sum, i) => sum + (i.quantity * i.unitPrice * ((i.taxRate || 0) / 100)), 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            <div className="h-px bg-slate-100 my-1"></div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">Grand Total:</span>
+                                                <span className="text-2xl font-black text-blue-600 tabular-nums">
+                                                    ₹{newPO.items.reduce((sum, item) => {
+                                                        const base = item.quantity * item.unitPrice;
+                                                        const tax = base * ((item.taxRate || 0) / 100);
+                                                        return sum + base + tax;
+                                                    }, 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td></td>
                                 </tr>
@@ -606,21 +639,24 @@ const PurchaseOrderView: React.FC = () => {
                             <td className="px-8 py-7 text-right">
                                 <div className="flex flex-col items-end">
                                     <span className="font-black text-slate-900 text-xl tabular-nums tracking-tighter">
-                                        ₹{po.totalAmount.toLocaleString("en-IN")}
+                                        ₹{(po.items?.reduce((sum, i) => {
+                                            const base = i.quantity * i.unitPrice;
+                                            const tax = base * ((i.taxRate || 0) / 100);
+                                            return sum + base + tax;
+                                        }, 0) || po.totalAmount || 0).toLocaleString("en-IN")}
                                     </span>
-                                    <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest opacity-80">Payment Pending</span>
+                                    <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">Incl. GST</span>
                                 </div>
                             </td>
                             <td className="px-8 py-7">
                                 <span className={`px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] border shadow-sm flex items-center justify-center w-32 ${
                                     po.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                                    po.status === 'Sent' || po.status === 'Approved' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
-                                    po.status === 'Partial' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                    ['Sent', 'Approved', 'Partial', 'Delivered'].includes(po.status) ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                     po.status === 'Draft' ? 'bg-slate-100 text-slate-600 border-slate-200' :
                                     po.status === 'Pending' || po.status === 'Pending Approval' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                                     'bg-slate-50 text-slate-500 border-slate-100'
                                 }`}>
-                                    {po.status}
+                                    {['Sent', 'Approved', 'Partial', 'Delivered'].includes(po.status) ? 'Pending' : po.status}
                                 </span>
                             </td>
                             <td className="px-8 py-7 text-center">
@@ -698,7 +734,11 @@ const PurchaseOrderView: React.FC = () => {
                                                           unitPrice: vendorPrice?.price || item.unitPrice
                                                       };
                                                   });
-                                                  const newTotal = updatedItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+                                                  const newTotal = updatedItems.reduce((sum, item) => {
+                                                      const base = item.quantity * item.unitPrice;
+                                                      const tax = base * ((item.taxRate || 0) / 100);
+                                                      return sum + base + tax;
+                                                  }, 0);
                                                   setSelectedPO({
                                                       ...selectedPO,
                                                       items: updatedItems,
@@ -725,18 +765,30 @@ const PurchaseOrderView: React.FC = () => {
                               )}
                           </div>
                           <div className="p-8 bg-slate-900 rounded-[2rem] text-white">
-                              <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Financial Summary</h4>
-                              <div className="flex items-end justify-between">
-                                  <div>
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase">Gross Commitment</p>
-                                      <p className="text-4xl font-black text-white mt-1 tabular-nums">₹{selectedPO.totalAmount.toLocaleString("en-IN")}</p>
-                                  </div>
-                                  <div className="text-right">
-                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payment Status</p>
-                                      <span className="bg-white/10 text-white border border-white/20 mt-2 px-3 py-1 rounded-lg text-[10px] font-black uppercase inline-block">Pending</span>
-                                  </div>
-                              </div>
-                          </div>
+                               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Financial Summary</h4>
+                               <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase">Gross Commitment</p>
+                                       <p className="text-2xl font-black text-white mt-1 tabular-nums">₹{selectedPO.totalAmount.toLocaleString("en-IN")}</p>
+                                   </div>
+                                   <div className="text-right">
+                                       <p className="text-[10px] font-bold text-slate-400 uppercase">Total GST</p>
+                                       <p className="text-xl font-black text-emerald-400 mt-1 tabular-nums">
+                                           ₹{selectedPO.items.reduce((sum, i) => sum + (i.quantity * i.unitPrice * ((i.taxRate || 0) / 100)), 0).toLocaleString("en-IN")}
+                                       </p>
+                                   </div>
+                                   <div className="col-span-2 pt-4 border-t border-white/10 flex justify-between items-center">
+                                       <div>
+                                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Payment Status</p>
+                                           <span className="bg-white/10 text-white border border-white/20 mt-1 px-3 py-1 rounded-lg text-[10px] font-black uppercase inline-block">Pending</span>
+                                       </div>
+                                       <div className="text-right">
+                                           <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest">Final Value</p>
+                                           <p className="text-sm font-black text-white italic">Incl. all taxes</p>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
                       </div>
 
                       <div className="mb-8">
@@ -744,22 +796,33 @@ const PurchaseOrderView: React.FC = () => {
                           <div className="max-h-[300px] overflow-y-auto border border-slate-100 rounded-[2rem] bg-white">
                               <table className="w-full text-sm text-left">
                                   <thead className="sticky top-0 bg-slate-50 text-[10px] text-slate-400 font-black uppercase tracking-widest border-b border-slate-100">
-                                      <tr>
-                                          <th className="px-6 py-4">Material Name</th>
-                                          <th className="px-6 py-4 text-center">Ordered Qty</th>
-                                          <th className="px-6 py-4 text-right">Unit Price</th>
-                                          <th className="px-6 py-4 text-right">Line Total</th>
-                                      </tr>
+                                       <tr>
+                                           <th className="px-6 py-4">Material Name</th>
+                                           <th className="px-6 py-4 text-center">Qty</th>
+                                           <th className="px-6 py-4 text-center">HSN / GST</th>
+                                           <th className="px-6 py-4 text-right">Unit Price</th>
+                                           <th className="px-6 py-4 text-right">Line Total</th>
+                                       </tr>
                                   </thead>
                                   <tbody className="divide-y divide-slate-50">
                                       {selectedPO.items.map((item, idx) => (
-                                          <tr key={idx} className="hover:bg-slate-50/50">
-                                              <td className="px-6 py-5 font-black text-slate-800">{item.itemName}</td>
-                                              <td className="px-6 py-5 text-center font-bold text-slate-600">{item.quantity}</td>
-                                              <td className="px-6 py-5 text-right font-bold text-slate-600">₹{item.unitPrice}</td>
-                                              <td className="px-6 py-5 text-right font-black text-slate-900">₹{item.quantity * item.unitPrice}</td>
-                                          </tr>
-                                      ))}
+                                           <tr key={idx} className="hover:bg-slate-50/50">
+                                               <td className="px-6 py-5">
+                                                   <div className="font-black text-slate-800 leading-tight">{item.itemName}</div>
+                                                   <div className="text-[9px] text-slate-400 font-bold font-mono uppercase mt-0.5">ID: {item.itemId}</div>
+                                               </td>
+                                               <td className="px-6 py-5 text-center font-bold text-slate-600">{item.quantity}</td>
+                                               <td className="px-6 py-5 text-center">
+                                                   <div className="text-[10px] font-bold text-slate-700">{item.hsnCode || 'N/A'}</div>
+                                                   <div className="text-[9px] font-black text-indigo-500 uppercase">{item.taxRate}% GST</div>
+                                               </td>
+                                               <td className="px-6 py-5 text-right font-bold text-slate-600">₹{item.unitPrice.toLocaleString("en-IN")}</td>
+                                               <td className="px-6 py-5 text-right">
+                                                   <div className="font-black text-slate-900">₹{(item.quantity * item.unitPrice * (1 + (item.taxRate || 0) / 100)).toLocaleString("en-IN")}</div>
+                                                   <div className="text-[9px] text-emerald-500 font-bold italic">Incl. Tax</div>
+                                               </td>
+                                           </tr>
+                                       ))}
                                   </tbody>
                               </table>
                           </div>

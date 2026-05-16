@@ -326,10 +326,10 @@ const StockAtCustomerLocationView: React.FC = () => {
                               {item.quantity}
                             </td>
                             <td className="px-6 py-3.5 text-slate-600">
-                              {item.lastDispatchDate || '—'}
+                              {item.lastDispatchDate || '-'}
                             </td>
                             <td className="px-6 py-3.5 text-slate-600">
-                              {item.lastReturnDate || '—'}
+                              {item.lastReturnDate || '-'}
                             </td>
                             <td className="px-6 py-3.5 text-right text-slate-600">
                               {item.movementCount}

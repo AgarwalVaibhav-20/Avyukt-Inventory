@@ -96,11 +96,56 @@ const getWarehouseSummary = (warehouse?: Warehouse | null): WarehouseStockSummar
 const getWarehouseItems = (warehouse?: Warehouse | null): WarehouseStockItem[] =>
   warehouse?.stockItems || [];
 
+const parseDateValue = (value?: string | null) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const getItemReceivedDate = (item: WarehouseStockItem) =>
+  item.receivedDate ||
+  item.purchaseDate ||
+  item.firstStockDate ||
+  item.oldestBatch?.purchaseDate ||
+  item.lastStockDate ||
+  "";
+
 const formatDate = (value?: string) =>
-  value ? new Date(value).toLocaleDateString() : "No active batch";
+  parseDateValue(value)?.toLocaleDateString() || "Not available";
 
 const formatMoney = (value?: number) =>
   `₹${Number(value || 0).toLocaleString()}`;
+
+const getDateBoundary = (value?: string, endOfDay = false) => {
+  if (!value) return null;
+  const date = new Date(`${value}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}`);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const itemMatchesDateRange = (
+  item: WarehouseStockItem,
+  fromDate?: string,
+  toDate?: string,
+) => {
+  if (!fromDate && !toDate) return true;
+
+  const receivedDate = parseDateValue(getItemReceivedDate(item));
+  if (!receivedDate) return false;
+
+  const from = getDateBoundary(fromDate);
+  const to = getDateBoundary(toDate, true);
+
+  return (!from || receivedDate >= from) && (!to || receivedDate <= to);
+};
+
+const getDateFilteredWarehouseItems = (
+  warehouse: Warehouse,
+  fromDate?: string,
+  toDate?: string,
+) =>
+  getWarehouseItems(warehouse).filter((item) =>
+    itemMatchesDateRange(item, fromDate, toDate),
+  );
 
 const WarehouseItemsPanel: React.FC<{ items: WarehouseStockItem[] }> = ({
   items,
@@ -114,12 +159,13 @@ const WarehouseItemsPanel: React.FC<{ items: WarehouseStockItem[] }> = ({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-100 overflow-hidden bg-slate-50/40">
+    <div className="rounded-2xl border border-slate-100 overflow-x-auto bg-slate-50/40">
       <Table>
         <TableHeader>
           <TableRow className="bg-slate-50 hover:bg-slate-50">
             <TableHead>Item Name</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Received Date</TableHead>
             <TableHead className="text-right">Cost</TableHead>
             <TableHead className="text-right">Sale Price</TableHead>
             <TableHead className="text-right">Stock</TableHead>
@@ -144,11 +190,21 @@ const WarehouseItemsPanel: React.FC<{ items: WarehouseStockItem[] }> = ({
                   {item.itemKind === "rawMaterial" ? "Raw Material" : "Product"}
                 </Badge>
               </TableCell>
+              <TableCell>
+                <div className="text-sm font-medium text-slate-700">
+                  {formatDate(getItemReceivedDate(item))}
+                </div>
+                {item.itemKind === "rawMaterial" && (
+                  <div className="text-xs text-slate-500">
+                    {item.batchCount || 0} batch{item.batchCount === 1 ? "" : "es"}
+                  </div>
+                )}
+              </TableCell>
               <TableCell className="text-right font-medium text-slate-700">
                 {formatMoney(item.unitCost)}
               </TableCell>
               <TableCell className="text-right font-medium text-slate-700">
-                {item.itemKind === "product" ? formatMoney(item.salePrice) : "—"}
+                {item.itemKind === "product" ? formatMoney(item.salePrice) : "-"}
               </TableCell>
               <TableCell className="text-right font-semibold text-sky-600">
                 {item.totalQty.toLocaleString()}
@@ -174,6 +230,8 @@ const WarehouseMasterView: React.FC = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [receivedFromDate, setReceivedFromDate] = useState("");
+  const [receivedToDate, setReceivedToDate] = useState("");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -252,14 +310,30 @@ const WarehouseMasterView: React.FC = () => {
   } = useListControls({
     items: warehouses,
     searchTerm,
-    filters: { type: typeFilter },
+    filters: {
+      type: typeFilter,
+      receivedFromDate,
+      receivedToDate,
+    },
     initialPageSize: 9,
     searchFn: (warehouse, term) =>
       warehouse.name.toLowerCase().includes(term) ||
       warehouse.location.toLowerCase().includes(term) ||
       warehouse.contactPerson.toLowerCase().includes(term),
-    filterFn: (warehouse, filters) =>
-      filters.type === "all" || warehouse.type === filters.type,
+    filterFn: (warehouse, filters) => {
+      const matchesType =
+        filters.type === "all" || warehouse.type === filters.type;
+      const matchesReceivedDate =
+        !filters.receivedFromDate && !filters.receivedToDate
+          ? true
+          : getDateFilteredWarehouseItems(
+              warehouse,
+              filters.receivedFromDate,
+              filters.receivedToDate,
+            ).length > 0;
+
+      return matchesType && matchesReceivedDate;
+    },
   });
 
   const stats = useMemo(() => {
@@ -389,6 +463,49 @@ const WarehouseMasterView: React.FC = () => {
             <SelectItem value="Retail Store">Retail Store</SelectItem>
           </SelectContent>
         </Select>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full sm:w-auto">
+          <div className="relative">
+            <Calendar
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
+            <Input
+              type="date"
+              aria-label="Received from date"
+              className="pl-9 h-11 bg-slate-50/50 border-none"
+              value={receivedFromDate}
+              onChange={(e) => setReceivedFromDate(e.target.value)}
+            />
+          </div>
+          <div className="relative">
+            <Calendar
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              size={16}
+            />
+            <Input
+              type="date"
+              aria-label="Received to date"
+              className="pl-9 h-11 bg-slate-50/50 border-none"
+              value={receivedToDate}
+              onChange={(e) => setReceivedToDate(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {(receivedFromDate || receivedToDate) && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-11 text-slate-500"
+            onClick={() => {
+              setReceivedFromDate("");
+              setReceivedToDate("");
+            }}
+          >
+            Clear dates
+          </Button>
+        )}
 
         <div className="flex items-center gap-2 bg-slate-100/50 p-1 rounded-lg border border-slate-100">
           <Button
@@ -528,7 +645,11 @@ const WarehouseMasterView: React.FC = () => {
             <TableBody>
               {pagedItems.map((warehouse) => {
                 const summary = getWarehouseSummary(warehouse);
-                const items = getWarehouseItems(warehouse);
+                const items = getDateFilteredWarehouseItems(
+                  warehouse,
+                  receivedFromDate,
+                  receivedToDate,
+                );
                 const isExpanded = !!expandedWarehouses[warehouse.id];
 
                 return (
@@ -774,7 +895,11 @@ const WarehouseMasterView: React.FC = () => {
               <div className="px-8 pt-14 pb-8 bg-white">
                 {(() => {
                   const summary = getWarehouseSummary(selectedWarehouse);
-                  const stockItems = getWarehouseItems(selectedWarehouse);
+                  const stockItems = getDateFilteredWarehouseItems(
+                    selectedWarehouse,
+                    receivedFromDate,
+                    receivedToDate,
+                  );
                   const occupancy = selectedWarehouse.capacity
                     ? Math.min(
                         Math.round(

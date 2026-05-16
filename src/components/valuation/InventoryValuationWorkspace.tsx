@@ -231,7 +231,7 @@ const InventoryValuationWorkspace: React.FC<{ initialSection?: Section }> = ({ i
               <div key={item.itemId || item.id} className="flex items-center justify-between px-6 py-4">
                 <div>
                   <p className="font-semibold text-slate-900">{item.itemName || item.name}</p>
-                  <p className="text-xs text-slate-500">{item.sku} Â· {item.category}</p>
+                  <p className="text-xs text-slate-500">{item.sku} Â- {item.category}</p>
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-slate-900">{currency.format(item.totalValuation || item.totalValue || 0)}</p>

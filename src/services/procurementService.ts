@@ -14,8 +14,9 @@ const toFrontendGRNStatus = (status?: string): GRN['status'] => {
     case 'Pending QC':
       return 'Pending QC';
     case 'QC Completed':
+      return 'Pending';
     case 'Stocked':
-      return 'QC Completed';
+      return 'Put Away Completed';
     case 'Approved':
       return 'Approved';
     case 'Rejected':
@@ -38,6 +39,9 @@ const toFrontendGRNItem = (item: any): GRNItem & { grnItemId?: string } => ({
   acceptedQty: Number(item.acceptedQty ?? 0),
   rejectedQty: Number(item.rejectedQty ?? 0),
   qcRemarks: item.qcRemarks || item.remarks || '',
+  hsnCode: item.hsnCode || '',
+  taxRate: Number(item.taxPercentage || 0),
+  unitPrice: Number(item.unitValue || item.unitPrice || 0),
 });
 
 const toFrontendGRN = (grn: any, inspection?: any): GRN & { inspectionId?: string } => {
@@ -80,6 +84,9 @@ const toFrontendQCInspection = (inspection: any): GRN & { inspectionId?: string 
             poQty: sourceGrnItem?.poQty ?? mapped.poQty,
             itemName: sourceGrnItem?.itemName || mapped.itemName,
             itemId: sourceGrnItem?.itemId || mapped.itemId,
+            hsnCode: sourceGrnItem?.hsnCode || mapped.hsnCode,
+            taxRate: sourceGrnItem?.taxRate || mapped.taxRate,
+            unitPrice: sourceGrnItem?.unitPrice || mapped.unitPrice,
           };
         })
       : grn.items,
@@ -224,6 +231,10 @@ export const procurementService = {
         itemName: item.itemName,
         qty: Number(item.receivedQty || item.quantity || 0),
         orderedQty: Number(item.poQty || item.quantity || 0),
+        hsnCode: item.hsnCode,
+        taxPercentage: item.taxRate || item.taxPercentage || 0,
+        unitPrice: item.unitPrice || 0,
+        unitValue: item.unitPrice || 0,
       })),
     });
 
@@ -261,17 +272,20 @@ export const procurementService = {
       itemName: task.itemName || '',
       quantity: Number(task.qty || task.quantity || 0),
       status: 'Pending',
-      assignedLocation: task.suggestedLocation || task.warehouseId,
+      assignedLocation: task.suggestedLocation || '',
+      warehouseId: task.warehouseId || '',
+      hsnCode: task.hsnCode || '',
+      taxRate: Number(task.taxPercentage || 0),
     }));
   },
 
-  completePutAway: async (taskId: string, location: string): Promise<void> => {
+  completePutAway: async (taskId: string, binId: string, warehouseId: string): Promise<void> => {
     const tasks = await procurementService.getPutAwayTasks();
     const task = tasks.find((item) => item.id === taskId);
     if (!task) throw new Error("Task not found");
 
     await api.post('/api/inward/put-away', {
-      location,
+      location: warehouseId,
       items: [{
         grnId: task.grnId,
         grnItemId: task.id,
@@ -279,6 +293,7 @@ export const procurementService = {
         itemName: task.itemName,
         materialId: task.itemId,
         productId: task.itemId,
+        binId: binId,
       }],
     });
   },

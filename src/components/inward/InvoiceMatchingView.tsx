@@ -299,7 +299,7 @@ const InvoiceMatchingView: React.FC = () => {
                         >
                           <option value="">Select PO...</option>
                           {pos.filter(p => p.status !== 'Draft').map(po => (
-                            <option key={po.id} value={po.id}>{po.poNumber} — {po.vendorName}</option>
+                            <option key={po.id} value={po.id}>{po.poNumber} - {po.vendorName}</option>
                           ))}
                         </select>
                      </div>

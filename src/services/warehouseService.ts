@@ -212,7 +212,13 @@ export const warehouseService = {
     const items = Array.isArray(data)
       ? data
       : data.items || data.data || data.bins || [];
-    return items.map((b: any) => ({ ...b, id: b._id || b.id }));
+    return items.map((b: any) => ({
+      ...b,
+      id: b._id || b.id,
+      binCode: b.code || b.binCode || b.name,
+      maxCapacity: b.capacity || b.maxCapacity || 0,
+      currentOccupancy: b.current || b.currentOccupancy || 0
+    }));
   },
 
   getBinsByRack: async (rackId: string): Promise<Bin[]> => {

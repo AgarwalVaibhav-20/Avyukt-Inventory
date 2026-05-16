@@ -236,7 +236,7 @@ const authSlice = createSlice({
         // In a delegated session the profile call runs under the delegated
         // token, so action.payload.user is the *delegated* user, not the
         // original. Update state.user (the active identity) but never
-        // overwrite originalUser — that must remain the admin we'll
+        // overwrite originalUser - that must remain the admin we'll
         // return to via endDelegatedSession.
         state.user = action.payload.user;
       })

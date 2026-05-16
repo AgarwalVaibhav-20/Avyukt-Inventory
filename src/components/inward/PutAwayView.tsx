@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchPutAwayTasks } from '@/store/slices/procurementSlice';
+import { PutAwayTask, Bin } from '@/types';
+import { warehouseService } from '@/services/warehouseService';
+import { NotionSelect } from '@/components/common/NotionSelect';
 import { procurementService } from '@/services/procurementService';
-import { PutAwayTask } from '@/types';
-import { Package, ArrowRight, MapPin, CheckCircle, Loader2, Search, Info, AlertTriangle, Layers } from 'lucide-react';
+import { Package, ArrowRight, MapPin, CheckCircle, Loader2, Search, Info, AlertTriangle, Layers, XCircle, Tag } from 'lucide-react';
 
 const PutAwayView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -11,19 +13,21 @@ const PutAwayView: React.FC = () => {
   const [completingId, setCompletingId] = useState<string | null>(null);
   
   // Simple inline form state
-  const [selectedTask, setSelectedTask] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<PutAwayTask | null>(null);
   const [location, setLocation] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [bins, setBins] = useState<Bin[]>([]);
+  const [loadingBins, setLoadingBins] = useState(false);
 
   useEffect(() => {
     dispatch(fetchPutAwayTasks());
   }, [dispatch]);
 
-  const handleComplete = async (id: string) => {
-    if (!location) return alert("Please specify a warehouse bin location");
-    setCompletingId(id);
+  const handleComplete = async (taskId: string) => {
+    if (!location || !selectedTask) return alert("Please specify a warehouse bin location");
+    setCompletingId(taskId);
     try {
-        await procurementService.completePutAway(id, location);
+        await procurementService.completePutAway(taskId, location, selectedTask.warehouseId || '');
         setSelectedTask(null);
         setLocation('');
         dispatch(fetchPutAwayTasks());
@@ -33,6 +37,21 @@ const PutAwayView: React.FC = () => {
         alert("Failed to complete put-away task. Check server logs.");
     } finally {
         setCompletingId(null);
+    }
+  };
+
+  const handleInitiate = async (task: PutAwayTask) => {
+    setSelectedTask(task);
+    setLocation('');
+    setLoadingBins(true);
+    try {
+        const warehouseBins = await warehouseService.getAllBins({ warehouseId: task.warehouseId });
+        setBins(warehouseBins);
+    } catch (e) {
+        console.error("Failed to fetch bins", e);
+        setBins([]);
+    } finally {
+        setLoadingBins(false);
     }
   };
 
@@ -111,30 +130,46 @@ const PutAwayView: React.FC = () => {
                           
                           <div className="mb-4">
                             <h3 className="font-black text-slate-800 text-lg leading-tight mb-1 line-clamp-1">{task.itemName}</h3>
-                            <div className="flex items-center gap-1.5 text-slate-400">
-                                <Info size={12}/>
-                                <span className="text-[10px] font-bold font-mono tracking-tighter">SKU: {task.itemId}</span>
+                            <div className="flex flex-wrap items-center gap-3 text-slate-400 mt-2">
+                                <div className="flex items-center gap-1.5">
+                                    <Info size={12}/>
+                                    <span className="text-[10px] font-bold font-mono tracking-tighter">SKU: {task.itemId}</span>
+                                </div>
+                                {task.hsnCode && (
+                                    <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                        <Tag size={10} className="text-blue-400"/>
+                                        <span className="text-[9px] font-black text-slate-500 uppercase">HSN: {task.hsnCode} ({task.taxRate}%)</span>
+                                    </div>
+                                )}
                             </div>
                           </div>
                           
-                          {selectedTask === task.id ? (
+                           {selectedTask?.id === task.id ? (
                               <div className="animate-fade-in-up space-y-3 mt-4 pt-4 border-t border-slate-50">
-                                  <div className="relative">
-                                      <MapPin className="absolute left-3 top-3 text-blue-500" size={16}/>
-                                      <input 
-                                          type="text" 
-                                          autoFocus
-                                          placeholder="Scan Bin ID (e.g. WH-A1-S2)"
-                                          className="w-full pl-10 pr-4 py-2.5 text-sm border-2 border-blue-100 bg-blue-50/30 rounded-xl focus:border-blue-500 focus:bg-white outline-none transition-all font-bold placeholder:text-blue-300"
-                                          value={location}
-                                          onChange={e => setLocation(e.target.value)}
-                                      />
+                                  <div className="space-y-1.5">
+                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Storage Bin</label>
+                                      {loadingBins ? (
+                                          <div className="h-10 flex items-center justify-center bg-slate-50 rounded-xl border-2 border-slate-100">
+                                              <Loader2 size={16} className="animate-spin text-blue-500 mr-2"/>
+                                              <span className="text-xs text-slate-400 font-bold">Loading available bins...</span>
+                                          </div>
+                                      ) : (
+                                          <NotionSelect 
+                                              value={location}
+                                              onValueChange={setLocation}
+                                              placeholder="Search Bin (e.g. WH-A1-S2)"
+                                              options={bins.map(b => ({
+                                                  label: `${b.binCode} (${b.status})`,
+                                                  value: b.id
+                                              }))}
+                                          />
+                                      )}
                                   </div>
                                   <div className="flex gap-2">
                                       <button 
                                           onClick={() => handleComplete(task.id)}
-                                          disabled={completingId === task.id}
-                                          className="flex-1 bg-emerald-600 text-white text-xs font-black py-2.5 rounded-xl hover:bg-emerald-700 flex justify-center items-center gap-2 shadow-lg shadow-emerald-100 transition-all active:scale-95"
+                                          disabled={completingId === task.id || !location}
+                                          className="flex-1 bg-emerald-600 text-white text-xs font-black py-2.5 rounded-xl hover:bg-emerald-700 disabled:bg-slate-200 disabled:shadow-none flex justify-center items-center gap-2 shadow-lg shadow-emerald-100 transition-all active:scale-95"
                                       >
                                           {completingId === task.id ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle size={16}/>}
                                           Confirm Placement
@@ -143,13 +178,13 @@ const PutAwayView: React.FC = () => {
                                           onClick={() => setSelectedTask(null)}
                                           className="px-4 text-xs font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors rounded-xl"
                                       >
-                                          Back
+                                          Cancel
                                       </button>
                                   </div>
                               </div>
                           ) : (
                               <button 
-                                  onClick={() => { setSelectedTask(task.id); setLocation(''); }}
+                                  onClick={() => handleInitiate(task)}
                                   className="w-full mt-4 bg-slate-50 group-hover:bg-blue-600 text-slate-600 group-hover:text-white text-sm py-3 rounded-xl transition-all flex items-center justify-center gap-2 font-black"
                               >
                                   Initiate Put-Away <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform"/>

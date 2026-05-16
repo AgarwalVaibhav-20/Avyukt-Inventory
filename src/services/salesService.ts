@@ -432,6 +432,16 @@ export const salesService = {
     }
   },
 
+  updateSalesReturnQC: async (id: string, qcStatus: 'Pass' | 'Fail') => {
+    try {
+      const response = await api.put(`/api/sales-returns/${id}`, { qcStatus, status: 'Processed' });
+      return toFrontendSalesReturn(response.data.data ?? response.data);
+    } catch (err: any) {
+      console.error('Error updating QC:', err);
+      throw new Error(err.response?.data?.message || 'Failed to update QC');
+    }
+  },
+
   // --- Invoice Mapping ---
   getInvoiceMappings: async () => {
     try {

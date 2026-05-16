@@ -261,7 +261,7 @@ function LoginForm({ onLoginSuccess }: LoginProps) {
 
     const result = await dispatch(login({ email, password }));
     if (login.fulfilled.match(result)) {
-      setSuccess("Signed in successfully! Redirecting…");
+      setSuccess("Signed in successfully! Redirecting...");
       setTimeout(() => onLoginSuccess?.(), 1000);
     }
   };
@@ -505,7 +505,7 @@ function OtpFormLegacy({
 
     const result = await dispatch(verifyOtp({ email, otp }));
     if (verifyOtp.fulfilled.match(result)) {
-      setSuccess("OTP verified successfully. Signing you in…");
+      setSuccess("OTP verified successfully. Signing you in...");
     }
   };
 
@@ -646,7 +646,7 @@ export default function AuthPage({ onLoginSuccess }: LoginProps) {
                 <CardContent className="px-6 pt-5 pb-6">
                   <div className="mb-5">
                     <CardTitle className="text-xl font-bold text-gray-900">Create your account</CardTitle>
-                    <CardDescription className="text-sm text-gray-400 mt-1">Join ACT Business Solution today — it's free</CardDescription>
+                    <CardDescription className="text-sm text-gray-400 mt-1">Join ACT Business Solution today - it's free</CardDescription>
                   </div>
                   <SignupForm onSignupSuccess={handleSignupSuccess} />
                 </CardContent>
@@ -666,7 +666,7 @@ export default function AuthPage({ onLoginSuccess }: LoginProps) {
           )}
 
           <CardFooter className="justify-center border-t border-gray-100 py-4">
-            <p className="text-xs text-gray-400">Protected by enterprise-grade security &nbsp;·&nbsp; <a href="#" className="text-blue-500 hover:text-blue-600">Privacy Policy</a></p>
+            <p className="text-xs text-gray-400">Protected by enterprise-grade security &nbsp;�-&nbsp; <a href="#" className="text-blue-500 hover:text-blue-600">Privacy Policy</a></p>
           </CardFooter>
         </Card>
 

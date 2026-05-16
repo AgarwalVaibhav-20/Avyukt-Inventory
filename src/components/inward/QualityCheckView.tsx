@@ -170,6 +170,8 @@ const QualityCheckView: React.FC = () => {
                       <thead className="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold tracking-widest border-b border-slate-100">
                           <tr>
                               <th className="px-6 py-4">Inventory SKU & Name</th>
+                              <th className="px-6 py-4 text-center">HSN / Tax</th>
+                              <th className="px-6 py-4 text-right">Unit Price</th>
                               <th className="px-6 py-4 w-32 text-center">Inward Qty</th>
                               <th className="px-6 py-4 w-40 text-center">Accepted / OK</th>
                               <th className="px-6 py-4 w-32 text-center">Rejected</th>
@@ -182,6 +184,13 @@ const QualityCheckView: React.FC = () => {
                                   <td className="px-6 py-5">
                                       <div className="font-bold text-slate-800 text-sm mb-0.5">{item.itemName}</div>
                                       <div className="text-[10px] text-slate-400 font-bold font-mono">ID: {item.itemId}</div>
+                                  </td>
+                                  <td className="px-6 py-5 text-center">
+                                      <div className="text-xs font-bold text-slate-600">{item.hsnCode || 'N/A'}</div>
+                                      <div className="text-[10px] text-emerald-600 font-bold">{item.taxRate}% GST</div>
+                                  </td>
+                                  <td className="px-6 py-5 text-right">
+                                      <span className="font-bold text-slate-600 text-sm">₹{(item.unitPrice || 0).toLocaleString("en-IN")}</span>
                                   </td>
                                   <td className="px-6 py-5 text-center">
                                       <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-lg font-black text-sm">{item.receivedQty}</span>

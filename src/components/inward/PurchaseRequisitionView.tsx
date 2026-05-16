@@ -499,16 +499,18 @@ const PurchaseRequisitionView: React.FC = () => {
                   <td className="px-8 py-7">
                     <Badge
                       className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-sm ${
-                        pr.status === "Approved"
+                        pr.status === "Completed"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                          : pr.status === "Rejected"
-                            ? "bg-red-50 text-red-700 border-red-100"
-                            : pr.status === "Pending Approval"
-                              ? "bg-amber-50 text-amber-700 border-amber-100"
-                              : "bg-slate-50 text-slate-500 border-slate-100"
+                        : pr.status === "Approved" || pr.status === "PO Created"
+                          ? "bg-blue-50 text-blue-700 border-blue-100"
+                        : pr.status === "Rejected"
+                          ? "bg-red-50 text-red-700 border-red-100"
+                        : pr.status === "Pending Approval"
+                          ? "bg-amber-50 text-amber-700 border-amber-100"
+                        : "bg-slate-50 text-slate-500 border-slate-100"
                       }`}
                     >
-                      {pr.status}
+                      {pr.status === "Approved" || pr.status === "PO Created" ? "Pending" : pr.status}
                     </Badge>
                   </td>
                   <td className="px-8 py-7 text-right">
@@ -716,9 +718,11 @@ const PurchaseRequisitionView: React.FC = () => {
                           Plan Breakdown
                         </p>
                       </div>
-                      <span className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">
-                        {newPr.items.length} SKUs Identified
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="bg-slate-900 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200">
+                          {newPr.items.length} SKUs Identified
+                        </span>
+                      </div>
                     </div>
 
                     <div
@@ -764,7 +768,7 @@ const PurchaseRequisitionView: React.FC = () => {
                                       onValueChange={(val) => updateItemHSN(idx, val)}
                                       placeholder="Select HSN"
                                       options={hsns.map(h => ({
-                                        label: `${h.code || (h as any).hsnCode} — ${h.taxRate ?? (h as any).taxPercentage ?? 0}%`,
+                                        label: `${h.code || (h as any).hsnCode} - ${h.taxRate ?? (h as any).taxPercentage ?? 0}%`,
                                         value: h.code || (h as any).hsnCode
                                       }))}
                                     />

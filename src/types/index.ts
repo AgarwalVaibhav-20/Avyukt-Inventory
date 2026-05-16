@@ -144,6 +144,10 @@ export interface WarehouseStockItem {
   usedQty: number;
   totalValue?: number;
   batchCount?: number;
+  purchaseDate?: string;
+  receivedDate?: string;
+  firstStockDate?: string;
+  lastStockDate?: string;
   oldestBatch?: {
     batchId?: string;
     purchaseDate?: string;
@@ -284,7 +288,7 @@ export interface PurchaseRequisition {
   requiredDate: string;
   justification: string;
   items: PRItem[];
-  status: 'Draft' | 'Pending Approval' | 'Approved' | 'PO Created' | 'Rejected';
+  status: 'Draft' | 'Pending Approval' | 'Approved' | 'PO Created' | 'Rejected' | 'Completed';
   source: 'Manual' | 'Stock Alert' | 'Production Plan';
 }
 
@@ -303,7 +307,7 @@ export interface PurchaseOrder {
   vendorName: string;
   date: string;
   deliveryDate: string;
-  status: 'Draft' | 'Pending' | 'Pending Approval' | 'Sent' | 'Approved' | 'Partially Received' | 'Completed' | 'Cancelled' | 'Rejected';
+  status: 'Draft' | 'Pending' | 'Pending Approval' | 'Sent' | 'Approved' | 'Partial' | 'Partially Received' | 'Delivered' | 'Completed' | 'Cancelled' | 'Rejected' | 'Open' | 'Closed';
   totalAmount: number;
   items: POItem[];
   prId?: string; // Link to PR if any
@@ -330,7 +334,7 @@ export interface GRN {
   vendorName: string;
   date: string;
   challanNumber: string;
-  status: 'Pending QC' | 'QC Completed' | 'Approved' | 'Put Away Completed' | 'Rejected';
+  status: 'Pending QC' | 'Pending' | 'QC Completed' | 'Approved' | 'Put Away Completed' | 'Rejected';
   items: GRNItem[];
 }
 
@@ -344,6 +348,9 @@ export interface GRNItem {
   acceptedQty: number;
   rejectedQty: number;
   qcRemarks?: string;
+  hsnCode?: string;
+  taxRate?: number;
+  unitPrice?: number;
 }
 
 export interface PutAwayTask {
@@ -355,6 +362,9 @@ export interface PutAwayTask {
   quantity: number;
   status: 'Pending' | 'Completed';
   assignedLocation?: string;
+  warehouseId?: string;
+  hsnCode?: string;
+  taxRate?: number;
 }
 
 export interface PurchaseInvoice {
@@ -387,6 +397,7 @@ export interface PurchaseReturn {
   id: string;
   returnNumber: string;
   grnId: string; // Linked to original GRN
+  purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
   date: string;
@@ -483,12 +494,15 @@ export interface DispatchNote {
 export interface SalesReturn {
   id: string;
   returnNumber: string;
+  dispatchId?: string;
+  dispatchRef?: string;
   soId: string;
   soNumber: string;
   customerName: string;
   date: string;
   items: ReturnItem[];
   status: 'Pending' | 'Received' | 'Pending Approval' | 'Approved' | 'Processed' | 'Refunded' | 'Replaced' | 'Completed' | 'Rejected';
+  qcStatus?: 'Pending' | 'Pass' | 'Fail';
   reason?: string;
   returnType?: 'Refund' | 'Replacement' | 'Credit Note';
   remarks?: string;

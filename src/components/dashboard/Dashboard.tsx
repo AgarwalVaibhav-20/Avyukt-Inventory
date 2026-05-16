@@ -127,7 +127,7 @@ const Dashboard: React.FC = () => {
       })));
       setCategoryData(categoryDistribution.slice(0, 4));
 
-      console.log('✅ Dashboard data loaded successfully');
+      console.log('�... Dashboard data loaded successfully');
       
       // Load AI insights with real inventory data
       await handleGenerateInsight(movements);
@@ -208,7 +208,7 @@ const Dashboard: React.FC = () => {
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
           >
             <RefreshCcw size={12} className={loadingAi ? "animate-spin" : ""} />
-            {loadingAi ? "Analyzing…" : "Refresh"}
+            {loadingAi ? "Analyzing..." : "Refresh"}
           </button>
         </div>
         <div className="bg-slate-50 rounded-xl p-4 min-h-[80px] text-sm text-slate-600">
@@ -219,7 +219,7 @@ const Dashboard: React.FC = () => {
             />
           ) : (
             <span className="text-slate-400 italic">
-              Initializing AI model to analyze stock levels…
+              Initializing AI model to analyze stock levels...
             </span>
           )}
         </div>

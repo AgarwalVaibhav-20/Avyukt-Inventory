@@ -196,7 +196,7 @@ const ItemWiseValuationView: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-slate-600">{item.category}</td>
                     <td className="px-6 py-4 text-slate-600">
-                      {(item.warehouseNames || []).slice(0, 2).join(", ") || "—"}
+                      {(item.warehouseNames || []).slice(0, 2).join(", ") || "-"}
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-slate-700">{Number(item.stock || 0).toLocaleString()}</td>
                     <td className="px-6 py-4 text-right text-slate-600">{currency.format(Number(item.unitValuation || 0))}</td>

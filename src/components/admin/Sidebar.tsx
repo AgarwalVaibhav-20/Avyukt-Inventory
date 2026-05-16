@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
   const [searchTerm, setSearchTerm] = useState("");
 
-  // During a delegated session, hide the target account's User & Access menu —
+  // During a delegated session, hide the target account's User & Access menu -
   // the borrowed session should not be able to manage that user's permissions.
   const visibleMenuItems = isDelegatedSession
     ? MENU_ITEMS.filter((item) => item.id !== "users")

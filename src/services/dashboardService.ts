@@ -82,7 +82,7 @@ export const dashboardService = {
           });
         });
 
-      console.log(`âœ… Fetched ${approvals.length} pending approvals from backend`);
+      console.log(`âœ... Fetched ${approvals.length} pending approvals from backend`);
       return approvals;
     } catch (error: any) {
       console.error('âŒ Failed to fetch approvals from backend:', error.message);
@@ -116,7 +116,7 @@ export const dashboardService = {
       }).catch(() => ({ data: { data: [] } })));
 
       const batches = response.data.data || response.data.batches || [];
-      console.log(`âœ… Fetched ${batches.length} expiring batches`);
+      console.log(`âœ... Fetched ${batches.length} expiring batches`);
       
       return batches.map((batch: any) => ({
         id: String(batch._id || batch.id),
@@ -159,7 +159,7 @@ export const dashboardService = {
       }).catch(() => api.get('/inventory/dashboard/overview', { params: { organisationId: orgId } }));
 
       const data = response.data.movementAnalysis || response.data.data || [];
-      console.log(`âœ… Fetched movement analysis for ${data.length} items`);
+      console.log(`âœ... Fetched movement analysis for ${data.length} items`);
       
       return data.map((item: any) => ({
         itemId: String(item._id || item.itemId || item.id),
@@ -215,7 +215,7 @@ export const dashboardService = {
       console.log('ðŸ­ Fetching warehouse stock distribution from backend...');
       const response = await api.get(`/inventory/dashboard/overview/${orgId}`);
       const warehouses = response.data.warehouseDistribution || response.data.warehouses || [];
-      console.log(`âœ… Fetched data for ${warehouses.length} warehouses`);
+      console.log(`âœ... Fetched data for ${warehouses.length} warehouses`);
       return warehouses;
     } catch (error: any) {
       console.error("Failed to fetch warehouse stock report:", error.message);
@@ -235,7 +235,7 @@ export const dashboardService = {
       }).catch(() => api.get(`/inventory/dashboard/overview/${orgId}`));
 
       const data = response.data.inOutSummary || response.data.monthlyData || response.data.data || [];
-      console.log(`âœ… Fetched inward/outward data for ${data.length} periods`);
+      console.log(`âœ... Fetched inward/outward data for ${data.length} periods`);
       
       return data.map((period: any) => ({
         period: period.period || period.month || period.key || '',

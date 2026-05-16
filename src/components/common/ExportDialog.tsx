@@ -40,7 +40,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
     try {
       console.log('🚀 Starting export with period:', selectedPeriod, 'format:', selectedFormat);
       await onExport(selectedPeriod, selectedFormat);
-      console.log('✅ Export completed successfully');
+      console.log('�... Export completed successfully');
       setTimeout(() => onClose(), 500);
     } catch (error: any) {
       const errorMsg = error.message || 'Export failed. Please try again.';
