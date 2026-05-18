@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Search, Save, X, Loader2 } from "lucide-react";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import Pagination from "@/components/common/Pagination";
 import { useListControls } from "@/hooks/useListControls";
@@ -66,6 +67,10 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, any>>({});
+  
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const organisationId =
     user?.organisationId || localStorage.getItem("organisationId");
@@ -254,16 +259,31 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     setEditDataForm(initialForm);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this record?")) {
+  const handleDeleteClick = (id: string) => {
+    setDeleteTargetId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
+    try {
       if (type && !deleteData) {
         await dispatch(
-          deleteMasterData({ id, organisationId: organisationId!, type }),
+          deleteMasterData({ id: deleteTargetId, organisationId: organisationId!, type }),
         ).unwrap();
       } else if (deleteData) {
-        await deleteData(id);
+        await deleteData(deleteTargetId);
         await loadData();
       }
+      toast.success("Record deleted successfully!");
+    } catch (e) {
+      console.error("Delete error:", e);
+      toast.error(`Error: ${(e as any)?.message || "Failed to delete record"}`);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -596,7 +616,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDelete(itemId)}
+                                onClick={() => handleDeleteClick(itemId)}
                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                               >
                                 <Trash2 size={16} />
@@ -623,6 +643,16 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
           />
         </div>
       </div>
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        itemName={(() => {
+          const itemToDelete = data.find((i: any) => (i._id || i.id) === deleteTargetId);
+          return itemToDelete?.name || itemToDelete?.code || itemToDelete?.uomName || undefined;
+        })()}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

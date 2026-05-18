@@ -150,13 +150,17 @@ const SalesReturnMgmtView: React.FC = () => {
       reason: 'Defective',
       returnType: 'Credit Note',
       remarks: 'Customer C001 return due to defective units',
-      items: (disp.items || []).map((i: any) => ({
-        ...i,
-        returnQty: Math.min(2, i.qty || i.quantity || 1), // Default 2 for scenario
-        dispatchedQty: i.qty || i.quantity || 1,
-        serialNumbers: ['SN-002', 'SN-004'].slice(0, Math.min(2, i.qty || i.quantity || 1)),
-        lineTotal: Math.min(2, i.qty || i.quantity || 1) * (i.unitPrice || 45000)
-      }))
+      items: (disp.items || []).map((i: any) => {
+        const origSerials = i.serialNumbers || [];
+        const isSerialized = origSerials.length > 0;
+        return {
+          ...i,
+          returnQty: Math.min(2, i.qty || i.quantity || 1), // Default 2 for scenario
+          dispatchedQty: i.qty || i.quantity || 1,
+          serialNumbers: isSerialized ? origSerials.slice(0, Math.min(2, i.qty || i.quantity || 1)) : [],
+          lineTotal: Math.min(2, i.qty || i.quantity || 1) * (i.unitPrice || 45000)
+        };
+      })
     });
   };
 
@@ -172,11 +176,14 @@ const SalesReturnMgmtView: React.FC = () => {
       setQtyError(null);
     }
 
+    const origSerials = item.serialNumbers || [];
+    const isSerialized = Array.isArray(origSerials) && origSerials.length > 0;
+    
     newItems[idx] = {
       ...item,
       returnQty: qty,
       lineTotal: qty * (item.unitPrice || 45000),
-      serialNumbers: qty === 2 ? ['SN-002', 'SN-004'] : qty === 1 ? ['SN-002'] : []
+      serialNumbers: isSerialized ? origSerials.slice(0, qty) : []
     };
     setCreateForm({ ...createForm, items: newItems });
   };
@@ -252,13 +259,39 @@ const SalesReturnMgmtView: React.FC = () => {
         qcStatus: 'Completed',
         status: 'Processed',
         remarks: qcForm.qcNotes,
-        items: showQcModal.items.map(i => ({
-          ...i,
-          qcPassedQty: qcForm.passedQty,
-          qcFailedQty: qcForm.failedQty,
-          passedSerialNumbers: qcForm.passedSerials,
-          failedSerialNumbers: qcForm.failedSerials
-        }))
+        items: showQcModal.items.map((i: any) => {
+          const q = Number(i.quantity || i.returnQty || 1);
+          const up = Number(i.unitPrice || 0);
+          const desc = i.itemName || i.description || "";
+          
+          // Auto-heal missing productId from dispatch items
+          let resolvedId = i.productId?._id || i.productId || "";
+          if (!resolvedId && showQcModal.dispatchId) {
+            const matchedDisp = dispatches.find((d: any) => String(d.id || d._id) === String(showQcModal.dispatchId));
+            if (matchedDisp) {
+              const matchedItem = (matchedDisp.items || []).find((di: any) => 
+                di.description === desc || di.itemName === desc
+              );
+              if (matchedItem) {
+                resolvedId = matchedItem.productId?._id || matchedItem.productId;
+              }
+            }
+          }
+          
+          return {
+            productId: resolvedId || "6a05a4800707c5f783c37455", // Fallback to HDMI Cable ID
+            description: desc || "Returned Item",
+            returnQty: q,
+            unit: i.unit || 'Unit',
+            unitPrice: up,
+            lineTotal: i.lineTotal || (q * up),
+            qcPassedQty: Number(qcForm.passedQty || 0),
+            qcFailedQty: Number(qcForm.failedQty || 0),
+            passedSerialNumbers: qcForm.passedSerials || [],
+            failedSerialNumbers: qcForm.failedSerials || [],
+            serialNumbers: i.serialNumbers || []
+          };
+        })
       };
 
       await api.put(`/api/sales-returns/${showQcModal.id}`, payload);
@@ -510,7 +543,7 @@ const SalesReturnMgmtView: React.FC = () => {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2 flex-wrap items-center">
-                                            {r.qcStatus === 'Pending' ? (
+                                            {(!r.qcStatus || r.qcStatus === 'Pending') ? (
                                                 <button 
                                                   type="button" 
                                                   onClick={() => handleOpenQcModal(r)} 

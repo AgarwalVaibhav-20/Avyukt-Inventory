@@ -376,7 +376,8 @@ export const salesService = {
           productId: item.productId?._id || item.productId || item.product?._id || item.product || item.itemId || item._id || item.id,
           description: item.description,
           packedQty: item.qtyPacked || item.picked || item.quantity || 1,
-          unit: (item as any).unit || 'Unit'
+          unit: (item as any).unit || 'Unit',
+          serialNumbers: Array.isArray(item.serialNumbers) ? item.serialNumbers : [],
         })),
       });
       return mapId(response.data);
@@ -401,7 +402,8 @@ export const salesService = {
           productId: item.productId?._id || item.productId || item.product?._id || item.product || item.itemId || item._id || item.id,
           description: item.description,
           qty: item.packedQty || item.qty || item.quantity || 1,
-          unit: item.unit || 'Unit'
+          unit: item.unit || 'Unit',
+          serialNumbers: Array.isArray(item.serialNumbers) ? item.serialNumbers : [],
         }))
       });
       return mapId(response.data);
@@ -432,9 +434,14 @@ export const salesService = {
     }
   },
 
-  updateSalesReturnQC: async (id: string, qcStatus: 'Pass' | 'Fail') => {
+  updateSalesReturnQC: async (id: string, qcStatus: 'Pass' | 'Fail' | 'Completed' | 'Partial', updateBody?: any) => {
     try {
-      const response = await api.put(`/api/sales-returns/${id}`, { qcStatus, status: 'Processed' });
+      const payload = {
+        qcStatus,
+        status: qcStatus === 'Pass' || qcStatus === 'Completed' ? 'Approved' : 'Rejected',
+        ...(updateBody || {})
+      };
+      const response = await api.put(`/api/sales-returns/${id}`, payload);
       return toFrontendSalesReturn(response.data.data ?? response.data);
     } catch (err: any) {
       console.error('Error updating QC:', err);

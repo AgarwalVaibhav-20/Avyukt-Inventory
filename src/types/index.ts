@@ -347,6 +347,10 @@ export interface GRNItem {
   receivedQty: number;
   acceptedQty: number;
   rejectedQty: number;
+  batchNo?: string;
+  mfgDate?: string;
+  expiryDate?: string;
+  serialNumbers?: string[];
   qcRemarks?: string;
   hsnCode?: string;
   taxRate?: number;
@@ -360,6 +364,9 @@ export interface PutAwayTask {
   itemId: string;
   itemName: string;
   quantity: number;
+  batchNo?: string;
+  expiryDate?: string;
+  serialNumbers?: string[];
   status: 'Pending' | 'Completed';
   assignedLocation?: string;
   warehouseId?: string;
@@ -575,6 +582,9 @@ export interface StockLedgerEntry {
   date: string;
   itemId: string;
   itemName: string;
+  sku?: string;
+  location?: string;
+  cost?: number;
   transactionType: 'Purchase' | 'Sales' | 'Transfer' | 'Adjustment' | 'Scrap' | 'Initial' | 'Audit';
   reference: string;
   quantityChange: number; // Positive for In, Negative for Out
@@ -599,6 +609,7 @@ export interface SerialNumber {
   itemId: string;
   itemName: string;
   batchNumber?: string;
+  binId?: string;
   status: 'Available' | 'Sold' | 'Reserved' | 'Defective';
   currentLocation: string;
 }

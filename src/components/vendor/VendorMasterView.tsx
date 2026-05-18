@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import ConfirmDeleteModal from '@/components/common/ConfirmDeleteModal';
 import { fetchVendors, createVendor, updateVendor, deleteVendor } from '@/store/slices/procurementSlice';
 import { Vendor } from '@/types';
 import Pagination from '@/components/common/Pagination';
@@ -15,6 +16,10 @@ const VendorMasterView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
+  
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchVendors());
@@ -60,13 +65,22 @@ const VendorMasterView: React.FC = () => {
       }
   };
 
-  const handleDelete = async (id: string) => {
-      if(window.confirm('Are you sure you want to remove this vendor from the system?')) {
-          try {
-              await dispatch(deleteVendor(id)).unwrap();
-          } catch (e) {
-              alert("Error deleting vendor.");
-          }
+  const handleDeleteClick = (id: string) => {
+      setDeleteTargetId(id);
+      setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+      if(!deleteTargetId) return;
+      setIsDeleting(true);
+      try {
+          await dispatch(deleteVendor(deleteTargetId)).unwrap();
+      } catch (e) {
+          alert("Error deleting vendor.");
+      } finally {
+          setIsDeleting(false);
+          setIsDeleteModalOpen(false);
+          setDeleteTargetId(null);
       }
   };
 
@@ -280,7 +294,7 @@ const VendorMasterView: React.FC = () => {
                             <button type="button" onClick={() => handleEdit(v)} className="flex-1 bg-slate-50 hover:bg-blue-50 text-slate-600 hover:text-blue-600 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
                                 Edit Profile
                             </button>
-                            <button type="button" onClick={() => handleDelete(v.id)} className="p-2.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all">
+                            <button type="button" onClick={() => handleDeleteClick(v.id)} className="p-2.5 bg-red-50 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all">
                                 <Trash2 size={16}/>
                             </button>
                         </div>
@@ -296,6 +310,13 @@ const VendorMasterView: React.FC = () => {
             onPageChange={setPage}
             onPageSizeChange={setPageSize}
             pageSizeOptions={[6, 9, 18, 36]}
+        />
+        <ConfirmDeleteModal
+            isOpen={isDeleteModalOpen}
+            itemName={vendors.find((vendor) => vendor.id === deleteTargetId)?.name}
+            isLoading={isDeleting}
+            onConfirm={handleConfirmDelete}
+            onCancel={() => setIsDeleteModalOpen(false)}
         />
     </div>
   );

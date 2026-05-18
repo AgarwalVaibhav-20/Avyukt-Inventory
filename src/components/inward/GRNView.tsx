@@ -169,6 +169,12 @@ const GRNView: React.FC = () => {
     setReceivedItems(newItems);
   };
 
+  const updateItemField = (index: number, field: keyof GRNItem, value: string) => {
+    const newItems = [...receivedItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setReceivedItems(newItems);
+  };
+
   const handleSubmit = async () => {
     if (!selectedPO || !challanNo)
       return alert("Please select a PO and enter Challan Number");
@@ -426,7 +432,7 @@ const GRNView: React.FC = () => {
                               className="text-slate-300 mt-0.5 shrink-0"
                             />
                           </div>
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-3">
                             <span className="text-[12px] text-slate-500">
                               Ordered:{" "}
                               <span className="font-semibold text-slate-700">
@@ -452,6 +458,43 @@ const GRNView: React.FC = () => {
                               />
                             </div>
                           </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+                            <input
+                              className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
+                              placeholder="Batch No."
+                              value={item.batchNo || ""}
+                              onChange={(e) => updateItemField(idx, "batchNo", e.target.value)}
+                            />
+                            <input
+                              type="date"
+                              className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
+                              value={item.mfgDate || ""}
+                              onChange={(e) => updateItemField(idx, "mfgDate", e.target.value)}
+                            />
+                            <input
+                              type="date"
+                              className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
+                              value={item.expiryDate || ""}
+                              onChange={(e) => updateItemField(idx, "expiryDate", e.target.value)}
+                            />
+                          </div>
+                          <textarea
+                            className="mt-2 w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/10"
+                            rows={2}
+                            placeholder="Serial numbers, comma or line separated"
+                            value={(item.serialNumbers || []).join(", ")}
+                            onChange={(e) => {
+                              const newItems = [...receivedItems];
+                              newItems[idx] = {
+                                ...newItems[idx],
+                                serialNumbers: e.target.value
+                                  .split(/[,\n]/)
+                                  .map((serial) => serial.trim())
+                                  .filter(Boolean),
+                              };
+                              setReceivedItems(newItems);
+                            }}
+                          />
                         </div>
                       ))}
                     </div>

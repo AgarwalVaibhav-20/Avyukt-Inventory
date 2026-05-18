@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createSalesOrder, fetchOutwardWorkflow, updateSalesOrder, deleteSalesOrder } from '@/store/slices/outwardSlice';
 import Pagination from '@/components/common/Pagination';
 import { useListControls } from '@/hooks/useListControls';
+import ConfirmDeleteModal from '@/components/common/ConfirmDeleteModal';
 
 const SalesOrderView: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -25,6 +26,10 @@ const SalesOrderView: React.FC = () => {
   });
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({ status: 'all', sortOrder: 'newest' });
+
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const organisationId = localStorage.getItem('organisationId');
   
@@ -94,13 +99,23 @@ const SalesOrderView: React.FC = () => {
     });
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this sales order?')) {
-      try {
-        await dispatch(deleteSalesOrder(id)).unwrap();
-      } catch (err: any) {
-        alert(err || 'Failed to delete order');
-      }
+  const handleDeleteClick = (id: string) => {
+    setDeleteTargetId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
+    try {
+      await dispatch(deleteSalesOrder(deleteTargetId)).unwrap();
+    } catch (err: any) {
+      console.error("Failed to delete sales order", err);
+      alert(err || 'Failed to delete order');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -401,7 +416,7 @@ const SalesOrderView: React.FC = () => {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => handleDelete(salesOrder.id)}
+                          onClick={() => handleDeleteClick(salesOrder.id)}
                           className="p-1 text-slate-400 hover:text-red-600 transition-colors"
                           title="Delete"
                         >
@@ -421,6 +436,13 @@ const SalesOrderView: React.FC = () => {
           </div>
         )}
       </div>
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        itemName={salesOrders.find((so) => so.id === deleteTargetId)?.soNumber}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

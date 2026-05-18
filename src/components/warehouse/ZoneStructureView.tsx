@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { warehouseService } from "@/services/warehouseService";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { Warehouse, Zone, Rack } from "@/types";
 import {
   Layers,
@@ -35,6 +36,11 @@ const ZoneStructureView: React.FC = () => {
   const [racks, setRacks] = useState<Rack[]>([]);
   const [loading, setLoading] = useState(true);
   const [whPopoverOpen, setWhPopoverOpen] = useState(false);
+  
+  const [deleteType, setDeleteType] = useState<'zone' | 'rack' | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Forms
   const [showZoneForm, setShowZoneForm] = useState(false);
@@ -184,37 +190,43 @@ const ZoneStructureView: React.FC = () => {
     }
   };
 
-  const deleteZone = async (id: string) => {
-    if (
-      confirm(
-        "Delete zone? This will also delete all racks and bins in this zone.",
-      )
-    ) {
-      try {
-        console.log("Deleting zone:", id);
-        await warehouseService.deleteZone(id);
+  const handleDeleteZoneClick = (id: string) => {
+    setDeleteType('zone');
+    setDeleteTargetId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteRackClick = (id: string) => {
+    setDeleteType('rack');
+    setDeleteTargetId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId || !deleteType) return;
+    setIsDeleting(true);
+    try {
+      if (deleteType === 'zone') {
+        console.log("Deleting zone:", deleteTargetId);
+        await warehouseService.deleteZone(deleteTargetId);
         console.log("Zone deleted successfully");
         loadZones(selectedWh);
         alert("Zone deleted successfully!");
-      } catch (error) {
-        console.error("Failed to delete zone:", error);
-        alert(`Error deleting zone: ${(error as any)?.message}`);
-      }
-    }
-  };
-
-  const deleteRack = async (id: string) => {
-    if (confirm("Delete rack? This will also delete all bins in this rack.")) {
-      try {
-        console.log("Deleting rack:", id);
-        await warehouseService.deleteRack(id);
+      } else {
+        console.log("Deleting rack:", deleteTargetId);
+        await warehouseService.deleteRack(deleteTargetId);
         console.log("Rack deleted successfully");
         loadRacks(selectedZone);
         alert("Rack deleted successfully!");
-      } catch (error) {
-        console.error("Failed to delete rack:", error);
-        alert(`Error deleting rack: ${(error as any)?.message}`);
       }
+    } catch (error) {
+      console.error(`Failed to delete ${deleteType}:`, error);
+      alert(`Error deleting ${deleteType}: ${(error as any)?.message}`);
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
+      setDeleteType(null);
     }
   };
 
@@ -368,7 +380,7 @@ const ZoneStructureView: React.FC = () => {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteZone(z.id);
+                      handleDeleteZoneClick(z.id);
                     }}
                     className="text-red-400 hover:text-red-600"
                   >
@@ -484,7 +496,7 @@ const ZoneStructureView: React.FC = () => {
                 </p>
 
                 <button
-                  onClick={() => deleteRack(r.id)}
+                  onClick={() => handleDeleteRackClick(r.id)}
                   className="absolute top-2 right-2 p-1 bg-white rounded shadow-sm text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 size={12} />
@@ -494,6 +506,21 @@ const ZoneStructureView: React.FC = () => {
           </div>
         </div>
       </div>
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        title={deleteType === 'zone' ? 'Delete Zone' : 'Delete Rack'}
+        description={deleteType === 'zone' 
+          ? 'Are you sure you want to delete this zone? This will also permanently delete all racks and bins in this zone.'
+          : 'Are you sure you want to delete this rack? This will also permanently delete all bins in this rack.'
+        }
+        itemName={deleteType === 'zone' 
+          ? zones.find((z) => z.id === deleteTargetId)?.name 
+          : racks.find((r) => r.id === deleteTargetId)?.name
+        }
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

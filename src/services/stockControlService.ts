@@ -28,12 +28,20 @@ const formatDate = (value?: string | Date | null) => {
 const mapLedgerType = (type?: string): StockLedgerEntry['transactionType'] => {
   switch (String(type || '').toLowerCase()) {
     case 'purchase':
+    case 'receipt':
+    case 'inbound':
       return 'Purchase';
     case 'sale':
+    case 'issue':
+    case 'consumption':
       return 'Sales';
     case 'transfer':
       return 'Transfer';
     case 'adjustment':
+      return 'Adjustment';
+    case 'return':
+    case 'purchase return':
+    case 'sales return':
       return 'Adjustment';
     case 'initial':
       return 'Initial';
@@ -44,22 +52,35 @@ const mapLedgerType = (type?: string): StockLedgerEntry['transactionType'] => {
 
 const mapLedgerEntry = (entry: any): StockLedgerEntry => ({
   id: entry._id,
-  date: formatDate(entry.createdAt),
+  date: formatDate(entry.createdAt || entry.date),
   itemId:
     typeof entry.productId === 'object'
       ? entry.productId?._id || ''
-      : entry.productId || '',
+      : entry.productId ||
+        (typeof entry.itemId === 'object' ? entry.itemId?._id || '' : entry.itemId || ''),
   itemName:
     typeof entry.productId === 'object'
       ? entry.productId?.name || 'Unknown Item'
-      : 'Unknown Item',
+      : entry.itemName ||
+        (typeof entry.itemId === 'object' ? entry.itemId?.name || 'Unknown Item' : 'Unknown Item'),
   transactionType: mapLedgerType(entry.type),
-  reference: entry.referenceId || entry.note || '-',
+  reference: entry.referenceId || entry.reference || entry.note || '-',
   quantityChange:
-    String(entry.direction || '').toLowerCase() === 'out'
-      ? -Math.abs(Number(entry.quantity || 0))
-      : Math.abs(Number(entry.quantity || 0)),
-  runningBalance: Number(entry.balanceAfter || 0),
+    String(entry.direction || '').toLowerCase() === 'out' ||
+    ['issue', 'consumption'].includes(String(entry.type || '').toLowerCase())
+      ? -Math.abs(Number(entry.quantity ?? entry.qty ?? 0))
+      : Math.abs(Number(entry.quantity ?? entry.qty ?? 0)),
+  runningBalance: Number(entry.balanceAfter ?? entry.balance ?? 0),
+  sku:
+    typeof entry.productId === 'object'
+      ? entry.productId?.sku || ''
+      : typeof entry.itemId === 'object'
+        ? entry.itemId?.sku || ''
+        : '',
+  location:
+    typeof entry.warehouseId === 'object'
+      ? entry.warehouseId?.name || ''
+      : entry.location || '',
 });
 
 const mapBatchStatus = (batch: any): Batch['status'] => {
@@ -89,9 +110,11 @@ const mapBatch = (batch: any): Batch => ({
 const mapSerialStatus = (status?: string): SerialNumber['status'] => {
   switch (status) {
     case 'Available':
+    case 'In Stock':
+    case 'Returned':
     case 'Sold':
     case 'Defective':
-      return status;
+      return status === 'In Stock' || status === 'Returned' ? 'Available' : status;
     case 'Returned':
     case 'Scrapped':
     case 'In Service':
@@ -109,6 +132,7 @@ const mapSerial = (serial: any): SerialNumber => ({
   itemName: serial.itemName || 'Unknown Item',
   status: mapSerialStatus(serial.status),
   currentLocation: serial.locationName || 'Unassigned',
+  binId: serial.binId || '',
 });
 
 const mapReservationStatus = (status?: string): StockReservation['status'] => {
@@ -148,7 +172,7 @@ const mapMethodToBackend = (method: 'FIFO' | 'LIFO' | 'Avg') =>
 export const stockControlService = {
   getLedger: async (): Promise<StockLedgerEntry[]> => {
     try {
-      const response = await api.get('/api/stock/ledger');
+      const response = await api.get('/api/stock/ledger', { params: { limit: 1000 } });
       return (response.data.data || []).map(mapLedgerEntry);
     } catch (err) {
       console.error('Error fetching ledger:', err);

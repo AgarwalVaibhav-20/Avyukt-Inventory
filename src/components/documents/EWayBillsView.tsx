@@ -5,7 +5,6 @@ import { EWayBill } from "@/types";
 import {
   Truck,
   Plus,
-  ExternalLink,
   Loader2,
   Search,
   Filter,
@@ -13,7 +12,6 @@ import {
   MapPin,
   Calendar,
   FileText,
-  ChevronRight,
   AlertCircle,
   TrendingUp,
   Trash2,
@@ -22,8 +20,87 @@ import {
   ChevronRight as ChevronRightIcon,
   X,
   MoreVertical,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Calendar as ShadcnCalendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+
+const getTomorrowDateString = (): string => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toISOString().split("T")[0];
+};
+
+const formatDateToInput = (dateVal: any): string => {
+  if (!dateVal) return "";
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return "";
+    return d.toISOString().split("T")[0];
+  } catch (e) {
+    return "";
+  }
+};
+
+const statusConfig: Record<string, { label: string; className: string }> = {
+  Active: {
+    label: "Active",
+    className:
+      "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-50",
+  },
+  Expired: {
+    label: "Expired",
+    className:
+      "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-50",
+  },
+  Cancelled: {
+    label: "Cancelled",
+    className: "bg-red-50 text-red-700 border border-red-200 hover:bg-red-50",
+  },
+};
 
 const EWayBillsView: React.FC = () => {
   const [bills, setBills] = useState<EWayBill[]>([]);
@@ -32,6 +109,12 @@ const EWayBillsView: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingNo, setDeletingNo] = useState<string>("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [challanSelectOpen, setChallanSelectOpen] = useState(false);
 
   // Pagination & Filtering
   const [page, setPage] = useState(1);
@@ -49,7 +132,7 @@ const EWayBillsView: React.FC = () => {
     fromPlace: "Main Warehouse",
     toPlace: "",
     goodsValue: 0,
-    validUntil: "",
+    validUntil: getTomorrowDateString(),
     status: "Active",
   });
 
@@ -61,7 +144,6 @@ const EWayBillsView: React.FC = () => {
     loadChallans();
   }, []);
 
-  // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
       if (page !== 1) setPage(1);
@@ -161,16 +243,26 @@ const EWayBillsView: React.FC = () => {
     setActionLoading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to cancel/delete this permit?"))
-      return;
+  const handleDeleteClick = (id: string, ewbNo: string) => {
+    setDeletingId(id);
+    setDeletingNo(ewbNo);
+    setDeleteModalOpen(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deletingId) return;
+    setDeleteLoading(true);
     try {
-      await documentService.deleteEWayBill(id);
-      toast.success("Permit deleted");
+      await documentService.deleteEWayBill(deletingId);
+      toast.success("Permit deleted successfully");
+      setDeleteModalOpen(false);
+      setDeletingId(null);
+      setDeletingNo("");
       loadBills();
     } catch (err: any) {
-      toast.error(err.message || "Failed to delete");
+      toast.error(err.response?.data?.message || err.message || "Failed to delete permit");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -184,9 +276,7 @@ const EWayBillsView: React.FC = () => {
       fromPlace: bill.fromPlace || "Main Warehouse",
       toPlace: bill.toPlace || "",
       goodsValue: bill.goodsValue || 0,
-      validUntil: bill.validUntil
-        ? new Date(bill.validUntil).toISOString().split("T")[0]
-        : "",
+      validUntil: formatDateToInput(bill.validUntil) || getTomorrowDateString(),
       status: bill.status || "Active",
     });
     setIsCreating(true);
@@ -204,298 +294,396 @@ const EWayBillsView: React.FC = () => {
       fromPlace: "Main Warehouse",
       toPlace: "",
       goodsValue: 0,
-      validUntil: "",
+      validUntil: getTomorrowDateString(),
       status: "Active",
     });
   };
 
-  return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
-      <div className="bg-white rounded-[2rem] border border-slate-200 shadow-2xl shadow-slate-200/50 overflow-hidden animate-in fade-in duration-700">
-        {/* Premium Header */}
-        <div className="bg-gradient-to-br from-indigo-950 via-purple-900 to-indigo-900 p-10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -mr-48 -mt-48"></div>
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-2xl -ml-32 -mb-32"></div>
+  const STATUS_TABS = ["", "Active", "Expired", "Cancelled"];
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
-            <div className="flex items-center gap-6">
-              <div className="p-4 bg-white/10 rounded-3xl backdrop-blur-xl border border-white/20 shadow-2xl group transition-transform hover:scale-105 duration-300">
-                <ShieldCheck
-                  className="text-purple-300 group-hover:text-white transition-colors"
-                  size={40}
-                />
-              </div>
-              <div>
-                <h2 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
-                  E-Way Bill Compliance
-                  <span className="text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full border border-emerald-500/30 font-bold uppercase tracking-widest">
-                    Live Ledger
-                  </span>
-                </h2>
-                <p className="text-purple-200/70 text-lg font-medium mt-1">
-                  Authorized transit permits for regional & global logistics
-                </p>
-              </div>
+  return (
+    <div className="min-h-screen bg-white p-6">
+      <div className="max-w-[1400px] mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <ShieldCheck className="text-slate-700" size={22} />
             </div>
-            <button
-              onClick={() => (isCreating ? resetForm() : setIsCreating(true))}
-              className={`group relative overflow-hidden px-8 py-4 rounded-2xl transition-all font-black text-sm flex items-center justify-center gap-3 shadow-2xl ${
-                isCreating
-                  ? "bg-white/10 text-white hover:bg-white/20"
-                  : "bg-white text-indigo-950 hover:bg-indigo-50"
-              }`}
-            >
-              {isCreating ? (
-                <>
-                  <X size={20} /> Cancel Entry
-                </>
-              ) : (
-                <>
-                  <Plus
-                    size={20}
-                    className="group-hover:rotate-90 transition-transform duration-300"
-                  />{" "}
-                  Generate New Permit
-                </>
-              )}
-            </button>
+            <div>
+              <h1 className="text-xl font-semibold text-slate-900">
+                E-Way Bill Compliance
+              </h1>
+              <p className="text-sm text-slate-500">
+                Manage transit permits for logistics
+              </p>
+            </div>
           </div>
+          <Button
+            onClick={() => (isCreating ? resetForm() : setIsCreating(true))}
+            variant={isCreating ? "outline" : "default"}
+            className="gap-2"
+          >
+            {isCreating ? (
+              <>
+                <X size={16} /> Cancel
+              </>
+            ) : (
+              <>
+                <Plus size={16} /> Generate Permit
+              </>
+            )}
+          </Button>
         </div>
 
-        <div className="p-10">
-          {isCreating && (
-            <div className="bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 p-10 mb-10 animate-in slide-in-from-top-4 duration-500 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
-                <TrendingUp size={240} className="text-purple-900" />
-              </div>
-
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                    <Plus size={24} className="text-purple-600" />
-                  </div>
-                  {editingId
-                    ? "Modify Transit Permit"
-                    : "New Permit Application"}
-                </h3>
-                {editingId && (
-                  <span className="bg-purple-600 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest">
-                    Editing: {form.challanRef}
-                  </span>
+        {/* Create / Edit Form */}
+        {isCreating && (
+          <Card className="border border-slate-200 shadow-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base font-semibold text-slate-800 flex items-center gap-2">
+                {editingId ? (
+                  <>
+                    <Edit3 size={16} className="text-slate-500" />
+                    Edit Permit
+                    <Badge variant="secondary" className="ml-2 text-xs">
+                      {form.challanRef}
+                    </Badge>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={16} className="text-slate-500" />
+                    New Permit Application
+                  </>
                 )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Source Challan */}
                 {!editingId && (
-                  <div className="space-y-2">
-                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <div className="space-y-1.5 flex flex-col">
+                    <Label className="text-xs font-medium text-slate-600 mb-0.5">
                       Source Challan <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all shadow-sm"
-                      value={form.challanId}
-                      onChange={(e) => handleSelectChallan(e.target.value)}
-                    >
-                      <option value="">Select Document</option>
-                      {challans.map((c) => (
-                        <option key={c.id || c._id} value={c.id || c._id}>
-                          {c.challanNo}
-                        </option>
-                      ))}
-                    </select>
+                    </Label>
+                    <Popover open={challanSelectOpen} onOpenChange={setChallanSelectOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={challanSelectOpen}
+                          className="w-full justify-between bg-white text-sm font-normal border-slate-200"
+                        >
+                          <span className="truncate">
+                            {form.challanId
+                              ? (challans.find((c) => (c.id || c._id) === form.challanId)?.challanNo || "Select Document")
+                              : "Select Document"}
+                          </span>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0 z-50 bg-white border border-slate-200 shadow-lg" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search challan number..." />
+                          <CommandEmpty>No challan found.</CommandEmpty>
+                          <CommandGroup className="max-h-[220px] overflow-y-auto">
+                            {challans.map((c) => {
+                              const cid = c.id || c._id;
+                              return (
+                                <CommandItem
+                                  key={cid}
+                                  value={c.challanNo}
+                                  onSelect={() => {
+                                    handleSelectChallan(cid);
+                                    setChallanSelectOpen(false);
+                                  }}
+                                  className="cursor-pointer hover:bg-slate-50 py-2 px-3 text-sm flex items-center justify-between transition-colors"
+                                >
+                                  <div className="flex items-center">
+                                    <Check className={cn("mr-2 h-4 w-4 text-slate-900", form.challanId === cid ? "opacity-100" : "opacity-0")} />
+                                    <span>{c.challanNo}</span>
+                                  </div>
+                                  {c.customer && (
+                                    <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium truncate max-w-[120px]">
+                                      {c.customer}
+                                    </span>
+                                  )}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
+
+                {/* Transporter */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-600">
                     Transporter <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all shadow-sm"
+                  </Label>
+                  <Input
                     placeholder="Logistics Agency Name"
+                    className="bg-white border-slate-200 text-sm"
                     value={form.transporter}
                     onChange={(e) =>
                       setForm({ ...form, transporter: e.target.value })
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
+
+                {/* Vehicle No */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-600">
                     Vehicle Registration <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all shadow-sm"
+                  </Label>
+                  <Input
                     placeholder="e.g. DL-01-XX-0000"
+                    className="bg-white border-slate-200 text-sm"
                     value={form.vehicleNo}
                     onChange={(e) =>
                       setForm({ ...form, vehicleNo: e.target.value })
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest ml-1">
+
+                {/* Valid Until — Date Picker */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-600">
                     Valid Until <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    className="w-full bg-white border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none transition-all shadow-sm"
-                    value={form.validUntil}
+                  </Label>
+                  <Popover
+                    open={isCalendarOpen}
+                    onOpenChange={setIsCalendarOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className={cn(
+                          "w-full justify-between text-sm font-normal bg-white border-slate-200",
+                          !form.validUntil && "text-slate-400",
+                        )}
+                      >
+                        <span>
+                          {form.validUntil &&
+                          !isNaN(new Date(form.validUntil).getTime())
+                            ? format(new Date(form.validUntil), "dd MMM yyyy")
+                            : "Pick a date"}
+                        </span>
+                        <Calendar size={15} className="text-slate-400" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-50" align="start">
+                      <ShadcnCalendar
+                        mode="single"
+                        selected={
+                          form.validUntil &&
+                          !isNaN(new Date(form.validUntil).getTime())
+                            ? new Date(form.validUntil)
+                            : undefined
+                        }
+                        onSelect={(date) => {
+                          if (date) {
+                            setForm({
+                              ...form,
+                              validUntil: date.toISOString().split("T")[0],
+                            });
+                            setIsCalendarOpen(false);
+                          }
+                        }}
+                        initialFocus
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                        }
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Declared Goods Value */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-slate-600">
+                    Declared Goods Value (₹) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Enter goods value"
+                    className="bg-white border-slate-200 text-sm font-semibold"
+                    value={form.goodsValue || ""}
                     onChange={(e) =>
-                      setForm({ ...form, validUntil: e.target.value })
+                      setForm({ ...form, goodsValue: Number(e.target.value) })
                     }
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-t border-slate-200 pt-10">
-                <div className="flex flex-wrap gap-8">
-                  <div className="bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Declared Goods Value
-                    </p>
-                    <p className="font-black text-2xl text-slate-900">
-                      ₹{form.goodsValue.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="bg-white px-6 py-4 rounded-2xl border border-slate-200 shadow-sm min-w-[200px]">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                      Destination Hub
-                    </p>
-                    <p className="font-black text-lg text-indigo-600 truncate max-w-[250px]">
-                      {form.toPlace || "TBD"}
-                    </p>
-                  </div>
+              {/* Summary row */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+                  <span className="text-xs text-slate-400 font-medium">
+                    Goods Value
+                  </span>
+                  <span className="font-semibold text-slate-900">
+                    ₹{(form.goodsValue || 0).toLocaleString()}
+                  </span>
                 </div>
-                <div className="flex gap-4">
-                  <button
+                {form.toPlace && (
+                  <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+                    <MapPin size={14} className="text-slate-400" />
+                    <span className="font-medium text-slate-800">
+                      {form.toPlace}
+                    </span>
+                  </div>
+                )}
+                <div className="ml-auto flex gap-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={resetForm}
-                    className="px-8 py-4 rounded-2xl font-black text-sm text-slate-500 hover:bg-slate-200 transition-all"
+                    className="text-slate-500"
                   >
                     Discard
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    size="sm"
                     onClick={handleCreateOrUpdate}
                     disabled={actionLoading}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-sm hover:shadow-2xl hover:shadow-indigo-500/30 transition-all disabled:opacity-50 flex items-center gap-3 active:scale-95"
+                    className="gap-2"
                   >
                     {actionLoading ? (
-                      <Loader2 className="animate-spin" size={20} />
+                      <Loader2 size={15} className="animate-spin" />
                     ) : (
-                      <ShieldCheck size={20} />
+                      <ShieldCheck size={15} />
                     )}
-                    {editingId
-                      ? "Update Legal Permit"
-                      : "Sign & Generate Permit"}
-                  </button>
+                    {editingId ? "Update Permit" : "Generate Permit"}
+                  </Button>
                 </div>
               </div>
-            </div>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          {/* Filters & Search */}
-          <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="relative flex-1 max-w-2xl">
-              <Search
-                className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
-                size={20}
-              />
-              <input
-                type="text"
-                placeholder="Search by Permit No, Transporter, or Challan Ref..."
-                className="w-full pl-16 pr-6 py-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-base font-bold focus:bg-white focus:border-indigo-500/20 focus:ring-8 focus:ring-indigo-500/5 outline-none transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex bg-slate-50 p-1 rounded-2xl border-2 border-slate-50">
-                {["", "Active", "Expired", "Cancelled"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                      statusFilter === status
-                        ? "bg-white text-indigo-600 shadow-lg shadow-indigo-500/10"
-                        : "text-slate-400 hover:text-slate-600"
-                    }`}
-                  >
-                    {status || "All Permits"}
-                  </button>
-                ))}
-              </div>
-              <button className="p-4 bg-slate-50 border-2 border-slate-50 rounded-2xl text-slate-500 hover:text-indigo-600 hover:bg-white transition-all">
-                <Filter size={20} />
-              </button>
-            </div>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <Input
+              placeholder="Search by permit no, transporter, or challan ref..."
+              className="pl-9 bg-white border-slate-200 text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
+          <div className="flex items-center gap-2">
+            <div className="flex border border-slate-200 rounded-lg overflow-hidden bg-white">
+              {STATUS_TABS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setStatusFilter(s);
+                    setPage(1);
+                  }}
+                  className={cn(
+                    "px-3 py-1.5 text-xs font-medium transition-colors",
+                    statusFilter === s
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-500 hover:bg-slate-50",
+                  )}
+                >
+                  {s || "All"}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 border-slate-200"
+            >
+              <Filter size={14} className="text-slate-500" />
+            </Button>
+          </div>
+        </div>
 
-          {/* Table Data */}
-          <div className="overflow-hidden rounded-[2rem] border-2 border-slate-100 shadow-sm relative">
+        {/* Table */}
+        <Card className="border border-slate-200 shadow-sm overflow-hidden">
+          <div className="relative">
             {loading && (
-              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
-                <div className="flex flex-col items-center">
-                  <Loader2
-                    className="animate-spin text-indigo-600 mb-2"
-                    size={40}
-                  />
-                  <p className="text-xs font-black text-slate-900 uppercase tracking-widest">
-                    Refreshing Ledger...
-                  </p>
+              <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-20 flex items-center justify-center">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Loader2 size={18} className="animate-spin" />
+                  Loading...
                 </div>
               </div>
             )}
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/50">
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      Permit Ledger
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      Source Ref
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      Transport Hub
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                      Compliance Metadata
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">
-                      Lifecycle
-                    </th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 border-b border-slate-200 hover:bg-slate-50">
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-6">
+                      Permit No
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-4">
+                      Challan Ref
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-4">
+                      Transporter
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-4">
+                      Route
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-4">
+                      Validity
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-4">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wide py-3 px-6 text-right">
                       Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {bills.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-32 text-center">
-                        <div className="flex flex-col items-center opacity-40">
-                          <FileText size={64} className="text-slate-300 mb-4" />
-                          <p className="text-lg font-black text-slate-400 uppercase tracking-widest">
-                            Compliance Ledger Empty
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-20 text-center">
+                        <div className="flex flex-col items-center gap-2 text-slate-400">
+                          <FileText size={36} className="text-slate-300" />
+                          <p className="text-sm font-medium">
+                            No permits found
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Generate a new permit to get started
                           </p>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
-                    bills.map((b) => (
-                      <tr
-                        key={b.id || b._id}
-                        className="group hover:bg-slate-50/80 transition-all duration-300"
-                      >
-                        <td className="px-10 py-7">
-                          <div className="flex flex-col">
-                            <span className="font-black text-slate-900 text-xl tracking-tighter mb-1 group-hover:text-indigo-600 transition-colors">
-                              {b.ewbNo}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <Calendar size={12} className="text-slate-400" />
-                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    bills.map((b) => {
+                      const isExpired = new Date(b.validUntil) < new Date();
+                      const statusInfo = statusConfig[b.status] ?? {
+                        label: b.status,
+                        className:
+                          "bg-slate-100 text-slate-600 border border-slate-200",
+                      };
+                      return (
+                        <TableRow
+                          key={b.id || b._id}
+                          className="group border-b border-slate-100 hover:bg-slate-50/60 transition-colors"
+                        >
+                          {/* Permit No */}
+                          <TableCell className="px-6 py-4">
+                            <div>
+                              <p className="font-semibold text-slate-900 text-sm">
+                                {b.ewbNo}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                                <Calendar size={11} />
                                 {new Date(
                                   b.generated || b.createdAt,
                                 ).toLocaleDateString(undefined, {
@@ -503,152 +691,212 @@ const EWayBillsView: React.FC = () => {
                                   month: "short",
                                   year: "numeric",
                                 })}
-                              </span>
+                              </p>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-7">
-                          <div className="inline-flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm font-black text-slate-700 text-xs">
-                            <FileText className="text-indigo-400" size={16} />
-                            {b.challanRef}
-                          </div>
-                        </td>
-                        <td className="px-8 py-7">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                                <Truck className="text-slate-500" size={16} />
+                          </TableCell>
+
+                          {/* Challan Ref */}
+                          <TableCell className="px-4 py-4">
+                            <div className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-md px-2.5 py-1 text-xs font-medium text-slate-700">
+                              <FileText size={12} className="text-slate-400" />
+                              {b.challanRef}
+                            </div>
+                          </TableCell>
+
+                          {/* Transporter */}
+                          <TableCell className="px-4 py-4">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Truck
+                                  size={14}
+                                  className="text-slate-400 shrink-0"
+                                />
+                                <span className="text-sm font-medium text-slate-800">
+                                  {b.transporter}
+                                </span>
                               </div>
-                              <span className="font-black text-slate-800 text-sm">
-                                {b.transporter}
+                              <span className="mt-1 ml-[22px] inline-block text-xs text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded font-mono">
+                                {b.vehicleNo}
                               </span>
                             </div>
-                            <span className="ml-10 text-[11px] font-bold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-lg w-fit shadow-sm">
-                              {b.vehicleNo}
+                          </TableCell>
+
+                          {/* Route */}
+                          <TableCell className="px-4 py-4">
+                            <div className="flex items-center gap-1.5 text-sm text-slate-700">
+                              <MapPin
+                                size={13}
+                                className="text-slate-400 shrink-0"
+                              />
+                              <span>{b.toPlace || "—"}</span>
+                            </div>
+                            {b.fromPlace && (
+                              <p className="text-xs text-slate-400 mt-0.5 ml-[18px]">
+                                from {b.fromPlace}
+                              </p>
+                            )}
+                          </TableCell>
+
+                          {/* Validity */}
+                          <TableCell className="px-4 py-4">
+                            <span
+                              className={cn(
+                                "text-xs font-medium",
+                                isExpired ? "text-red-600" : "text-slate-700",
+                              )}
+                            >
+                              {new Date(b.validUntil).toLocaleDateString(
+                                undefined,
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                },
+                              )}
                             </span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-7">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                              <MapPin size={14} className="text-indigo-400" />{" "}
-                              {b.toPlace || "HUB-CENTRAL"}
+                            {isExpired && (
+                              <p className="text-[10px] text-red-500 mt-0.5 font-medium">
+                                Expired
+                              </p>
+                            )}
+                          </TableCell>
+
+                          {/* Status */}
+                          <TableCell className="px-4 py-4">
+                            <Badge
+                              className={cn(
+                                "text-xs font-medium rounded-md",
+                                statusInfo.className,
+                              )}
+                            >
+                              {statusInfo.label}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Actions */}
+                          <TableCell className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-500 hover:text-slate-900"
+                                onClick={() => startEdit(b)}
+                                title="Edit"
+                              >
+                                <Edit3 size={14} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-400 hover:text-red-600"
+                                onClick={() => handleDeleteClick(b.id || b._id, b.ewbNo)}
+                                title="Delete"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-400 hover:text-slate-700"
+                                  >
+                                    <MoreVertical size={14} />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="text-sm"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={() => startEdit(b)}
+                                  >
+                                    Edit Permit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={() => handleDeleteClick(b.id || b._id, b.ewbNo)}
+                                  >
+                                    Cancel Permit
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                            <div
-                              className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${
-                                new Date(b.validUntil) < new Date()
-                                  ? "text-rose-500"
-                                  : "text-emerald-600"
-                              }`}
-                            >
-                              <Calendar size={14} /> Expires:{" "}
-                              {new Date(b.validUntil).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-8 py-7 text-center">
-                          <span
-                            className={`inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.1em] border-2 ${
-                              b.status === "Active"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                : b.status === "Expired"
-                                  ? "bg-amber-50 text-amber-700 border-amber-100"
-                                  : "bg-red-50 text-red-700 border-red-100"
-                            }`}
-                          >
-                            {b.status}
-                          </span>
-                        </td>
-                        <td className="px-10 py-7 text-right">
-                          <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => startEdit(b)}
-                              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-200 transition-all shadow-sm active:scale-90"
-                              title="Modify Permit"
-                            >
-                              <Edit3 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(b.id || b._id)}
-                              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-all shadow-sm active:scale-90"
-                              title="Cancel Permit"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                            <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-slate-900 transition-all shadow-sm">
-                              <MoreVertical size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
 
             {/* Pagination */}
-            <div className="bg-slate-50/50 p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-slate-100">
-              <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                Showing <span className="text-slate-900">{bills.length}</span>{" "}
-                of <span className="text-slate-900">{total}</span> compliant
-                records
-              </div>
-              <div className="flex items-center gap-3">
-                <button
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-white">
+              <p className="text-xs text-slate-500">
+                Showing{" "}
+                <span className="font-semibold text-slate-700">
+                  {bills.length}
+                </span>{" "}
+                of <span className="font-semibold text-slate-700">{total}</span>{" "}
+                permits
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-slate-200"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 transition-all shadow-sm active:scale-90"
                 >
-                  <ChevronLeft size={20} />
-                </button>
-                <div className="flex items-center gap-2">
+                  <ChevronLeft size={15} />
+                </Button>
+                <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                     (p) => (
                       <button
                         key={p}
                         onClick={() => setPage(p)}
-                        className={`w-12 h-12 rounded-2xl text-sm font-black transition-all ${
+                        className={cn(
+                          "w-8 h-8 rounded-md text-xs font-medium transition-colors",
                           page === p
-                            ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"
-                            : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"
-                        }`}
+                            ? "bg-slate-900 text-white"
+                            : "text-slate-500 hover:bg-slate-100",
+                        )}
                       >
                         {p}
                       </button>
                     ),
                   )}
                 </div>
-                <button
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-slate-200"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="w-12 h-12 bg-white border border-slate-200 rounded-2xl flex items-center justify-center text-slate-400 hover:text-indigo-600 disabled:opacity-30 transition-all shadow-sm active:scale-90"
                 >
-                  <ChevronRightIcon size={20} />
-                </button>
-              </div>
+                  <ChevronRightIcon size={15} />
+                </Button>
             </div>
           </div>
         </div>
-      </div>
+      </Card>
+    </div>
 
-      {/* Legal Advisory */}
-      {/* <div className="bg-white rounded-[2.5rem] border border-slate-200 p-10 flex flex-col md:flex-row gap-10 items-center shadow-xl shadow-slate-100">
-            <div className="w-24 h-24 bg-amber-50 rounded-[2rem] flex items-center justify-center border-2 border-amber-100 shrink-0">
-                <AlertCircle className="text-amber-600" size={48}/>
-            </div>
-            <div className="flex-1">
-                <h4 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tighter">Compliance Enforcement Notice</h4>
-                <p className="text-slate-500 text-base leading-relaxed font-medium">
-                    E-Way Bill generation is a statutory requirement for all dispatches exceeding ₹50,000. 
-                    Incorrect transporter details or expired permits can result in significant penalties and seizure of goods by tax authorities. 
-                    Ensure that the <span className="font-black text-indigo-600">Valid Until</span> date accurately reflects the travel distance as per GST regulations.
-                </p>
-            </div>
-            <button className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-sm whitespace-nowrap hover:bg-slate-800 transition-all shadow-lg">
-                View Compliance Rules
-            </button>
-        </div> */}
+      <ConfirmDeleteModal
+        isOpen={deleteModalOpen}
+        title="Cancel E-Way Bill Permit"
+        description="Are you sure you want to cancel/delete this legal transit permit? This action cannot be undone and will void the compliance ledger record."
+        itemName={deletingNo}
+        isLoading={deleteLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteModalOpen(false);
+          setDeletingId(null);
+          setDeletingNo("");
+        }}
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import {
   InventoryItem,
   Category,
@@ -190,6 +191,10 @@ const ItemMaster: React.FC = () => {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const toggleRow = (id: string) => {
     const next = new Set(expandedRows);
     if (next.has(id)) next.delete(id);
@@ -328,10 +333,24 @@ const ItemMaster: React.FC = () => {
     setFormData((current) => ({ ...current, [field]: value }));
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Delete this item?")) {
-      await productService.deleteItem(id);
+  const handleDeleteClick = (id: string) => {
+    setDeleteTargetId(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
+    try {
+      await productService.deleteItem(deleteTargetId);
       loadItems();
+    } catch (error) {
+      console.error("Failed to delete item", error);
+      alert("Failed to delete item.");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -993,7 +1012,7 @@ const ItemMaster: React.FC = () => {
                         </ActionBtn>
                         <ActionBtn
                           title="Delete"
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDeleteClick(item.id)}
                           className="hover:text-red-500"
                         >
                           <Trash2 size={13} />
@@ -1669,6 +1688,13 @@ const ItemMaster: React.FC = () => {
           </form>
         </DialogContent>
       </Dialog>
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        itemName={items.find((i) => i.id === deleteTargetId)?.name}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
 };

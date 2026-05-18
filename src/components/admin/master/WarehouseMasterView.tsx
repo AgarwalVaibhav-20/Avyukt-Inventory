@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import {
   ArrowUpRight,
   BarChart3,
@@ -241,6 +242,10 @@ const WarehouseMasterView: React.FC = () => {
   const [formData, setFormData] =
     useState<Omit<Warehouse, "id">>(emptyWarehouseForm);
 
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   useEffect(() => {
     dispatch(fetchWarehouses());
   }, [dispatch]);
@@ -289,13 +294,23 @@ const WarehouseMasterView: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this warehouse?")) return;
+  const handleDeleteClick = (id: string) => {
+    setDeleteTargetId(id);
+    setIsDeleteModalOpen(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
     try {
-      await dispatch(removeWarehouse(id)).unwrap();
+      await dispatch(removeWarehouse(deleteTargetId)).unwrap();
     } catch (error) {
+      console.error("Failed to delete warehouse", error);
       alert("Error deleting warehouse");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -555,7 +570,7 @@ const WarehouseMasterView: React.FC = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(warehouse.id)}
+                        onClick={() => handleDeleteClick(warehouse.id)}
                         className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
                       >
                         <Trash2 size={16} />
@@ -727,7 +742,7 @@ const WarehouseMasterView: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(warehouse.id)}
+                            onClick={() => handleDeleteClick(warehouse.id)}
                             className="h-8 w-8 text-slate-400 hover:text-red-600"
                           >
                             <Trash2 size={14} />
@@ -1130,8 +1145,16 @@ const WarehouseMasterView: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        itemName={warehouses.find((w) => w.id === deleteTargetId)?.name}
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   );
+
 };
 
 export default WarehouseMasterView;
