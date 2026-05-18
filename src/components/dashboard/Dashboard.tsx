@@ -129,8 +129,9 @@ const Dashboard: React.FC = () => {
 
       console.log('�... Dashboard data loaded successfully');
       
-      // Load AI insights with real inventory data
-      await handleGenerateInsight(movements);
+      // Load AI insights in the background so the dashboard shell can render
+      // immediately even if the AI service is slow or unavailable.
+      void handleGenerateInsight(movements);
     } catch (error) {
       console.error('❌ Error loading dashboard data:', error);
     } finally {

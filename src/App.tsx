@@ -102,6 +102,11 @@ import AiAssistantModal from "@/components/common/AiAssistantModal";
 import SearchResultsPage from "@/components/common/SearchResultsPage";
 import GlobalSearch from "@/components/common/GlobalSearch";
 import UserManagementView from "@/components/users/UserManagementView";
+import {
+  ApprovalHierarchyView,
+  RoleBasedAccessView,
+  WarehouseAccessView,
+} from "@/components/users/UserAccessViews";
 import SessionBanner from "@/components/users/SessionBanner";
 
 // Master Data Views
@@ -760,8 +765,13 @@ const App: React.FC = () => {
 
       // --- User & Access ---
       case "usr-mgmt":
-        console.log("🎯 Rendering UserManagementView");
         return <UserManagementView />;
+      case "usr-rbac":
+        return <RoleBasedAccessView />;
+      case "usr-wh":
+        return <WarehouseAccessView />;
+      case "usr-hier":
+        return <ApprovalHierarchyView />;
 
       // --- Advanced ---
       case "adv-forecast":
@@ -1714,6 +1724,36 @@ const App: React.FC = () => {
                     <Navigate to="/dashboard/dash-overview" replace />
                   ) : (
                     <UserManagementView />
+                  )
+                }
+              />
+              <Route
+                path="/users/usr-rbac"
+                element={
+                  isDelegatedSession ? (
+                    <Navigate to="/dashboard/dash-overview" replace />
+                  ) : (
+                    <RoleBasedAccessView />
+                  )
+                }
+              />
+              <Route
+                path="/users/usr-wh"
+                element={
+                  isDelegatedSession ? (
+                    <Navigate to="/dashboard/dash-overview" replace />
+                  ) : (
+                    <WarehouseAccessView />
+                  )
+                }
+              />
+              <Route
+                path="/users/usr-hier"
+                element={
+                  isDelegatedSession ? (
+                    <Navigate to="/dashboard/dash-overview" replace />
+                  ) : (
+                    <ApprovalHierarchyView />
                   )
                 }
               />

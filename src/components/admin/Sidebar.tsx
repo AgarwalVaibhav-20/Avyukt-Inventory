@@ -66,11 +66,23 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
   const [searchTerm, setSearchTerm] = useState("");
 
-  // During a delegated session, hide the target account's User & Access menu -
-  // the borrowed session should not be able to manage that user's permissions.
-  const visibleMenuItems = isDelegatedSession
-    ? MENU_ITEMS.filter((item) => item.id !== "users")
-    : MENU_ITEMS;
+  const visibleMenuItems = React.useMemo(() => {
+    let items = MENU_ITEMS;
+    const role = user?.role || 'employee';
+
+    if (role === 'user') {
+      items = items.filter(item => ['dashboard', 'documents', 'reports'].includes(item.id));
+    } else if (role === 'employee') {
+      items = items.filter(item => !['users', 'settings', 'audit', 'advanced', 'approvals'].includes(item.id));
+    } else if (role === 'manager') {
+      items = items.filter(item => !['advanced'].includes(item.id));
+    }
+
+    if (isDelegatedSession) {
+      items = items.filter((item) => item.id !== "users");
+    }
+    return items;
+  }, [user?.role, isDelegatedSession]);
 
   const toggleExpand = (id: string) => {
     const newExpanded = new Set(expandedMenus);
