@@ -16,9 +16,9 @@ const initialState: InventoryState = {
 
 export const fetchItems = createAsyncThunk(
   'inventory/fetchItems',
-  async (filters: Record<string, any> | undefined, { rejectWithValue }) => {
+  async (filters: Record<string, any> | void, { rejectWithValue }) => {
     try {
-      return await productService.getAllItems(filters);
+      return await productService.getAllItems(filters || undefined);
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch items');
     }
