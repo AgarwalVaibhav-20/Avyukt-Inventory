@@ -120,7 +120,7 @@ const SalesReturnMgmtView: React.FC = () => {
         // Fetch Ledger & Serials for verification audit
         try {
           const [ledgerRes, serialsRes] = await Promise.all([
-            api.get('/api/stock-ledger'),
+            api.get('/api/stock/ledger', { params: { type: 'Sales Return', limit: 100 } }),
             api.get('/api/serial-numbers')
           ]);
           setStockLedger(ledgerRes?.data?.data || ledgerRes?.data || []);
@@ -238,26 +238,41 @@ const SalesReturnMgmtView: React.FC = () => {
   };
 
   const handleOpenQcModal = (ret: SalesReturn) => {
-    const item = ret.items[0] || { quantity: 2 };
+    const item = ret.items[0] || { quantity: 1 };
+    const quantity = Number(item.quantity || item.returnQty || 1);
+    const serials = Array.isArray(item.serialNumbers) ? item.serialNumbers : [];
     setShowQcModal(ret);
     setQcForm({
-      passedQty: 1,
-      failedQty: item.quantity - 1 > 0 ? item.quantity - 1 : 1,
-      passedSerials: ['SN-002'],
-      failedSerials: ['SN-004'],
+      passedQty: Math.min(1, quantity),
+      failedQty: Math.max(quantity - 1, 0),
+      passedSerials: serials.slice(0, Math.min(1, serials.length)),
+      failedSerials: serials.slice(1),
       scrapReason: 'Defective / Damaged in transit',
-      qcNotes: '1 laptop OK -> back to stock; 1 laptop defective -> Scrapped'
+      qcNotes: 'QC completed: passed items return to stock; failed items move to scrap.'
     });
   };
 
   const handleQcSubmit = async () => {
     if (!showQcModal) return;
+    const totalReturned = showQcModal.items.reduce(
+      (sum, item: any) => sum + Number(item.quantity || item.returnQty || 0),
+      0,
+    );
+    const passedQty = Number(qcForm.passedQty || 0);
+    const failedQty = Number(qcForm.failedQty || 0);
+
+    if (passedQty + failedQty !== totalReturned) {
+      alert(`Passed + failed quantity must equal returned quantity (${totalReturned}).`);
+      return;
+    }
+
     setProcessingId(showQcModal.id);
     try {
-      // Call backend update API with QC details
+      const qcStatus =
+        passedQty === totalReturned ? 'Pass' :
+        failedQty === totalReturned ? 'Fail' :
+        'Partial';
       const payload = {
-        qcStatus: 'Completed',
-        status: 'Processed',
         remarks: qcForm.qcNotes,
         items: showQcModal.items.map((i: any) => {
           const q = Number(i.quantity || i.returnQty || 1);
@@ -279,14 +294,15 @@ const SalesReturnMgmtView: React.FC = () => {
           }
           
           return {
-            productId: resolvedId || "6a05a4800707c5f783c37455", // Fallback to HDMI Cable ID
+            productId: resolvedId || i.itemId || "",
+            itemId: resolvedId || i.itemId || "",
             description: desc || "Returned Item",
             returnQty: q,
             unit: i.unit || 'Unit',
             unitPrice: up,
             lineTotal: i.lineTotal || (q * up),
-            qcPassedQty: Number(qcForm.passedQty || 0),
-            qcFailedQty: Number(qcForm.failedQty || 0),
+            qcPassedQty: passedQty,
+            qcFailedQty: failedQty,
             passedSerialNumbers: qcForm.passedSerials || [],
             failedSerialNumbers: qcForm.failedSerials || [],
             serialNumbers: i.serialNumbers || []
@@ -294,8 +310,8 @@ const SalesReturnMgmtView: React.FC = () => {
         })
       };
 
-      await api.put(`/api/sales-returns/${showQcModal.id}`, payload);
-      alert("QC Inspection Completed! 1 Laptop Restocked, 1 Laptop Scrapped. Stock Ledger updated.");
+      await salesService.updateSalesReturnQC(showQcModal.id, qcStatus, payload);
+      alert(`QC Inspection Completed! ${passedQty} unit(s) restocked, ${failedQty} unit(s) scrapped. Stock Ledger updated.`);
       setShowQcModal(null);
       loadData();
     } catch (e: any) {

@@ -82,6 +82,37 @@ export const resendOtp = createAsyncThunk(
   }
 );
 
+export const forgotPassword = createAsyncThunk(
+  'auth/forgotPassword',
+  async ({ email }: { email: string }, { rejectWithValue }) => {
+    try {
+      const data = await authService.forgotPassword(email);
+      return data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.response?.data?.error || 'Failed to send reset code'
+      );
+    }
+  }
+);
+
+export const resetPassword = createAsyncThunk(
+  'auth/resetPassword',
+  async (
+    resetData: { email: string; otp: string; newPassword: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const data = await authService.resetPassword(resetData);
+      return data;
+    } catch (err: any) {
+      return rejectWithValue(
+        err.response?.data?.message || err.response?.data?.error || 'Failed to reset password'
+      );
+    }
+  }
+);
+
 export const fetchProfile = createAsyncThunk(
   'auth/fetchProfile',
   async (_, { rejectWithValue }) => {
@@ -225,6 +256,28 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(resendOtp.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(forgotPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(forgotPassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(forgotPassword.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(resetPassword.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPassword.fulfilled, (state) => {
+        state.loading = false;
+      })
+      .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

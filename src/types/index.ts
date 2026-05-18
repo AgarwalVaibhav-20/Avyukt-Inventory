@@ -419,9 +419,15 @@ export interface ReturnItem {
   itemName: string;
   quantity: number;
   reason: string;
+  productId?: string;
+  returnQty?: number;
   unitPrice?: number;
   lineTotal?: number;
   serialNumbers?: string[];
+  qcPassedQty?: number;
+  qcFailedQty?: number;
+  passedSerialNumbers?: string[];
+  failedSerialNumbers?: string[];
 }
 
 // --- Sales & Outward Types ---

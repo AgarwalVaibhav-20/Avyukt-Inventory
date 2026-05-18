@@ -12,6 +12,8 @@ import {
   User,
   Building2,
   LayoutGrid,
+  ArrowLeft,
+  KeyRound,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,15 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { login, clearError, registerUser, verifyOtp, resendOtp } from "@/store/slices/authSlice";
+import {
+  login,
+  clearError,
+  registerUser,
+  verifyOtp,
+  resendOtp,
+  forgotPassword,
+  resetPassword,
+} from "@/store/slices/authSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +50,7 @@ interface LoginProps {
   onLoginSuccess?: () => void;
 }
 
-type AuthStep = "login" | "signup" | "verify";
+type AuthView = "auth" | "otp" | "forgot";
 
 interface PasswordStrength {
   score: number;
@@ -244,7 +254,10 @@ function OtpForm({ email, onVerifySuccess }: { email: string; onVerifySuccess?: 
 
 // ─── Login Form ───────────────────────────────────────────────────────────────
 
-function LoginForm({ onLoginSuccess }: LoginProps) {
+function LoginForm({
+  onLoginSuccess,
+  onForgotPassword,
+}: LoginProps & { onForgotPassword: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [success, setSuccess] = useState("");
@@ -299,7 +312,13 @@ function LoginForm({ onLoginSuccess }: LoginProps) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between ml-1">
           <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
-          <a href="#" className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors">Forgot password?</a>
+          <button
+            type="button"
+            onClick={onForgotPassword}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Forgot password?
+          </button>
         </div>
         <PasswordInput id="password" value={password} onChange={setPassword} />
       </div>
@@ -330,6 +349,176 @@ function LoginForm({ onLoginSuccess }: LoginProps) {
 }
 
 // ─── Signup Form ───────────────────────────────────────────────────────────────
+
+function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => void }) {
+  const [email, setEmail] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [localError, setLocalError] = useState("");
+
+  const dispatch = useAppDispatch();
+  const { loading, error } = useAppSelector((state) => state.auth);
+  const strength = getPasswordStrength(newPassword);
+
+  const handleSendCode = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!email) return;
+
+    setSuccess("");
+    setLocalError("");
+    dispatch(clearError());
+
+    const result = await dispatch(forgotPassword({ email }));
+    if (forgotPassword.fulfilled.match(result)) {
+      setCodeSent(true);
+      setSuccess("Reset code sent to your email.");
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuccess("");
+    setLocalError("");
+    dispatch(clearError());
+
+    if (otp.length < 6) {
+      setLocalError("Enter the 6-digit reset code.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setLocalError("Passwords do not match.");
+      return;
+    }
+
+    const result = await dispatch(resetPassword({ email, otp, newPassword }));
+    if (resetPassword.fulfilled.match(result)) {
+      setSuccess("Password reset successful. You can sign in now.");
+      setOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(onBackToLogin, 1500);
+    }
+  };
+
+  return (
+    <form onSubmit={codeSent ? handleResetPassword : handleSendCode} className="space-y-4">
+      {(error || localError) && (
+        <Alert variant="destructive" className="py-2.5 border-red-200 bg-red-50 text-red-700">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{localError || error}</AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert className="py-2.5 border-green-200 bg-green-50 text-green-700">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-1.5">
+        <Label htmlFor="reset-email" className="text-gray-700 font-medium ml-1">Work Email</Label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          <Input
+            id="reset-email"
+            type="email"
+            placeholder="name@company.com"
+            value={email}
+            disabled={codeSent}
+            onChange={(e) => setEmail(e.target.value)}
+            className="pl-9 h-11 border-gray-200 focus-visible:ring-blue-500 disabled:bg-gray-50"
+          />
+        </div>
+      </div>
+
+      {codeSent && (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="reset-otp" className="text-gray-700 font-medium ml-1">Reset Code</Label>
+            <div className="relative">
+              <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+              <Input
+                id="reset-otp"
+                type="text"
+                inputMode="numeric"
+                placeholder="000000"
+                maxLength={6}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ""))}
+                className="pl-9 h-11 border-gray-200 focus-visible:ring-blue-500 tracking-[0.3em] font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="new-password" className="text-gray-700 font-medium ml-1">New Password</Label>
+            <PasswordInput id="new-password" value={newPassword} onChange={setNewPassword} autoComplete="new-password" />
+            {newPassword && (
+              <div className="px-1 pt-1">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Security Strength</span>
+                  <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md", strength.color.replace("bg-", "text-"))}>
+                    {strength.label}
+                  </span>
+                </div>
+                <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div className={cn("h-full transition-all duration-500", strength.color)} style={{ width: `${(strength.score / 4) * 100}%` }} />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm-password" className="text-gray-700 font-medium ml-1">Confirm Password</Label>
+            <PasswordInput id="confirm-password" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
+          </div>
+        </>
+      )}
+
+      <Button
+        type="submit"
+        disabled={loading || !email || (codeSent && (!otp || !newPassword || !confirmPassword))}
+        className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-md shadow-blue-100 transition-all active:scale-[0.98] mt-2"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {codeSent ? "Resetting..." : "Sending code..."}
+          </>
+        ) : codeSent ? (
+          "Reset Password"
+        ) : (
+          "Send Reset Code"
+        )}
+      </Button>
+
+      {codeSent && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSendCode()}
+          disabled={loading}
+          className="w-full h-11 border-gray-200 text-gray-700"
+        >
+          Resend Code
+        </Button>
+      )}
+
+      <button
+        type="button"
+        onClick={onBackToLogin}
+        className="w-full inline-flex items-center justify-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to sign in
+      </button>
+    </form>
+  );
+}
 
 function SignupForm({ onSignupSuccess }: { onSignupSuccess: (email: string) => void }) {
   const [firstName, setFirstName] = useState("");
@@ -595,16 +784,16 @@ function OtpFormLegacy({
 // ─── Main Auth Page ───────────────────────────────────────────────────────────
 
 export default function AuthPage({ onLoginSuccess }: LoginProps) {
-  const [step, setStep] = useState<'auth' | 'otp'>('auth');
+  const [step, setStep] = useState<AuthView>('auth');
   const [signupEmail, setSignupEmail] = useState("");
+  const dispatch = useAppDispatch();
 
   const handleSignupSuccess = (email: string) => {
     setSignupEmail(email);
     setStep('otp');
   };
 
-  const [authStep, setAuthStep] = useState<AuthStep>("login");
-  const [pendingOtpEmail, setPendingOtpEmail] = useState("");
+  const showAuthTabs = step === 'auth';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4 py-10">
@@ -623,7 +812,7 @@ export default function AuthPage({ onLoginSuccess }: LoginProps) {
         </div>
 
         <Card className="border border-gray-100 shadow-xl shadow-gray-100/60 rounded-2xl bg-white">
-          {step === 'auth' ? (
+          {showAuthTabs ? (
             <Tabs defaultValue="login" className="w-full">
               <CardHeader className="pb-0 pt-6 px-6">
                 <TabsList className="w-full h-10 bg-gray-100 rounded-xl p-1">
@@ -638,7 +827,13 @@ export default function AuthPage({ onLoginSuccess }: LoginProps) {
                     <CardTitle className="text-xl font-bold text-gray-900">Welcome back 👋</CardTitle>
                     <CardDescription className="text-sm text-gray-400 mt-1">Sign in to continue to your dashboard</CardDescription>
                   </div>
-                  <LoginForm onLoginSuccess={onLoginSuccess} />
+                  <LoginForm
+                    onLoginSuccess={onLoginSuccess}
+                    onForgotPassword={() => {
+                      dispatch(clearError());
+                      setStep('forgot');
+                    }}
+                  />
                 </CardContent>
               </TabsContent>
 
@@ -652,6 +847,19 @@ export default function AuthPage({ onLoginSuccess }: LoginProps) {
                 </CardContent>
               </TabsContent>
             </Tabs>
+          ) : step === 'forgot' ? (
+            <CardContent className="px-6 pt-8 pb-8">
+              <div className="mb-6 text-center">
+                <CardTitle className="text-xl font-bold text-gray-900">Reset password</CardTitle>
+                <CardDescription className="text-sm text-gray-400 mt-1">Use the code sent to your email to create a new password</CardDescription>
+              </div>
+              <ForgotPasswordForm
+                onBackToLogin={() => {
+                  dispatch(clearError());
+                  setStep('auth');
+                }}
+              />
+            </CardContent>
           ) : (
             <CardContent className="px-6 pt-8 pb-8">
               <div className="mb-6 text-center">

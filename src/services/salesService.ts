@@ -39,17 +39,33 @@ const toFrontendSO = (item: any): SalesOrder => ({
 const toFrontendSalesReturn = (item: any): SalesReturn => ({
     id: item.id || item._id,
     returnNumber: item.returnNo || item.returnNumber,
+    dispatchId: String(item.dispatchId || ''),
+    dispatchRef: item.dispatchRef || item.dispatchNumber || '',
     soId: String(item.salesOrderId || item.soId || ''),
     soNumber: item.soRef || item.soNumber || '',
     customerName: item.customerName || '',
     date: (item.returnDate || item.date || item.createdAt || new Date().toISOString()).toString().slice(0, 10),
     items: (item.items || []).map((line: any) => ({
-        itemId: String(line.productId || line.itemId || ''),
+        itemId: String(line.productId?._id || line.productId || line.itemId || ''),
+        productId: String(line.productId?._id || line.productId || line.itemId || ''),
         itemName: line.description || line.itemName || '',
         quantity: Number(line.returnQty || line.quantity || 0),
         reason: line.reason || '',
+        returnQty: Number(line.returnQty || line.quantity || 0),
+        unitPrice: Number(line.unitPrice || 0),
+        lineTotal: Number(line.lineTotal || 0),
+        serialNumbers: Array.isArray(line.serialNumbers) ? line.serialNumbers : [],
+        qcPassedQty: Number(line.qcPassedQty || 0),
+        qcFailedQty: Number(line.qcFailedQty || 0),
+        passedSerialNumbers: Array.isArray(line.passedSerialNumbers) ? line.passedSerialNumbers : [],
+        failedSerialNumbers: Array.isArray(line.failedSerialNumbers) ? line.failedSerialNumbers : [],
     })),
     status: item.status || 'Pending',
+    qcStatus: item.qcStatus || 'Pending',
+    reason: item.reason || '',
+    returnType: item.returnType || undefined,
+    remarks: item.remarks || '',
+    stockEffectApplied: Boolean(item.stockEffectApplied),
 });
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -438,7 +454,7 @@ export const salesService = {
     try {
       const payload = {
         qcStatus,
-        status: qcStatus === 'Pass' || qcStatus === 'Completed' ? 'Approved' : 'Rejected',
+        status: 'Processed',
         ...(updateBody || {})
       };
       const response = await api.put(`/api/sales-returns/${id}`, payload);

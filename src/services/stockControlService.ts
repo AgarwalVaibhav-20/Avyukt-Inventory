@@ -115,7 +115,6 @@ const mapSerialStatus = (status?: string): SerialNumber['status'] => {
     case 'Sold':
     case 'Defective':
       return status === 'In Stock' || status === 'Returned' ? 'Available' : status;
-    case 'Returned':
     case 'Scrapped':
     case 'In Service':
       return 'Defective';

@@ -158,7 +158,7 @@ const SalesReturnView: React.FC = () => {
       
       return {
         ...item,
-        productId: resolvedId || "6a05a4800707c5f783c37455", // HDMI Cable ID fallback
+        productId: resolvedId || item.itemId || "",
         description: desc || "Returned Item",
         returnQty: q,
         qcPassedQty: q,
@@ -241,7 +241,8 @@ const SalesReturnView: React.FC = () => {
         }
         
         return {
-          productId: resolvedId || "6a05a4800707c5f783c37455", // HDMI Cable ID fallback
+          productId: resolvedId || i.itemId || "",
+          itemId: resolvedId || i.itemId || "",
           description: desc || "Returned Item",
           returnQty: q,
           unit: i.unit || 'Unit',
