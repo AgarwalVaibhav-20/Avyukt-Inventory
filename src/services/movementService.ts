@@ -165,7 +165,7 @@ export const movementService = {
         reason: data.reason,
         notes: data.type,
         type: data.type,
-        status: 'Pending',
+        status: 'Approved',
       };
 
       const response = await api.post('/api/stock-adjustments', payload);

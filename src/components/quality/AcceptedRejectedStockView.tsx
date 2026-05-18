@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { qualityService } from '@/services/qualityService';
 import { procurementService } from '@/services/procurementService';
-import { GRN } from '@/types';
+import { GRN, NCR, ReworkEntry } from '@/types';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { CheckCircle, XCircle, Search, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Search, Loader2, ShieldAlert, Wrench } from 'lucide-react';
 
 const AcceptedRejectedStockView: React.FC = () => {
   const [grns, setGRNs] = useState<GRN[]>([]);
+  const [ncrs, setNcrs] = useState<NCR[]>([]);
+  const [reworks, setReworks] = useState<ReworkEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ accepted: 0, rejected: 0, pending: 0 });
   const [searchTerm, setSearchTerm] = useState('');
@@ -20,20 +22,32 @@ const AcceptedRejectedStockView: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const data = await procurementService.getAllGRNs();
-    setGRNs(data);
-    
-    // Calculate stats from all items in all GRNs
-    let acc = 0, rej = 0, pend = 0;
-    data.forEach(g => {
-        g.items.forEach(i => {
-            acc += i.acceptedQty || 0;
-            rej += i.rejectedQty || 0;
-            if(g.status === 'Pending QC') pend += i.receivedQty;
-        });
-    });
-    setStats({ accepted: acc, rejected: rej, pending: pend });
-    setLoading(false);
+    try {
+      const [grnData, ncrData, rwData] = await Promise.all([
+        procurementService.getAllGRNs(),
+        qualityService.getNCRs().catch(() => []),
+        qualityService.getReworkEntries().catch(() => [])
+      ]);
+      
+      setGRNs(grnData);
+      setNcrs(ncrData);
+      setReworks(rwData);
+      
+      // Calculate stats from all items in all GRNs
+      let acc = 0, rej = 0, pend = 0;
+      grnData.forEach(g => {
+          g.items.forEach(i => {
+              acc += i.acceptedQty || 0;
+              rej += i.rejectedQty || 0;
+              if(g.status === 'Pending QC') pend += i.receivedQty;
+          });
+      });
+      setStats({ accepted: acc, rejected: rej, pending: pend });
+    } catch (e) {
+      console.error("Error loading inspection data", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const chartData = [
@@ -61,13 +75,15 @@ const AcceptedRejectedStockView: React.FC = () => {
 
   const handleRaiseNCR = async (row: any) => {
       try {
-          await qualityService.createNCR({
+          const newNcr = await qualityService.createNCR({
               itemId: row.materialId || row.productId || row._id || '',
+              itemName: row.itemName || 'Unknown Item',
               quantity: row.rejectedQty,
               refType: 'GRN',
               refId: row.grnNo,
               description: `System generated NCR for rejected quantity in GRN ${row.grnNo}`
           });
+          setNcrs(prev => [...prev, newNcr]);
           alert('NCR raised successfully. You can view it in the NCR tab.');
       } catch(e: any) {
           alert('Failed to raise NCR: ' + e.message);
@@ -76,11 +92,13 @@ const AcceptedRejectedStockView: React.FC = () => {
 
   const handleRework = async (row: any) => {
       try {
-          await qualityService.createReworkEntry({
+          const newRw = await qualityService.createReworkEntry({
               itemId: row.materialId || row.productId || row._id || '',
+              itemName: row.itemName || 'Unknown Item',
               quantity: row.rejectedQty,
               reason: `Rejected during QC of GRN ${row.grnNo}`
           });
+          setReworks(prev => [...prev, newRw]);
           alert('Sent to Rework successfully. You can view it in the Rework tab.');
       } catch(e: any) {
           alert('Failed to send to rework: ' + e.message);
@@ -147,7 +165,7 @@ const AcceptedRejectedStockView: React.FC = () => {
             </div>
             <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                    <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold tracking-wider">
                         <tr>
                             <th className="px-6 py-4">GRN No</th>
                             <th className="px-6 py-4">Date</th>
@@ -156,43 +174,62 @@ const AcceptedRejectedStockView: React.FC = () => {
                             <th className="px-6 py-4 text-right text-green-600">Accepted</th>
                             <th className="px-6 py-4 text-right text-red-600">Rejected</th>
                             <th className="px-6 py-4">Remarks</th>
-                            <th className="px-6 py-4 text-center">Actions</th>
+                            <th className="px-6 py-4 text-center">Actions / Status</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={8} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
-                         inspectionRows.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-500">No inspection records found.</td></tr> :
-                         inspectionRows.map(row => (
-                                <tr key={row.key} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4 font-medium">{row.grnNo}</td>
-                                    <td className="px-6 py-4 text-slate-500">{row.date}</td>
-                                    <td className="px-6 py-4">{row.itemName}</td>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                        {loading ? <tr><td colSpan={8} className="py-8 text-center"><Loader2 className="animate-spin inline text-blue-600" size={24}/></td></tr> :
+                         inspectionRows.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-500 font-medium">No inspection records found.</td></tr> :
+                         inspectionRows.map(row => {
+                             // Check if NCR or Rework has been raised for this GRN Item
+                             const hasNcr = ncrs.some(n => n.refId === row.grnNo && (n.itemId === row.materialId || n.itemId === row.productId || n.itemId === row._id || n.itemName === row.itemName));
+                             const hasRework = reworks.some(r => r.reason?.includes(row.grnNo) || r.itemName === row.itemName);
+
+                             return (
+                                <tr key={row.key} className="hover:bg-slate-50/70 transition-colors">
+                                    <td className="px-6 py-4 font-bold text-slate-900">{row.grnNo}</td>
+                                    <td className="px-6 py-4 text-slate-500 font-medium">{row.date}</td>
+                                    <td className="px-6 py-4 font-semibold text-slate-800">{row.itemName}</td>
                                     <td className="px-6 py-4 text-right font-medium">{row.receivedQty}</td>
-                                    <td className="px-6 py-4 text-right text-green-600 font-bold bg-green-50">{row.acceptedQty}</td>
-                                    <td className="px-6 py-4 text-right text-red-600 font-bold bg-red-50">{row.rejectedQty}</td>
-                                    <td className="px-6 py-4 text-slate-500 truncate max-w-xs">{row.qcRemarks || '-'}</td>
+                                    <td className="px-6 py-4 text-right text-green-600 font-black bg-green-50/50">{row.acceptedQty}</td>
+                                    <td className="px-6 py-4 text-right text-red-600 font-black bg-red-50/50">{row.rejectedQty}</td>
+                                    <td className="px-6 py-4 text-slate-500 truncate max-w-xs font-medium">{row.qcRemarks || '-'}</td>
                                     <td className="px-6 py-4 text-center">
                                         {row.rejectedQty > 0 ? (
-                                            <div className="flex justify-center gap-3">
-                                                <button 
-                                                    onClick={() => handleRaiseNCR(row)}
-                                                    className="text-xs font-medium text-red-600 hover:text-red-800 hover:underline"
-                                                >
-                                                    Raise NCR
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleRework(row)}
-                                                    className="text-xs font-medium text-orange-600 hover:text-orange-800 hover:underline"
-                                                >
-                                                    Rework
-                                                </button>
+                                            <div className="flex justify-center items-center gap-2 flex-wrap">
+                                                {hasNcr ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-xs font-bold text-red-700 shadow-sm animate-fade-in">
+                                                        <ShieldAlert size={14} /> NCR Raised
+                                                    </span>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleRaiseNCR(row)}
+                                                        className="px-3 py-1.5 rounded-xl bg-red-50 border border-red-200 text-xs font-bold text-red-600 hover:bg-red-100 transition shadow-sm"
+                                                    >
+                                                        Raise NCR
+                                                    </button>
+                                                )}
+
+                                                {hasRework ? (
+                                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-xs font-bold text-amber-700 shadow-sm animate-fade-in">
+                                                        <Wrench size={14} /> Sent to Rework
+                                                    </span>
+                                                ) : (
+                                                    <button 
+                                                        onClick={() => handleRework(row)}
+                                                        className="px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-600 hover:bg-amber-100 transition shadow-sm"
+                                                    >
+                                                        Rework
+                                                    </button>
+                                                )}
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-slate-400">-</span>
+                                            <span className="text-xs text-slate-400 font-bold">-</span>
                                         )}
                                     </td>
                                 </tr>
-                        ))}
+                             );
+                         })}
                     </tbody>
                 </table>
             </div>

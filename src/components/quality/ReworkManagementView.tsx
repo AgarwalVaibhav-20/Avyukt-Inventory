@@ -84,32 +84,38 @@ const ReworkManagementView: React.FC = () => {
                         <span className="bg-white px-2 rounded-full text-xs py-0.5 border">{reworkList.filter(r => status === 'Completed' ? (r.status === 'Completed' || r.status === 'Scrapped') : r.status === status).length}</span>
                     </h3>
                     <div className="space-y-3">
-                        {reworkList.filter(r => status === 'Completed' ? (r.status === 'Completed' || r.status === 'Scrapped') : r.status === status).map(job => (
-                            <div key={job.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                                <div className="flex justify-between mb-1">
-                                    <span className="font-bold text-sm text-slate-800 truncate w-2/3">{job.itemName}</span>
-                                    <span className="text-xs font-bold text-orange-600">{job.quantity} units</span>
-                                </div>
-                                <p className="text-xs text-slate-500 mb-3">{job.reason}</p>
-                                
-                                {job.status === 'Pending' && (
-                                    <button type="button" onClick={() => handleStatusUpdate(job.id, 'In Progress')} className="w-full bg-blue-50 text-blue-600 text-xs py-1.5 rounded hover:bg-blue-100">Start Work</button>
-                                )}
-                                
-                                {job.status === 'In Progress' && (
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={() => handleStatusUpdate(job.id, 'Completed', 'Restocked')} className="flex-1 bg-green-50 text-green-700 text-xs py-1.5 rounded hover:bg-green-100">Restock</button>
-                                        <button type="button" onClick={() => handleStatusUpdate(job.id, 'Scrapped', 'Scrapped')} className="flex-1 bg-red-50 text-red-700 text-xs py-1.5 rounded hover:bg-red-100">Scrap</button>
-                                    </div>
-                                )}
+                        {reworkList.filter(r => status === 'Completed' ? (r.status === 'Completed' || r.status === 'Scrapped') : r.status === status).map(job => {
+                            const resolvedItemName = job.itemName && job.itemName !== 'Unknown Item' && job.itemName !== 'Unknown' 
+                                ? job.itemName 
+                                : (items.find(i => i.id === job.itemId)?.name || job.itemName || 'Unknown Item');
 
-                                {(job.status === 'Completed' || job.status === 'Scrapped') && (
-                                    <div className={`text-xs text-center py-1 rounded font-medium ${job.outcome === 'Restocked' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>
-                                        {job.outcome} on {job.completionDate}
+                            return (
+                                <div key={job.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow transition">
+                                    <div className="flex justify-between mb-1 items-center">
+                                        <span className="font-bold text-sm text-slate-800 truncate w-2/3">{resolvedItemName}</span>
+                                        <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">{job.quantity} units</span>
                                     </div>
-                                )}
-                            </div>
-                        ))}
+                                    <p className="text-xs text-slate-500 mb-3 line-clamp-2">{job.reason}</p>
+                                    
+                                    {job.status === 'Pending' && (
+                                        <button type="button" onClick={() => handleStatusUpdate(job.id, 'In Progress')} className="w-full bg-blue-50 text-blue-600 text-xs font-bold py-1.5 rounded-lg hover:bg-blue-100 transition shadow-sm">Start Work</button>
+                                    )}
+                                    
+                                    {job.status === 'In Progress' && (
+                                        <div className="flex gap-2">
+                                            <button type="button" onClick={() => handleStatusUpdate(job.id, 'Completed', 'Restocked')} className="flex-1 bg-green-50 text-green-700 text-xs font-bold py-1.5 rounded-lg hover:bg-green-100 transition shadow-sm">Restock</button>
+                                            <button type="button" onClick={() => handleStatusUpdate(job.id, 'Scrapped', 'Scrapped')} className="flex-1 bg-red-50 text-red-700 text-xs font-bold py-1.5 rounded-lg hover:bg-red-100 transition shadow-sm">Scrap</button>
+                                        </div>
+                                    )}
+
+                                    {(job.status === 'Completed' || job.status === 'Scrapped') && (
+                                        <div className={`text-xs text-center py-1 rounded-lg font-bold ${job.outcome === 'Restocked' ? 'text-green-700 bg-green-50 border border-green-200' : 'text-red-700 bg-red-50 border border-red-200'}`}>
+                                            {job.outcome} on {job.completionDate ? new Date(job.completionDate).toLocaleDateString() : ''}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             ))}

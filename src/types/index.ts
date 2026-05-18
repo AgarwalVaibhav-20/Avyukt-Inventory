@@ -412,6 +412,9 @@ export interface ReturnItem {
   itemName: string;
   quantity: number;
   reason: string;
+  unitPrice?: number;
+  lineTotal?: number;
+  serialNumbers?: string[];
 }
 
 // --- Sales & Outward Types ---
@@ -502,7 +505,7 @@ export interface SalesReturn {
   date: string;
   items: ReturnItem[];
   status: 'Pending' | 'Received' | 'Pending Approval' | 'Approved' | 'Processed' | 'Refunded' | 'Replaced' | 'Completed' | 'Rejected';
-  qcStatus?: 'Pending' | 'Pass' | 'Fail';
+  qcStatus?: 'Pending' | 'Pass' | 'Fail' | 'Completed' | 'Partial';
   reason?: string;
   returnType?: 'Refund' | 'Replacement' | 'Credit Note';
   remarks?: string;

@@ -64,7 +64,7 @@ export const productService = {
     if (!orgId) {
       // In dev, allow fetching global products without orgId
       if (import.meta.env.DEV) {
-        const response = await api.get(`/inventory/product/all`);
+        const response = await api.get(`/inventory/product/all?limit=1000`);
         const products = response.data.products || [];
         return products.map((item: any) => {
           const totalStock = (item.stocks || []).reduce(
@@ -110,6 +110,7 @@ export const productService = {
     
     // Construct query parameters
     const params = new URLSearchParams();
+    params.append('limit', '1000');
     if (filters) {
       if (filters.category && filters.category !== 'all') params.append('category', filters.category);
       if (filters.brand && filters.brand !== 'all') {
