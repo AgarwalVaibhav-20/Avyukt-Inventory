@@ -226,7 +226,7 @@ const ItemMaster: React.FC = () => {
 
   useEffect(() => {
     loadMasterData();
-  });
+  }, []);
 
   useEffect(() => {
     loadItems();
@@ -545,7 +545,7 @@ const ItemMaster: React.FC = () => {
     (filters.category !== "all" ? 1 : 0) +
     (filters.brand.length > 0 ? 1 : 0) +
     (filters.itemType !== "all" ? 1 : 0) +
-    (filters.uom !== "all" && v !== "newest" ? 1 : 0) +
+    (filters.uom !== "all" ? 1 : 0) +
     (filters.hsnCode !== "" ? 1 : 0);
 
   return (
@@ -794,7 +794,14 @@ const ItemMaster: React.FC = () => {
         {activeFiltersCount > 0 && (
           <button
             onClick={() =>
-              setFilters({ category: "all", brand: "all", itemType: "all", sortOrder: "newest" })
+              setFilters({
+                category: "all",
+                brand: [],
+                itemType: "all",
+                uom: "all",
+                hsnCode: "",
+                sortOrder: "newest",
+              })
             }
             className="text-xs text-gray-400 hover:text-gray-600 font-medium"
           >

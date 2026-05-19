@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setIsOpen,
 }) => {
   const dispatch = useAppDispatch();
-  const { user, isDelegatedSession } = useAppSelector((state) => state.auth);
+  const { user, isDelegatedSession, isAuthenticated } = useAppSelector((state) => state.auth);
   const { items } = useAppSelector((state) => state.inventory);
   const { expiryBatches } = useAppSelector((state) => state.stockControl);
   const { prs, pos, qcQueue } = useAppSelector((state) => state.procurement);
@@ -54,12 +54,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     dispatch(fetchItems());
     dispatch(fetchStockControlData());
     dispatch(fetchPRs());
     dispatch(fetchPOs());
     dispatch(fetchQCQueue());
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(
     new Set(["dashboard"]),

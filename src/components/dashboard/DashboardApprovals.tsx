@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { approvalService } from "@/services/approvalService";
+import { settingsService } from "@/services/settingsService";
 import {
   CheckCircle,
   Clock,
@@ -79,6 +80,9 @@ const DashboardApprovals: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const prDateFormat = settingsService.getPurchaseRequisitionDateFormat();
+  const formatPrDate = (value?: string) =>
+    value ? settingsService.formatDisplayDate(value, prDateFormat) : "Date unavailable";
 
   useEffect(() => {
     loadData();
@@ -297,7 +301,7 @@ const DashboardApprovals: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Requester: {item.requester} | {item.date || "Date unavailable"}
+                    Requester: {item.requester} | {item.kind === "Purchase Requisition" ? formatPrDate(item.date) : (item.date || "Date unavailable")}
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5 truncate">
                     {item.details}

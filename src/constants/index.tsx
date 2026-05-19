@@ -261,6 +261,7 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'set-num', label: 'Number Series' },
       { id: 'set-field', label: 'Custom Fields' },
       { id: 'set-flow', label: 'Workflow Rules' },
+      { id: 'set-form', label: 'Form Editor' },
     ]
   },
   {

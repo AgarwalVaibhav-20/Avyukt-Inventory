@@ -1,4 +1,5 @@
 import axios from "axios";
+import { authService } from "./authService";
 
 const DEFAULT_API_BASE_URL = import.meta.env.DEV
   ? "http://localhost:4000"
@@ -10,6 +11,21 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+let hasHandledAuthExpiry = false;
+
+const shouldInvalidateSession = (error: any) => {
+  const status = error?.response?.status;
+  const message = String(
+    error?.response?.data?.message || error?.response?.data?.error || "",
+  ).toLowerCase();
+
+  if (status === 401) return true;
+  if (status === 403 && message.includes("token")) return true;
+  if (status === 404 && message === "user not found") return true;
+
+  return false;
+};
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -38,5 +54,21 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (shouldInvalidateSession(error) && !hasHandledAuthExpiry) {
+      hasHandledAuthExpiry = true;
+      authService.clearSession();
+      window.dispatchEvent(new CustomEvent("auth:expired"));
+      window.setTimeout(() => {
+        hasHandledAuthExpiry = false;
+      }, 1000);
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export default api;

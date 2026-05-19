@@ -2,6 +2,10 @@ import api from './api';
 import { authService } from './authService';
 import { Vendor, PurchaseOrder, GRN, POItem, GRNItem, PutAwayTask, PurchaseReturn, PurchaseRequisition, PurchaseInvoice } from '@/types';
 
+type CreatePurchaseRequisitionInput = Omit<PurchaseRequisition, 'id' | 'prNumber' | 'status'> & {
+  prNumber?: string;
+};
+
 const unwrapList = <T,>(response: any): T[] => 
   response?.data?.data ?? 
   response?.data?.vendors ?? 
@@ -335,7 +339,7 @@ export const procurementService = {
     }));
   },
 
-  createPR: async (pr: Omit<PurchaseRequisition, 'id' | 'prNumber' | 'status'>): Promise<PurchaseRequisition> => {
+  createPR: async (pr: CreatePurchaseRequisitionInput): Promise<PurchaseRequisition> => {
     const response = await api.post('/purchase/requisitions', pr);
     return response.data.data ?? response.data;
   },

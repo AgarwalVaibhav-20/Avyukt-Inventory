@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { fetchPRs } from "@/store/slices/procurementSlice";
 import { procurementService } from "@/services/procurementService";
 import { productService } from "@/services/productService";
+import { settingsService } from "@/services/settingsService";
 import { PurchaseRequisition, InventoryItem, HSN } from "@/types";
 import { NotionSelect } from "@/components/common/NotionSelect";
 import {
@@ -195,6 +196,7 @@ const PurchaseRequisitionView: React.FC = () => {
       } else {
         await procurementService.createPR({
           ...newPr,
+          prNumber: prIdentifierPreview,
           date: new Date().toISOString(),
           source: "Manual",
         });
@@ -253,6 +255,20 @@ const PurchaseRequisitionView: React.FC = () => {
       return matchesStatus && matchesSource;
     },
   });
+
+  const prIdentifierPreview = useMemo(() => {
+    if (editingPrId) {
+      return prs.find((pr) => pr.id === editingPrId)?.prNumber || "";
+    }
+
+    return settingsService.getNextPurchaseRequisitionNumber(
+      prs.map((pr) => pr.prNumber).filter(Boolean),
+    );
+  }, [editingPrId, prs]);
+
+  const prDateFormat = settingsService.getPurchaseRequisitionDateFormat();
+  const formatPrDate = (value?: string) =>
+    value ? settingsService.formatDisplayDate(value, prDateFormat) : "";
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -455,7 +471,7 @@ const PurchaseRequisitionView: React.FC = () => {
                       {pr.prNumber}
                     </div>
                     <div className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-tighter">
-                      {pr.date}
+                      {formatPrDate(pr.date)}
                     </div>
                   </td>
                   <td className="px-8 py-7">
@@ -583,6 +599,20 @@ const PurchaseRequisitionView: React.FC = () => {
                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
                     Inventory Management System
                   </p>
+                  <div className="mt-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                      PR Identifier
+                    </p>
+                    <p className="mt-1 font-mono text-3xl font-black text-indigo-600">
+                      {prIdentifierPreview}
+                    </p>
+                    <p className="mt-2 text-sm font-bold text-slate-500">
+                      Date format: {prDateFormat}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-slate-400">
+                      Controlled from Settings {'>'} Form Editor
+                    </p>
+                  </div>
                 </div>
               </div>
               <button
@@ -691,6 +721,11 @@ const PurchaseRequisitionView: React.FC = () => {
                           setNewPr({ ...newPr, requiredDate: e.target.value })
                         }
                       />
+                      {newPr.requiredDate && (
+                        <p className="px-1 text-xs font-semibold text-slate-400">
+                          Display preview: {formatPrDate(newPr.requiredDate)}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2 col-span-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">

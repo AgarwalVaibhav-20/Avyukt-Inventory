@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
+import { settingsService } from '@/services/settingsService';
 import { PurchaseOrder, PurchaseRequisition } from '@/types';
 import {
   ShieldCheck,
@@ -34,6 +35,9 @@ const PurchaseApprovalView: React.FC = () => {
   const [poSearch, setPOSearch] = useState('');
   const [prFilters, setPRFilters] = useState({ status: 'all', sortOrder: 'newest' });
   const [poFilters, setPOFilters] = useState({ status: 'all', sortOrder: 'newest' });
+  const prDateFormat = settingsService.getPurchaseRequisitionDateFormat();
+  const formatPrDate = (value?: string) =>
+    value ? settingsService.formatDisplayDate(value, prDateFormat) : '';
 
   useEffect(() => {
     loadData();
@@ -242,7 +246,7 @@ const PurchaseApprovalView: React.FC = () => {
                             </div>
                           </div>
                           <div className="pt-6 border-t border-slate-200/50">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5"><Clock size={12}/> Due: {pr.requiredDate}</p>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5"><Clock size={12}/> Due: {formatPrDate(pr.requiredDate)}</p>
                           </div>
                        </div>
                        

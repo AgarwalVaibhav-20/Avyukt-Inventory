@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   LineChart,
   Line,
@@ -13,7 +13,6 @@ import {
 } from "recharts";
 import {
   AlertTriangle,
-  TrendingUp,
   Package,
   RefreshCcw,
   Activity,
@@ -23,8 +22,11 @@ import {
 } from "lucide-react";
 import { dashboardService } from "@/services/dashboardService";
 import { getInventoryInsights } from "@/services/geminiService";
+import { useAppSelector } from "@/store/hooks";
 
 const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
+const EMPTY_STOCK_DATA = [{ name: "No Data", stock: 0 }];
+const EMPTY_CATEGORY_DATA = [{ name: "No Data", value: 100 }];
 
 interface StatCard {
   label: string;
@@ -37,15 +39,52 @@ interface StatCard {
 }
 
 const Dashboard: React.FC = () => {
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
   const [statCards, setStatCards] = useState<StatCard[]>([]);
   const [stockData, setStockData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lineChartReady, setLineChartReady] = useState(false);
+  const [pieChartReady, setPieChartReady] = useState(false);
+  const lineChartRef = useRef<HTMLDivElement | null>(null);
+  const pieChartRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     loadDashboardData();
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const lineNode = lineChartRef.current;
+    const pieNode = pieChartRef.current;
+    if (!lineNode || !pieNode) return;
+
+    const updateReadyState = (
+      element: HTMLDivElement,
+      setter: React.Dispatch<React.SetStateAction<boolean>>,
+    ) => {
+      const { width, height } = element.getBoundingClientRect();
+      setter(width > 0 && height > 0);
+    };
+
+    updateReadyState(lineNode, setLineChartReady);
+    updateReadyState(pieNode, setPieChartReady);
+
+    const observer = new ResizeObserver(() => {
+      updateReadyState(lineNode, setLineChartReady);
+      updateReadyState(pieNode, setPieChartReady);
+    });
+
+    observer.observe(lineNode);
+    observer.observe(pieNode);
+
+    return () => observer.disconnect();
   }, []);
 
   const loadDashboardData = async () => {
@@ -163,6 +202,10 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="space-y-5 p-1">
       {/* Stat Cards */}
@@ -229,7 +272,7 @@ const Dashboard: React.FC = () => {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Line Chart */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 min-w-0">
           <div className="flex items-center gap-2 mb-4">
             <Activity size={16} className="text-blue-500" />
             <span className="text-sm font-semibold text-slate-700">
@@ -239,70 +282,31 @@ const Dashboard: React.FC = () => {
               Last 6 months
             </span>
           </div>
-          <div className="h-52">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stockData.length > 0 ? stockData : [{ name: 'No Data', stock: 0 }]}>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke="#f1f5f9"
-                />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#94a3b8", fontSize: 11 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#94a3b8", fontSize: 11 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: "10px",
-                    border: "none",
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-                    fontSize: 12,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="stock"
-                  stroke="#3b82f6"
-                  strokeWidth={2.5}
-                  dot={{ r: 3.5, fill: "#3b82f6", strokeWidth: 0 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Pie Chart */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Package size={16} className="text-emerald-500" />
-            <span className="text-sm font-semibold text-slate-700">
-              Stock by Category
-            </span>
-          </div>
-          <div className="flex items-center gap-6">
-            <div className="h-52 flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryData.length > 0 ? categoryData : [{ name: 'No Data', value: 100 }]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={75}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {(categoryData.length > 0 ? categoryData : [{ name: 'No Data', value: 100 }]).map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
+          <div ref={lineChartRef} className="h-52 min-h-[208px] min-w-0 w-full">
+            {lineChartReady ? (
+              <ResponsiveContainer
+                width="100%"
+                height="100%"
+                minWidth={240}
+                minHeight={208}
+              >
+                <LineChart data={stockData.length > 0 ? stockData : EMPTY_STOCK_DATA}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#f1f5f9"
+                  />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#94a3b8", fontSize: 11 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: "#94a3b8", fontSize: 11 }}
+                  />
                   <Tooltip
                     contentStyle={{
                       borderRadius: "10px",
@@ -311,11 +315,68 @@ const Dashboard: React.FC = () => {
                       fontSize: 12,
                     }}
                   />
-                </PieChart>
+                  <Line
+                    type="monotone"
+                    dataKey="stock"
+                    stroke="#3b82f6"
+                    strokeWidth={2.5}
+                    dot={{ r: 3.5, fill: "#3b82f6", strokeWidth: 0 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full" />
+            )}
+          </div>
+        </div>
+
+        {/* Pie Chart */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 min-w-0">
+          <div className="flex items-center gap-2 mb-4">
+            <Package size={16} className="text-emerald-500" />
+            <span className="text-sm font-semibold text-slate-700">
+              Stock by Category
+            </span>
+          </div>
+          <div className="flex items-center gap-6 min-w-0">
+            <div ref={pieChartRef} className="h-52 min-h-[208px] flex-1 min-w-0 w-full">
+              {pieChartReady ? (
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  minWidth={240}
+                  minHeight={208}
+                >
+                  <PieChart>
+                    <Pie
+                      data={categoryData.length > 0 ? categoryData : EMPTY_CATEGORY_DATA}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={75}
+                      paddingAngle={4}
+                      dataKey="value"
+                    >
+                      {(categoryData.length > 0 ? categoryData : EMPTY_CATEGORY_DATA).map((_, i) => (
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "10px",
+                        border: "none",
+                        boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+                        fontSize: 12,
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full w-full" />
+              )}
             </div>
             <div className="space-y-2 shrink-0">
-              {(categoryData.length > 0 ? categoryData : [{ name: 'No Data', value: 100 }]).map((entry, i) => (
+              {(categoryData.length > 0 ? categoryData : EMPTY_CATEGORY_DATA).map((entry, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-2 text-xs text-slate-600"

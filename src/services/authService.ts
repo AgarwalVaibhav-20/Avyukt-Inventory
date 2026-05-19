@@ -1,5 +1,18 @@
 import api from './api';
 
+const parseJwtPayload = (token: string) => {
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(normalized);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+};
+
 export const authService = {
   login: async (credentials: any) => {
     const response = await api.post('/auth/login', credentials);
@@ -70,6 +83,29 @@ export const authService = {
 
   getToken: () => {
     return localStorage.getItem('token');
+  },
+
+  hasValidToken: () => {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+
+    const payload = parseJwtPayload(token);
+    if (!payload?.exp) return true;
+
+    const isValid = payload.exp * 1000 > Date.now();
+    if (!isValid) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('organisationId');
+    }
+
+    return isValid;
+  },
+
+  clearSession: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('organisationId');
   },
   
   getProfile: async () => {

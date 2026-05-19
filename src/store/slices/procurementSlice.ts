@@ -60,7 +60,7 @@ export const fetchReturns = createAsyncThunk('procurement/fetchReturns', async (
   return await procurementService.getPurchaseReturns();
 });
 
-export const createPR = createAsyncThunk('procurement/createPR', async (data: Omit<PurchaseRequisition, 'id' | 'prNumber' | 'status'>) => {
+export const createPR = createAsyncThunk('procurement/createPR', async (data: Omit<PurchaseRequisition, 'id' | 'prNumber' | 'status'> & { prNumber?: string }) => {
   return await procurementService.createPR(data);
 });
 

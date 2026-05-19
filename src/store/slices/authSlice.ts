@@ -18,9 +18,9 @@ interface AuthState {
 }
 
 const initialState: AuthState = {
-  user: authService.getCurrentUser(),
-  token: authService.getToken(),
-  isAuthenticated: !!authService.getToken(),
+  user: authService.hasValidToken() ? authService.getCurrentUser() : null,
+  token: authService.hasValidToken() ? authService.getToken() : null,
+  isAuthenticated: authService.hasValidToken(),
   loading: false,
   profileLoading: false,
   updateLoading: false,
@@ -296,6 +296,9 @@ const authSlice = createSlice({
       .addCase(fetchProfile.rejected, (state, action) => {
         state.profileLoading = false;
         state.error = action.payload as string;
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
       })
       .addCase(updateProfile.pending, (state) => {
         state.updateLoading = true;

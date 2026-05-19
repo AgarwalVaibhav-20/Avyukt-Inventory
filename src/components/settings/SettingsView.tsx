@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, ChevronRight, Search, Filter, X, Grid, Sliders, Zap, Hash, LayoutGrid, Workflow } from 'lucide-react';
+import { Settings, ChevronRight, Search, Filter, X, Grid, Sliders, Zap, Hash, LayoutGrid, Workflow, FileCog } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import InventorySettingsView from './InventorySettingsView';
 import AutoReorderRulesView from './AutoReorderRulesView';
@@ -7,8 +7,9 @@ import TaxConfigurationView from './TaxConfigurationView';
 import NumberSeriesView from './NumberSeriesView';
 import CustomFieldsView from './CustomFieldsView';
 import WorkflowRulesView from './WorkflowRulesView';
+import FormEditorView from './FormEditorView';
 
-type SettingsTab = 'inventory' | 'autoreorder' | 'tax' | 'number' | 'custom' | 'workflow';
+type SettingsTab = 'inventory' | 'autoreorder' | 'tax' | 'number' | 'custom' | 'workflow' | 'formeditor';
 
 interface SettingsFilters {
   settingCategory: string;
@@ -39,6 +40,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ defaultTab = 'inventory' })
       'set-num': 'number',
       'set-field': 'custom',
       'set-flow': 'workflow',
+      'set-form': 'formeditor',
     };
 
     const lastSegment = location.pathname.split('/').pop();
@@ -68,6 +70,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ defaultTab = 'inventory' })
     { id: 'number', label: 'Number Series', icon: Hash, color: 'from-purple-600 to-purple-700', description: 'Define auto-numbering formats and sequences for every document type. PO/2025-26/00001, GRN/W1/2025/00001, etc. Supports prefix/suffix, fiscal year reset, and warehouse-specific series.' },
     { id: 'custom', label: 'Custom Fields', icon: LayoutGrid, color: 'from-pink-600 to-pink-700', description: 'Allows administrators to add custom data fields to any module\'s forms without code changes - text fields, dropdowns, dates, checkboxes. These appear in forms, reports, and exports.' },
     { id: 'workflow', label: 'Workflow Rules', icon: Workflow, color: 'from-indigo-600 to-indigo-700', description: 'Configure event-driven automation: send email notification when stock goes below reorder level, auto-assign inspector when GRN created, escalate approval if pending >24 hours, etc.' },
+    { id: 'formeditor', label: 'Form Editor', icon: FileCog, color: 'from-cyan-600 to-sky-700', description: 'Manage all forms exposed in the project from one place: edit field definitions, form layouts, approval requirements, comments, and attachment behavior without breaking the project’s existing structure.' },
   ];
 
   const handleFilterChange = (key: keyof SettingsFilters, value: any) => {
@@ -102,6 +105,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ defaultTab = 'inventory' })
         return <CustomFieldsView />;
       case 'workflow':
         return <WorkflowRulesView />;
+      case 'formeditor':
+        return <FormEditorView />;
       default:
         return <InventorySettingsView />;
     }

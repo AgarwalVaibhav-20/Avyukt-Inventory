@@ -955,6 +955,38 @@ export interface WorkflowRule {
   active: boolean;
 }
 
+export interface FormEditorField {
+  id: string;
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox';
+  required: boolean;
+  visible: boolean;
+  section: string;
+  placeholder?: string;
+  options?: string[];
+}
+
+export interface FormDefinition {
+  id: string;
+  menuId: string;
+  moduleId: string;
+  moduleLabel: string;
+  route: string;
+  formName: string;
+  description: string;
+  status: 'Active' | 'Draft' | 'Archived';
+  layout: 'Single Column' | 'Two Column' | 'Wizard';
+  allowAttachments: boolean;
+  allowComments: boolean;
+  approvalRequired: boolean;
+  updatedBy: string;
+  updatedAt: string;
+  identifierTemplate?: string;
+  dateDisplayFormat?: 'YYYY-MM-DD' | 'DD/MM/YYYY' | 'MM/DD/YYYY';
+  fields: FormEditorField[];
+}
+
 // --- Audit & Logs Types ---
 
 export interface AuditSession {

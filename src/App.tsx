@@ -313,9 +313,13 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(fetchProfile());
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setPendingAccessRequests([]);
+      return;
     }
+
+    dispatch(fetchProfile());
 
     // Setup Socket.IO client for real-time notifications
     // Dynamically import socket.io-client to avoid Vite import-resolution issues
@@ -367,6 +371,8 @@ const App: React.FC = () => {
           });
 
           socket.on("inventory:update", () => {
+            if (!isAuthenticated) return;
+
             notificationService
               .getNotifications()
               .then((data) => {
@@ -396,7 +402,12 @@ const App: React.FC = () => {
 
   // Lazy polling: refresh notifications every 60s and when tab becomes visible
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setPendingAccessRequests([]);
+      setNotificationsLoading(false);
+      return;
+    }
 
     let mounted = true;
     const fetchList = async () => {
@@ -416,9 +427,14 @@ const App: React.FC = () => {
           ),
         );
       } catch (err) {
-        console.error("Failed to poll notifications", err);
+        const status = (err as any)?.response?.status;
+        if (status !== 401) {
+          console.error("Failed to poll notifications", err);
+        }
       } finally {
-        setNotificationsLoading(false);
+        if (mounted) {
+          setNotificationsLoading(false);
+        }
       }
     };
 
@@ -730,6 +746,8 @@ const App: React.FC = () => {
         return <SettingsView defaultTab="custom" />;
       case "set-flow":
         return <SettingsView defaultTab="workflow" />;
+      case "set-form":
+        return <SettingsView defaultTab="formeditor" />;
 
       // --- Audit & Logs ---
       case "aud-stock":
@@ -1666,6 +1684,10 @@ const App: React.FC = () => {
               <Route
                 path="/settings/set-flow"
                 element={<SettingsView defaultTab="workflow" />}
+              />
+              <Route
+                path="/settings/set-form"
+                element={<SettingsView defaultTab="formeditor" />}
               />
 
               {/* Audit */}
