@@ -64,3 +64,36 @@ export const getAiReorderSuggestions = async (inventory: InventoryItem[]): Promi
         return "[]";
       }
 }
+
+export const getAiChatResponse = async (
+  message: string,
+  conversation: { role: "user" | "assistant"; content: string }[] = [],
+): Promise<string> => {
+  if (!ai) return "AI service not configured. Please check API Key.";
+
+  try {
+    const prompt = `
+      You are ACT AI Analyst, a concise inventory and operations chatbot.
+      Answer the user's question using clear, practical language.
+      If the user asks about inventory, procurement, stock movement, warehouse, quality, or reports, keep the response aligned to an inventory management system.
+      When relevant, include short bullet points using plain text only.
+      Do not mention that you are an AI model unless asked.
+
+      Conversation context:
+      ${JSON.stringify(conversation)}
+
+      User message:
+      ${message}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+
+    return response.text || "I could not generate a response right now.";
+  } catch (error) {
+    console.error("Gemini Chat API Error:", error);
+    return "Unable to generate a chatbot response at this time.";
+  }
+};

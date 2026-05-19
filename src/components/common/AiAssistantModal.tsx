@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Sparkles, BrainCircuit, BarChart, ArrowRight } from 'lucide-react';
-import { getAiReorderSuggestions } from '@/services/geminiService';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, Sparkles, BrainCircuit, BarChart, ArrowRight, Send, MessageCircle } from 'lucide-react';
+import { getAiChatResponse, getAiReorderSuggestions } from '@/services/geminiService';
 import { MOCK_INVENTORY } from '@/constants';
 
 interface AiAssistantModalProps {
@@ -8,9 +8,21 @@ interface AiAssistantModalProps {
 }
 
 const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'forecast' | 'reorder'>('reorder');
+    const [activeTab, setActiveTab] = useState<'chatbot' | 'forecast' | 'reorder'>('chatbot');
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+    const [chatInput, setChatInput] = useState('');
+    const [chatLoading, setChatLoading] = useState(false);
+    const [chatMessages, setChatMessages] = useState<{
+        role: 'user' | 'assistant';
+        content: string;
+    }[]>([
+        {
+            role: 'assistant',
+            content: 'Hello. I can help with inventory, procurement, warehouse, and reporting questions.',
+        },
+    ]);
+    const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const fetchSuggestions = async () => {
     setLoading(true);
@@ -29,6 +41,36 @@ const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ onClose }) => {
   React.useEffect(() => {
     if (activeTab === 'reorder') fetchSuggestions();
   }, [activeTab]);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
+
+    const handleSendChat = async () => {
+        const trimmed = chatInput.trim();
+        if (!trimmed || chatLoading) return;
+
+        const nextMessages = [...chatMessages, { role: 'user' as const, content: trimmed }];
+        setChatMessages(nextMessages);
+        setChatInput('');
+        setChatLoading(true);
+
+        try {
+            const reply = await getAiChatResponse(
+                trimmed,
+                nextMessages.slice(-6).map(({ role, content }) => ({ role, content })),
+            );
+            setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+        } catch (error) {
+            console.error('Failed to generate chatbot response', error);
+            setChatMessages((prev) => [
+                ...prev,
+                { role: 'assistant', content: 'Unable to generate a response right now.' },
+            ]);
+        } finally {
+            setChatLoading(false);
+        }
+    };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -52,6 +94,12 @@ const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ onClose }) => {
         {/* Tabs */}
         <div className="flex border-b border-slate-200">
             <button 
+                onClick={() => setActiveTab('chatbot')}
+                className={`flex-1 py-4 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === 'chatbot' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+                Chatbot
+            </button>
+            <button 
                 onClick={() => setActiveTab('reorder')}
                 className={`flex-1 py-4 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === 'reorder' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
@@ -67,6 +115,70 @@ const AiAssistantModal: React.FC<AiAssistantModalProps> = ({ onClose }) => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+            {activeTab === 'chatbot' && (
+                <div className="flex h-full min-h-[420px] flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="border-b border-slate-100 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+                                <MessageCircle size={16} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-semibold text-slate-800">AI Chatbot</h3>
+                                <p className="text-xs text-slate-500">Ask about inventory, procurement, warehouse, or reports.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+                        {chatMessages.map((message, index) => (
+                            <div
+                                key={`${message.role}-${index}`}
+                                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div
+                                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm shadow-sm ${message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                                >
+                                    {message.content}
+                                </div>
+                            </div>
+                        ))}
+                        {chatLoading && (
+                            <div className="flex justify-start">
+                                <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
+                                    Thinking...
+                                </div>
+                            </div>
+                        )}
+                        <div ref={chatEndRef} />
+                    </div>
+
+                    <div className="border-t border-slate-100 p-4">
+                        <div className="flex gap-3">
+                            <input
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        void handleSendChat();
+                                    }
+                                }}
+                                placeholder="Type your question..."
+                                className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                            />
+                            <button
+                                onClick={() => void handleSendChat()}
+                                disabled={chatLoading || !chatInput.trim()}
+                                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <Send size={16} />
+                                Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {activeTab === 'reorder' && (
                 <div className="space-y-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
