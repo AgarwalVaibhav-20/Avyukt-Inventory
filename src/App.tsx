@@ -59,10 +59,14 @@ import MovementAnalysisReportView from "@/components/reports/MovementAnalysisRep
 import ValuationReportDocView from "@/components/reports/ValuationReportDocView";
 import GstTaxReportView from "@/components/reports/GstTaxReportView";
 import AuditReportView from "@/components/reports/AuditReportView";
+import CustomerReport from "@/components/reports/CustomerReport";
 import PurchaseReturnMgmtView from "@/components/returns/PurchaseReturnMgmtView";
 import SalesReturnMgmtView from "@/components/returns/SalesReturnMgmtView";
 import ReplacementHandlingView from "@/components/returns/ReplacementHandlingView";
 import DebitCreditNotesView from "@/components/returns/DebitCreditNotesView";
+import CustomerPage from "@/components/customer/Customer";
+import CustomerReturnsView from "@/components/movement/CustomerReturnsView";
+import StockAtCustomerLocationView from "@/components/movement/StockAtCustomerLocationView";
 import VendorMasterView from "@/components/vendor/VendorMasterView";
 import VendorPriceListView from "@/components/vendor/VendorPriceListView";
 import LeadTimeManagementView from "@/components/vendor/LeadTimeManagementView";
@@ -152,6 +156,7 @@ import {
 import { MENU_ITEMS } from "@/constants";
 import LowStockAlerts from "./components/dashboard/Lowstockalerts";
 import OverstockAlerts from "./components/dashboard/OverStockAlert";
+import NCRReportPage from "./components/reports/NCRReport";
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -243,11 +248,11 @@ const App: React.FC = () => {
         prev.map((notification) =>
           notification._id === notificationId || notification.id === notificationId
             ? {
-                ...notification,
-                status: "read",
-                read: true,
-                inviteResponse: response,
-              }
+              ...notification,
+              status: "read",
+              read: true,
+              inviteResponse: response,
+            }
             : notification,
         ),
       );
@@ -293,7 +298,7 @@ const App: React.FC = () => {
     } catch (err: any) {
       toast.error(
         err?.response?.data?.message ||
-          `Failed to ${response === "approved" ? "approve" : "reject"} access request`,
+        `Failed to ${response === "approved" ? "approve" : "reject"} access request`,
       );
     } finally {
       setRespondingAccessId(null);
@@ -304,7 +309,7 @@ const App: React.FC = () => {
     setNotifications((prev) =>
       prev.map((notification) =>
         notification._id === activeAccessNotification?._id ||
-        notification.id === activeAccessNotification?.id
+          notification.id === activeAccessNotification?.id
           ? { ...notification, status: "read", read: true }
           : notification,
       ),
@@ -328,9 +333,9 @@ const App: React.FC = () => {
         try {
           const socket = io(
             import.meta.env.VITE_SOCKET_URL ||
-              (import.meta.env.DEV
-                ? "http://localhost:4000"
-                : "https://inventory-backend-alpha-eight.vercel.app"),
+            (import.meta.env.DEV
+              ? "http://localhost:4000"
+              : "https://inventory-backend-alpha-eight.vercel.app"),
             { transports: ["websocket", "polling"] },
           );
           socketRef.current = socket;
@@ -356,10 +361,10 @@ const App: React.FC = () => {
               prev.map((n) =>
                 n._id === payload.id || n.id === payload.id
                   ? {
-                      ...n,
-                      status: payload.status,
-                      read: payload.status === "read",
-                    }
+                    ...n,
+                    status: payload.status,
+                    read: payload.status === "read",
+                  }
                   : n,
               ),
             );
@@ -378,7 +383,7 @@ const App: React.FC = () => {
               .then((data) => {
                 setNotifications(normalizeNotificationList(data));
               })
-              .catch(() => {});
+              .catch(() => { });
           });
 
           socket.on("disconnect", () => {
@@ -496,7 +501,7 @@ const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={() => {}} />;
+    return <Login onLoginSuccess={() => { }} />;
   }
 
   const renderContent = () => {
@@ -755,7 +760,7 @@ const App: React.FC = () => {
       case "aud-cycle":
         return <CycleCountView />;
       case "aud-phy":
-        return <PhysicalVerificationView sessionId={""} onBack={() => {}} />;
+        return <PhysicalVerificationView sessionId={""} onBack={() => { }} />;
       case "aud-hist":
         return <AdjustmentHistoryView />;
       case "aud-log":
@@ -773,24 +778,169 @@ const App: React.FC = () => {
       case "rep-exp":
         return <ExpiryAnalysisReportView />;
       case "rep-move":
-        return <MovementAnalysisReportView />;
-      case "rep-val":
-        return <ValuationReportDocView />;
-      case "rep-gst":
-        return <GstTaxReportView />;
-      case "rep-audit":
-        return <AuditReportView />;
+      case "in-qc":
+        return <QualityCheckView />;
 
-      // --- User & Access ---
-      case "usr-mgmt":
-        return <UserManagementView />;
-      case "usr-rbac":
-        return <RoleBasedAccessView />;
-      case "usr-wh":
-        return <WarehouseAccessView />;
-      case "usr-hier":
-        return <ApprovalHierarchyView />;
+      case "in-putaway":
+        return <PutAwayView />;
 
+      case "in-return":
+        return <InwardReturnView />;
+
+      case "in-invoice":
+        return <InvoiceMatchingView />;
+
+      // --- Outward / Dispatch ---
+      case "out-so":
+        return <SalesOrderView />;
+      case "out-pick":
+        return <OutwardOpsView stage="pick" />;
+      case "out-pack":
+        return <OutwardOpsView stage="pack" />;
+      case "out-challan":
+        return <OutwardOpsView stage="challan" />;
+      case "out-dispatch":
+        return <OutwardOpsView stage="dispatch" />;
+      case "out-return":
+        return <SalesReturnView />;
+      case "out-invoice":
+        return <CustomerInvoiceView />;
+
+      // --- Stock Movement ---
+      case "mv-transfer":
+        return <StockTransfer />;
+      case "mv-internal":
+        return <InternalMovementView />;
+      case "mv-adj":
+      case "mv-damage": // Reusing adjustment view for damage entry as they are same logic usually
+        return <StockAdjustmentView />;
+      case "mv-scrap":
+        return <ScrapManagementView />;
+      case "mv-consign":
+        return <ConsignmentStockView />;
+
+      // --- Stock Control ---
+      case "ctrl-ledger":
+        return <StockLedgerView />;
+      case "ctrl-batch":
+        return <BatchTrackingView />;
+      case "ctrl-serial":
+        return <SerialTrackingView />;
+      case "ctrl-expiry":
+        return <ExpiryTrackingView />;
+      case "ctrl-reserve":
+        return <StockReservationView />;
+      case "ctrl-safety":
+        return <ReorderLevelView />; // Reusing Reorder Level view as it serves safety stock purpose
+      case "ctrl-valuation":
+        return <ValuationMethodsView />;
+
+      // --- Inventory Valuation ---
+      case "val-method":
+        return <ValuationMethodsView />;
+      case "val-item":
+        return <ItemWiseValuationView />;
+      case "val-wh":
+        return <WarehouseValuationView />;
+      case "val-realtime":
+        return <RealTimeValuationView />;
+      case "val-closing":
+        return <ClosingStockReportView />;
+      case "val-recalc":
+        return <CostRecalculationView />;
+      case "val-cogs":
+        return <COGSView />;
+
+      // --- Barcode & Automation ---
+      case "bc-gen":
+      case "bc-qr":
+        return <BarcodeGeneratorView />;
+      case "bc-scan":
+        return <BarcodeScannerView />;
+      case "bc-mobile":
+        return <BarcodeScannerView isMobileMode={true} />;
+      case "bc-label":
+        return <LabelPrintingView />;
+      case "bc-rfid":
+        return <RfidIntegrationView />;
+
+      // --- Quality Management ---
+      case "qm-param":
+        return <QualityParametersView />;
+      case "qm-plan":
+        return <InspectionPlansView />;
+      case "qm-check":
+        return <QualityChecklistsView />;
+      case "qm-stock":
+        return <AcceptedRejectedStockView />;
+      case "qm-rework":
+        return <ReworkManagementView />;
+      case "qm-ncr":
+        return <NCRView />;
+
+      // --- Documents Management ---
+      case "doc-inv":
+        return <InvoicesView />;
+      case "doc-chal":
+        return <ChallansDocView />;
+      case "doc-eway":
+        return <EWayBillsView />;
+      case "doc-pack":
+        return <PackingListsDocView />;
+      case "doc-insp":
+        return <InspectionReportsDocView />;
+      case "doc-ver":
+        return <DocumentVersionsView />;
+
+      // --- Returns Management ---
+      case "ret-purchase":
+        return <PurchaseReturnMgmtView />;
+      case "ret-sales":
+        return <SalesReturnMgmtView />;
+      case "ret-replace":
+        return <ReplacementHandlingView />;
+      case "ret-notes":
+        return <DebitCreditNotesView />;
+
+      // --- Vendor Management ---
+      case "vm-master":
+        return <VendorMasterView />;
+      case "vm-price":
+        return <VendorPriceListView />;
+      case "vm-lead":
+        return <LeadTimeManagementView />;
+      case "vm-perf":
+        return <VendorPerformanceView />;
+      case "vm-approved":
+        return <ApprovedVendorListView />;
+
+      // --- Customer Stock ---
+      case "cs-consign":
+      case "cs-loc":
+      case "cs-ret":
+        return <ConsignmentStockView />;
+
+      // --- Approvals & Controls ---
+      case "app-pur":
+        return <PurchaseApprovalView />;
+      case "app-grn":
+        return <GRNApprovalView />;
+      case "app-adj":
+        return <StockAdjustmentApprovalView />;
+      case "app-trans":
+        return <TransferApprovalView />;
+      case "app-ret":
+        return <ReturnApprovalView />;
+
+      // --- Settings & Configuration ---
+      case "set-inv":
+        return <SettingsView defaultTab="inventory" />;
+      case "set-rule":
+        return <SettingsView defaultTab="autoreorder" />;
+      case "set-tax":
+        return <SettingsView defaultTab="tax" />;
+      case "set-num":
+        return <SettingsView defaultTab="number" />;
       // --- Advanced ---
       case "adv-forecast":
       case "adv-ai":
@@ -898,8 +1048,8 @@ const App: React.FC = () => {
                 (notification) =>
                   notification.status === "unread" || notification.read === false,
               ) && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-              )}
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                )}
             </button>
 
             {showNotifications && (
@@ -1008,8 +1158,8 @@ const App: React.FC = () => {
                                     ) {
                                       navigate(
                                         detail.route ||
-                                          detail.url ||
-                                          detail.link,
+                                        detail.url ||
+                                        detail.link,
                                       );
                                       setShowNotifications(false);
                                     } else {
@@ -1141,13 +1291,12 @@ const App: React.FC = () => {
               <div className="px-5 py-4">
                 <p className="text-sm text-slate-700">
                   {activeAccessRequest
-                    ? `${
-                        activeAccessRequest.requesterId?.fullname ||
-                        activeAccessRequest.requesterEmail
-                      } is requesting ${activeAccessRequest.permissionLevel} access to your account.`
+                    ? `${activeAccessRequest.requesterId?.fullname ||
+                    activeAccessRequest.requesterEmail
+                    } is requesting ${activeAccessRequest.permissionLevel} access to your account.`
                     : activeAccessNotification?.message ||
-                      activeAccessNotification?.remark ||
-                      "Someone is requesting access to your account."}
+                    activeAccessNotification?.remark ||
+                    "Someone is requesting access to your account."}
                 </p>
                 {activeAccessRequest?.reason && (
                   <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
@@ -1506,7 +1655,56 @@ const App: React.FC = () => {
                 element={<CostRecalculationView />}
               />
               <Route path="/valuation/val-cogs" element={<COGSView />} />
+              {/* Reports & Analytics */}
+              <Route path="/reports/rep-summ" element={<StockSummaryReportView />} />
+              <Route path="/reports/rep-item" element={<ItemStockReportView />} />
+              <Route path="/reports/rep-wh" element={<WarehouseReportView />} />
+              <Route path="/reports/rep-aging" element={<AgingAnalysisView />} />
+              <Route path="/reports/rep-exp" element={<ExpiryAnalysisReportView />} />
+              <Route path="/reports/rep-move" element={<MovementAnalysisReportView />} />
+              <Route path="/reports/rep-val" element={<ValuationReportDocView />} />
+              <Route path="/reports/rep-gst" element={<GstTaxReportView />} />
+              <Route path="/reports/rep-audit" element={<AuditReportView />} />
+              <Route path="/reports/rep-cust" element={<CustomerReport />} />
+              <Route path="/reports/ncr-reports" element={<NCRReportPage />} />
 
+              {/* Audit & Logs */}
+              <Route path="/audit/aud-stock" element={<StockAuditView />} />
+              <Route path="/audit/aud-cycle" element={<CycleCountView />} />
+              <Route path="/audit/aud-phy" element={<PhysicalVerificationView sessionId="" onBack={() => { }} />} />
+              <Route path="/audit/aud-hist" element={<AdjustmentHistoryView />} />
+              <Route path="/audit/aud-log" element={<UserActivityLogView />} />
+
+              {/* Vendor Management */}
+              <Route path="/vendor/vm-master" element={<VendorMasterView />} />
+              <Route path="/vendor/vm-price" element={<VendorPriceListView />} />
+              <Route path="/vendor/vm-lead" element={<LeadTimeManagementView />} />
+              <Route path="/vendor/vm-perf" element={<VendorPerformanceView />} />
+              <Route path="/vendor/vm-approved" element={<ApprovedVendorListView />} />
+
+              {/* Approvals */}
+              <Route path="/approvals/app-pur" element={<PurchaseApprovalView />} />
+              <Route path="/approvals/app-grn" element={<GRNApprovalView />} />
+              <Route path="/approvals/app-adj" element={<StockAdjustmentApprovalView />} />
+              <Route path="/approvals/app-trans" element={<TransferApprovalView />} />
+              <Route path="/approvals/app-ret" element={<ReturnApprovalView />} />
+
+              {/* Settings */}
+              <Route path="/settings/set-inv" element={<SettingsView defaultTab="inventory" />} />
+              <Route path="/settings/set-rule" element={<SettingsView defaultTab="autoreorder" />} />
+              <Route path="/settings/set-tax" element={<SettingsView defaultTab="tax" />} />
+              <Route path="/settings/set-num" element={<SettingsView defaultTab="number" />} />
+              <Route path="/settings/set-field" element={<SettingsView defaultTab="custom" />} />
+              <Route path="/settings/set-flow" element={<SettingsView defaultTab="workflow" />} />
+              <Route path="/settings/set-form" element={<SettingsView defaultTab="formeditor" />} />
+
+              {/* Users */}
+              <Route path="/users/usr-mgmt" element={<UserManagementView />} />
+              <Route path="/users/usr-rbac" element={<RoleBasedAccessView />} />
+              <Route path="/users/usr-wh" element={<WarehouseAccessView />} />
+              <Route path="/users/usr-hier" element={<ApprovalHierarchyView />} />
+              <Route path="/users/usr-roles" element={<RoleBasedAccessView />} />
+              <Route path="/users/usr-wh-access" element={<WarehouseAccessView />} />
               {/* Advanced */}
               <Route
                 path="/advanced/adv-forecast"
@@ -1610,174 +1808,24 @@ const App: React.FC = () => {
 
               {/* Customer Stock */}
               <Route
+                path="/customer/cs-master"
+                element={<CustomerPage />}
+              />
+              <Route
                 path="/customer/cs-consign"
                 element={<ConsignmentStockView />}
               />
               <Route
                 path="/customer/cs-loc"
-                element={<ConsignmentStockView />}
+                element={<StockAtCustomerLocationView />}
               />
               <Route
                 path="/customer/cs-ret"
-                element={<ConsignmentStockView />}
-              />
-
-              {/* Vendor Management */}
-              <Route path="/vendor/vm-master" element={<VendorMasterView />} />
-              <Route
-                path="/vendor/vm-price"
-                element={<VendorPriceListView />}
+                element={<CustomerReturnsView />}
               />
               <Route
-                path="/vendor/vm-lead"
-                element={<LeadTimeManagementView />}
-              />
-              <Route
-                path="/vendor/vm-perf"
-                element={<VendorPerformanceView />}
-              />
-              <Route
-                path="/vendor/vm-approved"
-                element={<ApprovedVendorListView />}
-              />
-
-              {/* Approvals */}
-              <Route
-                path="/approvals/app-pur"
-                element={<PurchaseApprovalView />}
-              />
-              <Route path="/approvals/app-grn" element={<GRNApprovalView />} />
-              <Route
-                path="/approvals/app-adj"
-                element={<StockAdjustmentApprovalView />}
-              />
-              <Route
-                path="/approvals/app-trans"
-                element={<TransferApprovalView />}
-              />
-              <Route
-                path="/approvals/app-ret"
-                element={<ReturnApprovalView />}
-              />
-
-              {/* Settings */}
-              <Route
-                path="/settings/set-inv"
-                element={<SettingsView defaultTab="inventory" />}
-              />
-              <Route
-                path="/settings/set-rule"
-                element={<SettingsView defaultTab="autoreorder" />}
-              />
-              <Route
-                path="/settings/set-tax"
-                element={<SettingsView defaultTab="tax" />}
-              />
-              <Route
-                path="/settings/set-num"
-                element={<SettingsView defaultTab="number" />}
-              />
-              <Route
-                path="/settings/set-field"
-                element={<SettingsView defaultTab="custom" />}
-              />
-              <Route
-                path="/settings/set-flow"
-                element={<SettingsView defaultTab="workflow" />}
-              />
-              <Route
-                path="/settings/set-form"
-                element={<SettingsView defaultTab="formeditor" />}
-              />
-
-              {/* Audit */}
-              <Route path="/audit/aud-stock" element={<StockAuditView />} />
-              <Route path="/audit/aud-cycle" element={<CycleCountView />} />
-              <Route
-                path="/audit/aud-phy"
-                element={
-                  <PhysicalVerificationView
-                    sessionId=""
-                    onBack={() => navigate("/dashboard/dash-overview")}
-                  />
-                }
-              />
-              <Route
-                path="/audit/aud-hist"
-                element={<AdjustmentHistoryView />}
-              />
-              <Route path="/audit/aud-log" element={<UserActivityLogView />} />
-
-              {/* Reports */}
-              <Route
-                path="/reports/rep-summ"
-                element={<StockSummaryReportView />}
-              />
-              <Route
-                path="/reports/rep-item"
-                element={<ItemStockReportView />}
-              />
-              <Route path="/reports/rep-wh" element={<WarehouseReportView />} />
-              <Route
-                path="/reports/rep-aging"
-                element={<AgingAnalysisView />}
-              />
-              <Route
-                path="/reports/rep-exp"
-                element={<ExpiryAnalysisReportView />}
-              />
-              <Route
-                path="/reports/rep-move"
-                element={<MovementAnalysisReportView />}
-              />
-              <Route
-                path="/reports/rep-val"
-                element={<ValuationReportDocView />}
-              />
-              <Route path="/reports/rep-gst" element={<GstTaxReportView />} />
-              <Route path="/reports/rep-audit" element={<AuditReportView />} />
-
-              {/* Users & Access - hidden during a delegated session so the
-                  borrowed account's permissions cannot be managed from inside it. */}
-              <Route
-                path="/users/usr-mgmt"
-                element={
-                  isDelegatedSession ? (
-                    <Navigate to="/dashboard/dash-overview" replace />
-                  ) : (
-                    <UserManagementView />
-                  )
-                }
-              />
-              <Route
-                path="/users/usr-rbac"
-                element={
-                  isDelegatedSession ? (
-                    <Navigate to="/dashboard/dash-overview" replace />
-                  ) : (
-                    <RoleBasedAccessView />
-                  )
-                }
-              />
-              <Route
-                path="/users/usr-wh"
-                element={
-                  isDelegatedSession ? (
-                    <Navigate to="/dashboard/dash-overview" replace />
-                  ) : (
-                    <WarehouseAccessView />
-                  )
-                }
-              />
-              <Route
-                path="/users/usr-hier"
-                element={
-                  isDelegatedSession ? (
-                    <Navigate to="/dashboard/dash-overview" replace />
-                  ) : (
-                    <ApprovalHierarchyView />
-                  )
-                }
+                path="/users/usr-approval-hierarchy"
+                element={<ApprovalHierarchyView />}
               />
 
               {/* Profile */}

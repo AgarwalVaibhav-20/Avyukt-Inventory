@@ -170,6 +170,7 @@ const authSlice = createSlice({
 
       // Switch to delegated user (and token, if provided)
       state.user = delegatedUser;
+      try { localStorage.setItem('user', JSON.stringify(delegatedUser)); } catch {}
       if (token) {
         state.token = token;
         try { localStorage.setItem('token', token); } catch {}
@@ -182,6 +183,7 @@ const authSlice = createSlice({
       // Restore original user
       if (state.originalUser) {
         state.user = state.originalUser;
+        try { localStorage.setItem('user', JSON.stringify(state.originalUser)); } catch {}
       }
 
       // Restore original token (from state or fallback to localStorage)

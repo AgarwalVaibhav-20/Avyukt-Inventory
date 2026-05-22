@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, User, Loader2, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, User, Loader2, Edit, Trash2, Search, Filter, CheckCircle2 } from 'lucide-react';
 import { productService } from '@/services/productService';
 import { salesService } from '@/services/salesService';
 import { InventoryItem, Customer, SOItem } from '@/types';
@@ -166,6 +166,23 @@ const SalesOrderView: React.FC = () => {
       });
     } catch (createError: any) {
       alert(createError?.message || 'Failed to create sales order');
+    }
+  };
+
+  const handleApprove = async (so: any) => {
+    if (!window.confirm(`Are you sure you want to approve & confirm ${so.soNumber}?`)) return;
+    try {
+      await dispatch(
+        updateSalesOrder({
+          id: so.id,
+          data: {
+            ...so,
+            status: 'Confirmed',
+          },
+        })
+      ).unwrap();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to approve sales order');
     }
   };
 
@@ -343,6 +360,7 @@ const SalesOrderView: React.FC = () => {
                 <option value="all">All statuses</option>
                 <option value="Draft">Draft</option>
                 <option value="Confirmed">Confirmed</option>
+                <option value="Processing">Processing</option>
                 <option value="Dispatched">Dispatched</option>
               </select>
             </div>
@@ -400,7 +418,9 @@ const SalesOrderView: React.FC = () => {
                             ? 'bg-green-50 text-green-700 border-green-100'
                             : salesOrder.status === 'Confirmed'
                               ? 'bg-blue-50 text-blue-700 border-blue-100'
-                              : 'bg-slate-50 text-slate-700 border-slate-100'
+                              : salesOrder.status === 'Processing'
+                                ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                : 'bg-slate-50 text-slate-700 border-slate-100'
                         }`}
                       >
                         {salesOrder.status}
@@ -408,6 +428,15 @@ const SalesOrderView: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
+                        {salesOrder.status === 'Draft' && (
+                          <button
+                            onClick={() => handleApprove(salesOrder)}
+                            className="p-1 text-slate-400 hover:text-green-600 transition-colors"
+                            title="Approve / Confirm"
+                          >
+                            <CheckCircle2 size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEdit(salesOrder)}
                           className="p-1 text-slate-400 hover:text-blue-600 transition-colors"

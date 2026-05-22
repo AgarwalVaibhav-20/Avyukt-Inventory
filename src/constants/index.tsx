@@ -125,7 +125,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     id: 'control',
     label: 'Stock Control',
-    icon: Settings, // Reusing Generic
+    icon: Settings,
     subMenus: [
       { id: 'ctrl-ledger', label: 'Stock Ledger' },
       { id: 'ctrl-batch', label: 'Batch / Lot Tracking' },
@@ -204,6 +204,7 @@ export const MENU_ITEMS: MenuItem[] = [
     label: 'Customer Stock',
     icon: UserCheck,
     subMenus: [
+      { id: 'cs-master', label: 'Customer Master' },
       { id: 'cs-consign', label: 'Customer Consignment' },
       { id: 'cs-loc', label: 'Stock at Customer Loc' },
       { id: 'cs-ret', label: 'Customer Returns' },
@@ -236,6 +237,8 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'rep-val', label: 'Valuation Reports' },
       { id: 'rep-gst', label: 'GST / Tax Reports' },
       { id: 'rep-audit', label: 'Audit Reports' },
+      { id: 'ncr-reports', label: 'NCR Report' },
+      { id: 'rep-cust', label: 'Customer Report' },
     ]
   },
   {

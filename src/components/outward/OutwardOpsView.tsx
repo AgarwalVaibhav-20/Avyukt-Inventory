@@ -148,9 +148,7 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
       const pendingSOs = salesOrders.filter(
         (order) =>
           !pickListSoIds.has(order.id) &&
-          order.status !== "Cancelled" &&
-          order.status !== "Delivered" &&
-          order.status !== "Dispatched",
+          order.status === "Confirmed",
       );
 
       const activePickLists = pickLists.filter((pickList) =>

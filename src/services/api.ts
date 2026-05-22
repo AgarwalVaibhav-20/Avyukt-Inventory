@@ -14,6 +14,18 @@ const api = axios.create({
 
 let hasHandledAuthExpiry = false;
 
+const getActiveOrganisationId = () => {
+  try {
+    const user = localStorage.getItem("user");
+    if (!user) return "";
+
+    const parsedUser = JSON.parse(user);
+    return parsedUser?.organisationId || "";
+  } catch {
+    return "";
+  }
+};
+
 const shouldInvalidateSession = (error: any) => {
   const status = error?.response?.status;
   const message = String(
@@ -29,7 +41,7 @@ const shouldInvalidateSession = (error: any) => {
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  const organisationId = localStorage.getItem("organisationId");
+  const organisationId = getActiveOrganisationId();
 
   // For FormData, do not force JSON content type.
   // Let the browser set multipart/form-data with boundary.

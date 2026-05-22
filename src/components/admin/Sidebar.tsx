@@ -9,7 +9,7 @@ import {
   Box,
 } from "lucide-react";
 import { MenuItem } from "@/types";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { User as UserIcon } from "lucide-react";
 import { fetchItems } from "@/store/slices/inventorySlice";
@@ -34,6 +34,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   setIsOpen,
 }) => {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, isDelegatedSession, isAuthenticated } = useAppSelector((state) => state.auth);
   const { items } = useAppSelector((state) => state.inventory);
   const { expiryBatches } = useAppSelector((state) => state.stockControl);
@@ -86,14 +88,32 @@ const Sidebar: React.FC<SidebarProps> = ({
     return items;
   }, [user?.role, isDelegatedSession]);
 
-  const toggleExpand = (id: string) => {
-    const newExpanded = new Set(expandedMenus);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
+  useEffect(() => {
+    const activeParent = visibleMenuItems.find((item) =>
+      item.subMenus?.some((sub) => sub.id === activeMenuId),
+    );
+
+    if (activeParent) {
+      setExpandedMenus(new Set([activeParent.id]));
     }
-    setExpandedMenus(newExpanded);
+  }, [activeMenuId, visibleMenuItems]);
+
+  const toggleExpand = (item: MenuItem) => {
+    const isExpanded = expandedMenus.has(item.id);
+
+    setExpandedMenus((current) =>
+      current.has(item.id) ? new Set() : new Set([item.id]),
+    );
+
+    if (!isExpanded && item.subMenus?.length) {
+      const firstSubMenu = item.subMenus[0];
+      const path = `/${item.id}/${firstSubMenu.id}`;
+
+      if (location.pathname !== path) {
+        onMenuSelect(firstSubMenu.id, item.label, firstSubMenu.label);
+        navigate(path);
+      }
+    }
   };
 
   const filteredItems = visibleMenuItems.map((item) => {
@@ -191,7 +211,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   href="javascript:void(0)"
                   onClick={(e) => {
                     e.preventDefault();
-                    toggleExpand(item.id);
+                    toggleExpand(item);
                   }}
                   className={`
                     w-full flex items-center justify-between p-3 rounded-lg text-sm font-medium transition-colors

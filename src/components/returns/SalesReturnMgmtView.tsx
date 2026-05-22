@@ -229,6 +229,13 @@ const SalesReturnMgmtView: React.FC = () => {
       alert("Sales Return successfully created! Credit Note auto-generated.");
       setShowCreateModal(false);
       setSelectedDispatch(null);
+      setCreateForm({
+        reason: 'Defective',
+        returnType: 'Credit Note',
+        remarks: 'Customer return due to defective units',
+        items: [] as any[]
+      });
+      setQtyError(null);
       loadData();
     } catch (error: any) {
       alert(error.message || "Failed to process return");
@@ -261,8 +268,14 @@ const SalesReturnMgmtView: React.FC = () => {
     const passedQty = Number(qcForm.passedQty || 0);
     const failedQty = Number(qcForm.failedQty || 0);
 
+    // Frontend validation - detailed feedback
+    if (passedQty < 0 || failedQty < 0) {
+      alert("Passed and Failed quantities cannot be negative.");
+      return;
+    }
+
     if (passedQty + failedQty !== totalReturned) {
-      alert(`Passed + failed quantity must equal returned quantity (${totalReturned}).`);
+      alert(`❌ Validation Error:\n\nPassed (${passedQty}) + Failed (${failedQty}) = ${passedQty + failedQty}\nBut Total Returned = ${totalReturned}\n\nThey must be equal!`);
       return;
     }
 
@@ -311,11 +324,11 @@ const SalesReturnMgmtView: React.FC = () => {
       };
 
       await salesService.updateSalesReturnQC(showQcModal.id, qcStatus, payload);
-      alert(`QC Inspection Completed! ${passedQty} unit(s) restocked, ${failedQty} unit(s) scrapped. Stock Ledger updated.`);
+      alert(`✅ QC Inspection Completed!\n\n${passedQty} unit(s) restocked\n${failedQty} unit(s) scrapped\n\nStock Ledger updated.`);
       setShowQcModal(null);
       loadData();
     } catch (e: any) {
-      alert("Error updating QC: " + (e.response?.data?.message || e.message));
+      alert("❌ Error updating QC: " + (e.response?.data?.message || e.message));
     } finally {
       setProcessingId(null);
     }
@@ -424,7 +437,7 @@ const SalesReturnMgmtView: React.FC = () => {
         </div>
 
         {/* Workflow Checklist Highlights Banner */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
+        {/* <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-2 max-w-2xl">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-bold uppercase tracking-wider">
                     <ShieldCheck size={14}/> Scenario 5.1 Verification Ready
@@ -442,7 +455,7 @@ const SalesReturnMgmtView: React.FC = () => {
                     <Database size={16} className="text-blue-600"/> View Audit Trail (Ledger & Serials)
                 </button>
             </div>
-        </div>
+        </div> */}
 
         {/* Filters Section (Requirement 163) */}
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
@@ -771,7 +784,15 @@ const SalesReturnMgmtView: React.FC = () => {
         )}
 
         {/* MODAL 2: QC Inspection (Requirement 159, 160, 161, 162) */}
-        {showQcModal && (
+        {showQcModal && (() => {
+          const totalReturnedQty = showQcModal.items.reduce(
+            (sum, item: any) => sum + Number(item.quantity || item.returnQty || 0),
+            0,
+          );
+          const qtySum = Number(qcForm.passedQty || 0) + Number(qcForm.failedQty || 0);
+          const isQtyValid = qtySum === totalReturnedQty;
+          
+          return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
             <div className="w-full max-w-2xl rounded-[2.5rem] bg-white p-8 shadow-2xl border border-slate-100">
               <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-6">
@@ -799,9 +820,20 @@ const SalesReturnMgmtView: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">Total Returned</p>
-                    <p className="font-black text-blue-600 text-sm">{showQcModal.items[0]?.quantity || 2} Units</p>
+                    <p className="font-black text-blue-600 text-sm">{totalReturnedQty} Units</p>
                   </div>
                 </div>
+
+                {/* Quantity Validation Alert */}
+                {!isQtyValid && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-sm font-bold text-red-700 animate-shake">
+                    <AlertCircle size={18} className="text-red-600 shrink-0"/>
+                    <div>
+                      <p>Passed ({qcForm.passedQty}) + Failed ({qcForm.failedQty}) = {qtySum}, but Total Returned = {totalReturnedQty}</p>
+                      <p className="text-xs font-medium mt-1 text-red-600">Must equal {totalReturnedQty} total units</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Split Decision Section (Requirement 160 & 161) */}
                 <div className="grid grid-cols-2 gap-6 p-6 bg-blue-50/30 border border-blue-100 rounded-3xl">
@@ -814,14 +846,14 @@ const SalesReturnMgmtView: React.FC = () => {
                       <span className="text-[10px] font-bold text-slate-400">Req 160 & 161</span>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Passed Quantity</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Passed Quantity (Max: {totalReturnedQty})</label>
                       <input 
                         type="number" 
                         min="0" 
-                        max="2"
+                        max={totalReturnedQty}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-500"
                         value={qcForm.passedQty}
-                        onChange={e => setQcForm({...qcForm, passedQty: Number(e.target.value)})}
+                        onChange={e => setQcForm({...qcForm, passedQty: Math.min(Number(e.target.value), totalReturnedQty)})}
                       />
                     </div>
                     <div>
@@ -844,14 +876,14 @@ const SalesReturnMgmtView: React.FC = () => {
                       <span className="text-[10px] font-bold text-slate-400">Req 160 & 161</span>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Defective Quantity</label>
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Defective Quantity (Max: {totalReturnedQty})</label>
                       <input 
                         type="number" 
                         min="0" 
-                        max="2"
+                        max={totalReturnedQty}
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:border-red-500"
                         value={qcForm.failedQty}
-                        onChange={e => setQcForm({...qcForm, failedQty: Number(e.target.value)})}
+                        onChange={e => setQcForm({...qcForm, failedQty: Math.min(Number(e.target.value), totalReturnedQty)})}
                       />
                     </div>
                     <div>
@@ -878,8 +910,9 @@ const SalesReturnMgmtView: React.FC = () => {
 
                 <button
                   onClick={handleQcSubmit}
-                  disabled={!!processingId}
-                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl shadow-slate-900/20 hover:bg-black transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={!!processingId || !isQtyValid}
+                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl shadow-slate-900/20 hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  title={!isQtyValid ? `Sum must equal ${totalReturnedQty} units` : ''}
                 >
                   {processingId ? <Loader2 className="animate-spin" size={18}/> : <ShieldCheck size={18}/>}
                   Confirm QC Decision & Post to Stock Ledger
@@ -887,7 +920,9 @@ const SalesReturnMgmtView: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        );
+        })()
+        }
 
         {/* MODAL 3: Audit Trail & Verification Drawer (Requirement 161 & 162) */}
         {showAuditModal && (

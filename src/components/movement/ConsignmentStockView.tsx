@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowDownLeft,
@@ -11,10 +11,13 @@ import {
   RefreshCcw,
   Search,
   Upload,
+  Users,
+  ChevronDown,
 } from 'lucide-react';
 import { InventoryItem, ConsignmentEntry, DocumentAttachment } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { createConsignmentEntry, fetchStockMovementData } from '@/store/slices/stockMovementSlice';
+import { fetchCustomers } from '@/store/slices/customerSlice';
 import { ConsignmentCustomerOption, movementService } from '@/services/movementService';
 import { documentService } from '@/services/documentService';
 
@@ -22,6 +25,7 @@ const ConsignmentStockView: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { consignments, items, actionLoading, error, loading } = useAppSelector((state) => state.stockMovement);
+  const reduxCustomers = useAppSelector((state) => state.customers?.customers || []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | 'Outward' | 'Inward'>('All');
@@ -40,22 +44,27 @@ const ConsignmentStockView: React.FC = () => {
 
   useEffect(() => {
     dispatch(fetchStockMovementData());
+    dispatch(fetchCustomers());
   }, [dispatch]);
 
   useEffect(() => {
     const loadCustomers = async () => {
       setSupportLoading(true);
-      const [options, linkedDocuments] = await Promise.all([
-        movementService.getConsignmentCustomers(),
-        documentService.getAttachments({ referenceType: 'CustomerStock', limit: 200 }),
-      ]);
-      setCustomers(options);
+      // Convert Redux customers to ConsignmentCustomerOption format
+      const reduxOptions: ConsignmentCustomerOption[] = reduxCustomers.map((customer: any) => ({
+        id: customer.id,
+        name: customer.name || customer.code || 'Unknown',
+      }));
+      
+      const linkedDocuments = await documentService.getAttachments({ referenceType: 'CustomerStock', limit: 200 });
+      
+      setCustomers(reduxOptions);
       setAttachments(linkedDocuments);
       setSupportLoading(false);
     };
 
     loadCustomers();
-  }, []);
+  }, [reduxCustomers]);
 
   const typedItems = items as InventoryItem[];
   const typedConsignments = consignments as ConsignmentEntry[];
@@ -114,12 +123,12 @@ const ConsignmentStockView: React.FC = () => {
     setFormData((current) => ({
       ...current,
       partyId: customerId,
-      partyName: selectedCustomer?.name || current.partyName,
+      partyName: selectedCustomer?.name || '',
     }));
   };
 
   const handleSubmit = async () => {
-    if (!formData.partyName.trim() || !formData.itemId) {
+    if (!formData.partyId || !formData.partyName.trim() || !formData.itemId) {
       alert('Please select a customer and item.');
       return;
     }
@@ -150,7 +159,12 @@ const ConsignmentStockView: React.FC = () => {
       });
 
       const refreshedCustomers = await movementService.getConsignmentCustomers();
-      setCustomers(refreshedCustomers);
+        // Convert to Redux format and update local state
+        const updatedOptions: ConsignmentCustomerOption[] = refreshedCustomers.map((customer: any) => ({
+          id: customer.id,
+          name: customer.name || customer.code || 'Unknown',
+        }));
+        setCustomers(updatedOptions);
     } catch (submitError) {
       console.error('Consignment creation failed', submitError);
     }
@@ -162,6 +176,8 @@ const ConsignmentStockView: React.FC = () => {
       limit: 200,
     });
     setAttachments(linkedDocuments);
+    // Also refresh customers from Redux
+    dispatch(fetchCustomers());
   };
 
   const handleDocumentUpload = async (entry: ConsignmentEntry, file?: File | null) => {
@@ -188,6 +204,129 @@ const ConsignmentStockView: React.FC = () => {
   };
 
   const pageLoading = loading || supportLoading;
+
+  // Searchable Customer Dropdown Component
+  const SearchableCustomerDropdown = () => {
+    const [focused, setFocused] = useState(false);
+    const [search, setSearch] = useState('');
+    const filteredCustomers = customers.filter(c => 
+      c.name.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+      <div className="relative">
+        <div className={`relative flex items-center rounded-lg border transition-all duration-200 ${
+          focused 
+            ? 'border-blue-500 bg-blue-50 shadow-md focus:ring-2 focus:ring-blue-100' 
+            : 'border-slate-300 bg-white hover:border-slate-400'
+        }`}>
+          <Users size={18} className={`ml-3 flex-shrink-0 ${focused ? 'text-blue-500' : 'text-slate-400'}`} />
+          <input
+            type="text"
+            value={focused ? search : (formData.partyName || '')}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); setSearch(''); }}
+            placeholder="Search customers..."
+            className="w-full bg-transparent px-3 py-3 text-sm text-slate-700 outline-none placeholder-slate-400"
+          />
+          <ChevronDown size={16} className="mr-3 text-slate-400 flex-shrink-0" />
+        </div>
+        {focused && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border-2 border-blue-500 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+            {filteredCustomers.length > 0 ? (
+              filteredCustomers.map(customer => (
+                <div
+                  key={customer.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleCustomerSelect(customer.id);
+                    setSearch('');
+                    setFocused(false);
+                  }}
+                  className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
+                    formData.partyId === customer.id
+                      ? 'bg-blue-100 text-blue-700 font-semibold'
+                      : 'text-slate-700 hover:bg-blue-50'
+                  }`}
+                >
+                  <p className="font-medium">{customer.name}</p>
+                  <p className="text-xs text-slate-500">{customer.id}</p>
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-slate-400">No customers found</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Searchable Item Dropdown Component
+  const SearchableItemDropdown = () => {
+    const [focused, setFocused] = useState(false);
+    const [search, setSearch] = useState('');
+    
+    const selectedItem = typedItems.find(item => item.id === formData.itemId);
+    
+    const filteredItems = typedItems.filter(item => 
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.sku.toLowerCase().includes(search.toLowerCase())
+    );
+
+    return (
+      <div className="relative">
+        <div className={`relative flex items-center rounded-lg border transition-all duration-200 ${
+          focused 
+            ? 'border-blue-500 bg-blue-50 shadow-md focus:ring-2 focus:ring-blue-100' 
+            : 'border-slate-300 bg-white hover:border-slate-400'
+        }`}>
+          <Package size={18} className={`ml-3 flex-shrink-0 ${focused ? 'text-blue-500' : 'text-slate-400'}`} />
+          <input
+            type="text"
+            value={focused ? search : (selectedItem ? `${selectedItem.sku} - ${selectedItem.name}` : '')}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setFocused(true)}
+            onBlur={() => { setFocused(false); setSearch(''); }}
+            placeholder="Search items..."
+            className="w-full bg-transparent px-3 py-3 text-sm text-slate-700 outline-none placeholder-slate-400"
+          />
+          <ChevronDown size={16} className="mr-3 text-slate-400 flex-shrink-0" />
+        </div>
+        {focused && (
+          <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white border-2 border-blue-500 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+            {filteredItems.length > 0 ? (
+              filteredItems.map(item => (
+                <div
+                  key={item.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setFormData((current) => ({
+                      ...current,
+                      itemId: item.id,
+                    }));
+                    setSearch('');
+                    setFocused(false);
+                  }}
+                  className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
+                    formData.itemId === item.id
+                      ? 'bg-blue-100 text-blue-700 font-semibold'
+                      : 'text-slate-700 hover:bg-blue-50'
+                  }`}
+                >
+                  <p className="font-medium">{item.sku} - {item.name}</p>
+                  <p className="text-xs text-slate-500">Stock: {item.stock}</p>
+                </div>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-slate-400">No items found</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -296,55 +435,12 @@ const ConsignmentStockView: React.FC = () => {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">Customer</label>
-                <select
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  value={formData.partyId}
-                  onChange={(event) => handleCustomerSelect(event.target.value)}
-                >
-                  <option value="">🔍 Select Customer</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">Customer Name</label>
-                <input
-                  type="text"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  value={formData.partyName}
-                  onChange={(event) =>
-                    setFormData((current) => ({
-                      ...current,
-                      partyName: event.target.value,
-                    }))
-                  }
-                  placeholder="Enter customer name"
-                />
+                <SearchableCustomerDropdown />
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-700">Item</label>
-                <select
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  value={formData.itemId}
-                  onChange={(event) =>
-                    setFormData((current) => ({
-                      ...current,
-                      itemId: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">📦 Select Item</option>
-                  {typedItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.sku} - {item.name} (Stock: {item.stock})
-                    </option>
-                  ))}
-                </select>
+                <SearchableItemDropdown />
               </div>
 
               <div>

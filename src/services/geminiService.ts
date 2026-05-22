@@ -12,7 +12,7 @@ try {
 }
 
 export const getInventoryInsights = async (inventory: InventoryItem[]): Promise<string> => {
-  if (!ai) return "AI service not configured. Please check API Key.";
+  if (!ai) return "check API Key.";
 
   try {
     const prompt = `
