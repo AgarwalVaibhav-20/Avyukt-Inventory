@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Share2, Search, Loader2, MoreVertical, Plus, X, KeyRound, Trash2 } from 'lucide-react';
+import { Users, Share2, Search, Loader2, MoreVertical, Plus, X, Trash2 } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import toast from 'react-hot-toast';
 import api from '@/services/api';
@@ -239,16 +239,15 @@ const UserManagementView: React.FC = () => {
       return;
     }
 
-    // Only allow Enter to trigger a request when the email exactly matches a
-    // user already loaded in the organisation list. This prevents blasting
-    // access requests to arbitrary addresses outside the org.
+    /* Request access from search disabled for now
     const exact = users.find((u: User) => String(u.email || '').toLowerCase() === term);
     if (exact) {
       handleRequestAccess(exact.email, exact._id);
       return;
     }
+    */
     if (term.includes('@')) {
-      toast.error('That email is not in your organisation. Add the user first, or use the Request Access button on a row.');
+      toast.error('That email is not in your organisation. Add the user first.');
     }
   };
 
@@ -586,7 +585,7 @@ const UserManagementView: React.FC = () => {
                 <Search className="absolute left-3 top-3 text-slate-400" size={18} />
                 <input
                   type="text"
-                  placeholder="Search by name or email (press Enter on an email to request access)..."
+                  placeholder="Search by name or email..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
@@ -665,6 +664,7 @@ const UserManagementView: React.FC = () => {
                       <td className="px-6 py-4 text-slate-600 text-sm">{user.mobile || '-'}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {/* Request Access button disabled for now
                           {currentUser?.email !== user.email && (
                             <button
                               onClick={() => handleRequestAccess(user.email, user._id)}
@@ -675,11 +675,12 @@ const UserManagementView: React.FC = () => {
                               {requestingId === user._id ? (
                                 <Loader2 size={14} className="animate-spin" />
                               ) : (
-                                <KeyRound size={14} />
+                                <span />
                               )}
                               Request Access
-                              </button>
+                            </button>
                           )}
+                          */}
                           <button
                             type="button"
                             onClick={() => openEditModal(user)}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Share2, Check, X, Trash2, AlertCircle, Clock, CheckCircle2,
+  Share2, Check, X, Trash2, Clock, CheckCircle2,
   XCircle, Loader2, ChevronDown, Filter, Search, RefreshCw, LogIn
 } from 'lucide-react';
 import { delegatedAccessService } from '@/services/delegatedAccessService';
@@ -358,7 +358,7 @@ const DelegatedAccessSection: React.FC = () => {
           { id: 'received', label: 'Received Requests', icon: Clock },
           { id: 'sent', label: 'Sent Requests', icon: Share2 },
           { id: 'approved', label: 'Active Access', icon: CheckCircle2 },
-          { id: 'request', label: 'Request Access', icon: AlertCircle }
+          /* Request Access tab disabled for now */
         ].map(tab => (
           <button
             key={tab.id}

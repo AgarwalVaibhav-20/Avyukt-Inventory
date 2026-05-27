@@ -40,16 +40,6 @@ export const MENU_ITEMS: MenuItem[] = [
     ]
   },
   {
-    id: 'notifications',
-    label: 'Notifications',
-    icon: Bell,
-    subMenus: [
-      { id: 'notif-all', label: 'All Notifications' },
-      { id: 'notif-invites', label: 'Invitations' },
-      { id: 'notif-alerts', label: 'System Alerts' },
-    ]
-  },
-  {
     id: 'product-master',
     label: 'Item / Product Master',
     icon: Package,
@@ -287,6 +277,16 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'usr-rbac', label: 'Role-Based Access (RBAC)' },
       { id: 'usr-wh', label: 'Warehouse-wise Access' },
       { id: 'usr-hier', label: 'Approval Hierarchy' },
+    ]
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    icon: Bell,
+    subMenus: [
+      { id: 'notif-all', label: 'All Notifications' },
+      { id: 'notif-invites', label: 'Invitations' },
+      { id: 'notif-alerts', label: 'System Alerts' },
     ]
   },
   {
