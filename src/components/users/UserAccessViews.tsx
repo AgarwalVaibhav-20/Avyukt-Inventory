@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import api from '@/services/api';
 import { warehouseService } from '@/services/warehouseService';
+import { MENU_ITEMS } from '@/constants';
 
 interface UserRecord {
   _id: string;
@@ -26,6 +27,12 @@ interface UserRecord {
   } | string | null;
   approvalLevel?: number;
   approvalLimit?: number;
+  permissions?: Record<string, {
+    view?: boolean;
+    create?: boolean;
+    edit?: boolean;
+    delete?: boolean;
+  }>;
   warehouseAccess?: {
     warehouseId?: {
       _id?: string;
@@ -57,9 +64,17 @@ const normalizeUsers = (input: any): UserRecord[] => {
     approvalManagerId: user.approvalManagerId || null,
     approvalLevel: Number(user.approvalLevel || 1),
     approvalLimit: Number(user.approvalLimit || 0),
+    permissions: user.permissions || {},
     warehouseAccess: Array.isArray(user.warehouseAccess) ? user.warehouseAccess : [],
   }));
 };
+
+const pageLabelById = MENU_ITEMS.flatMap((item) =>
+  (item.subMenus || []).map((sub) => [sub.id, `${item.label} / ${sub.label}`] as const),
+).reduce<Record<string, string>>((acc, [id, label]) => {
+  acc[id] = label;
+  return acc;
+}, {});
 
 const useUserAccessData = () => {
   const [users, setUsers] = useState<UserRecord[]>([]);
@@ -261,6 +276,33 @@ export const RoleBasedAccessView: React.FC = () => {
                 <li className="rounded-lg bg-slate-50 p-3">Managers can be granted operational access without exposing every permission toggle.</li>
                 <li className="rounded-lg bg-slate-50 p-3">Employees and users should inherit the smallest practical permission set.</li>
               </ul>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="border-b border-slate-200 px-4 py-3">
+              <h3 className="text-sm font-semibold text-slate-900">Page-Level Permissions</h3>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {users.map((user) => {
+                const entries = Object.entries(user.permissions || {});
+                return (
+                  <div key={user._id} className="px-4 py-3">
+                    <div className="text-sm font-medium text-slate-900">{user.fullname}</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {entries.length === 0 ? (
+                        <span className="text-xs text-slate-500">No explicit page permissions</span>
+                      ) : (
+                        entries.map(([pageId, permission]) => (
+                          <span key={pageId} className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                            {pageLabelById[pageId] || pageId} · {permission.delete || permission.edit ? 'Edit / Delete' : 'View only'}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

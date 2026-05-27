@@ -7,11 +7,11 @@ import {
   Menu as MenuIcon,
   X,
   Box,
+  User as UserIcon,
 } from "lucide-react";
 import { MenuItem } from "@/types";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { User as UserIcon } from "lucide-react";
 import { fetchItems } from "@/store/slices/inventorySlice";
 import { fetchStockControlData } from "@/store/slices/stockControlSlice";
 import {
@@ -19,6 +19,7 @@ import {
   fetchPOs,
   fetchQCQueue,
 } from "@/store/slices/procurementSlice";
+import { notificationService } from "@/services/notificationService";
 
 interface SidebarProps {
   activeMenuId: string;
@@ -26,6 +27,12 @@ interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (val: boolean) => void;
 }
+
+const hasPermissionMap = (permissions: any) =>
+  permissions && typeof permissions === "object" && Object.keys(permissions).length > 0;
+
+const canViewPage = (permissions: any, pageId: string) =>
+  !hasPermissionMap(permissions) || permissions?.[pageId]?.view === true;
 
 const Sidebar: React.FC<SidebarProps> = ({
   activeMenuId,
@@ -36,10 +43,78 @@ const Sidebar: React.FC<SidebarProps> = ({
   const dispatch = useAppDispatch();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isDelegatedSession, isAuthenticated } = useAppSelector((state) => state.auth);
+  const { user, isDelegatedSession, isAuthenticated, delegatedPermissionLevel } = useAppSelector((state) => state.auth);
   const { items } = useAppSelector((state) => state.inventory);
   const { expiryBatches } = useAppSelector((state) => state.stockControl);
   const { prs, pos, qcQueue } = useAppSelector((state) => state.procurement);
+
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const normalizeNotificationList = (data: any) =>
+      Array.isArray(data) ? data : data?.notifications || [];
+
+    const mergeNotifications = (base: any[], incoming: any[]) => {
+      const seen = new Set<string>();
+      return [...incoming, ...base].filter((notification) => {
+        const id = String(notification._id || notification.id || "");
+        if (!id) return true;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+    };
+
+    const fetchList = async () => {
+      try {
+        const [data, inviteData] = await Promise.all([
+          notificationService.getNotifications(),
+          notificationService.getPendingInvites(),
+        ]);
+        setNotifications(
+          mergeNotifications(
+            normalizeNotificationList(data),
+            normalizeNotificationList(inviteData),
+          ),
+        );
+      } catch (err) {
+        console.warn("Failed to poll sidebar notifications", err);
+      }
+    };
+
+    fetchList();
+    const interval = setInterval(fetchList, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  const currentUserId = String(user?._id || user?.id || "");
+  const pendingInvites = notifications.filter((notification) => {
+    const receiverId =
+      typeof notification.receiverId === "object"
+        ? notification.receiverId?._id
+        : notification.receiverId;
+    return (
+      notification.type === "invite" &&
+      notification.inviteResponse === "pending" &&
+      (!receiverId || String(receiverId) === currentUserId)
+    );
+  });
+
+  const pendingAccessNotifications = notifications.filter(
+    (notification) => {
+      const receiverId =
+        typeof notification.receiverId === "object"
+          ? notification.receiverId?._id
+          : notification.receiverId;
+      return (
+        notification.type === "access_request" &&
+        (notification.status === "unread" || notification.read === false) &&
+        (!receiverId || String(receiverId) === currentUserId)
+      );
+    },
+  );
 
   const alertCounts = {
     "dash-low-stock": items.filter(
@@ -53,6 +128,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       prs.filter((p) => p.status === "Pending Approval").length +
       pos.filter((p) => p.status === "Pending Approval").length +
       qcQueue.length,
+    "notif-all": notifications.filter(n => !n.read && n.status !== "read").length,
+    "notif-invites": pendingInvites.length + pendingAccessNotifications.length,
+    "notif-alerts": notifications.filter(n => n.type !== "invite" && n.type !== "access_request" && !n.read && n.status !== "read").length,
   };
 
   useEffect(() => {
@@ -73,20 +151,41 @@ const Sidebar: React.FC<SidebarProps> = ({
   const visibleMenuItems = React.useMemo(() => {
     let items = MENU_ITEMS;
     const role = user?.role || 'employee';
+    const isDelegatedView = isDelegatedSession && delegatedPermissionLevel === 'view';
+    const hasExplicitPermissions = hasPermissionMap(user?.permissions) && !isDelegatedView;
 
-    if (role === 'user') {
-      items = items.filter(item => ['dashboard', 'documents', 'reports'].includes(item.id));
-    } else if (role === 'employee') {
-      items = items.filter(item => !['users', 'settings', 'audit', 'advanced', 'approvals'].includes(item.id));
-    } else if (role === 'manager') {
-      items = items.filter(item => !['advanced'].includes(item.id));
+    if (hasExplicitPermissions) {
+      items = items
+        .map((item) => ({
+          ...item,
+          subMenus: (item.subMenus || []).filter((sub) =>
+            canViewPage(user?.permissions, sub.id),
+          ),
+        }))
+        .filter((item) => item.subMenus && item.subMenus.length > 0);
+    }
+
+    if (!isDelegatedView) {
+      if (!hasExplicitPermissions && role === 'user') {
+        items = items.filter(item => ['dashboard', 'documents', 'reports', 'notifications'].includes(item.id));
+      } else if (!hasExplicitPermissions && role === 'employee') {
+        items = items.filter(item => !['users', 'settings', 'audit', 'advanced', 'approvals'].includes(item.id));
+      } else if (!hasExplicitPermissions && role === 'manager') {
+        items = items.filter(item => !['advanced'].includes(item.id));
+      }
     }
 
     if (isDelegatedSession) {
       items = items.filter((item) => item.id !== "users");
     }
+
+    // Hide 'users' (User & Access) menu item if the user is not an admin
+    if (user?.role !== 'admin') {
+      items = items.filter((item) => item.id !== "users");
+    }
+
     return items;
-  }, [user?.role, isDelegatedSession]);
+  }, [user?.role, user?.permissions, isDelegatedSession, delegatedPermissionLevel]);
 
   useEffect(() => {
     const activeParent = visibleMenuItems.find((item) =>
@@ -117,7 +216,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const filteredItems = visibleMenuItems.map((item) => {
-    // If search term exists, check if item or subitems match
     if (!searchTerm) return item;
     const matchesLabel = item.label
       .toLowerCase()
@@ -129,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     if (matchesLabel || (matchingSubMenus && matchingSubMenus.length > 0)) {
       return {
         ...item,
-        subMenus: matchingSubMenus?.length ? matchingSubMenus : item.subMenus, // Keep original if parent matches
+        subMenus: matchingSubMenus?.length ? matchingSubMenus : item.subMenus,
       };
     }
     return null;
@@ -137,7 +235,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
@@ -145,7 +242,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      {/* Sidebar Container */}
       <div
         className={`
         fixed top-0 left-0 z-30 h-screen w-72 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out
@@ -153,7 +249,6 @@ const Sidebar: React.FC<SidebarProps> = ({
         flex flex-col border-r border-slate-800 shadow-xl
       `}
       >
-        {/* Header */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800 bg-slate-950">
           <div className="flex items-center gap-2 text-white font-bold text-lg leading-tight">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -176,7 +271,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Search */}
         <div className="p-4">
           <div className="relative">
             <Search
@@ -193,11 +287,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Menu List */}
         <div className="flex-1 overflow-y-auto scrollbar-hide px-2 pb-4">
           {filteredItems.map((item) => {
             const Icon = item.icon!;
-            const isExpanded = expandedMenus.has(item.id) || !!searchTerm; // Auto expand on search
+            const isExpanded = expandedMenus.has(item.id) || !!searchTerm;
             const isActiveParent = item.subMenus?.some(
               (sub) => sub.id === activeMenuId,
             );
@@ -240,7 +333,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </a>
 
-                {/* Submenus */}
                 {item.subMenus && isExpanded && (
                   <div className="ml-9 mt-1 space-y-0.5 border-l border-slate-700 pl-2">
                     {item.subMenus.map((sub) => {
@@ -262,7 +354,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 ? "bg-blue-600/10 text-blue-400 font-medium"
                                 : "text-slate-400 hover:text-slate-200"
                             }
-                            ${(alertCounts as any)[sub.id] > 0 ? "" : ""}
                           `}
                         >
                           <div className="flex items-center justify-between">
@@ -283,7 +374,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           })}
         </div>
 
-        {/* User Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-950">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 overflow-hidden border border-slate-700">

@@ -157,6 +157,50 @@ import { MENU_ITEMS } from "@/constants";
 import LowStockAlerts from "./components/dashboard/Lowstockalerts";
 import OverstockAlerts from "./components/dashboard/OverStockAlert";
 import NCRReportPage from "./components/reports/NCRReport";
+import NotificationsPage from "@/components/common/NotificationsPage";
+
+const hasPermissionMap = (permissions: any) =>
+  permissions && typeof permissions === "object" && Object.keys(permissions).length > 0;
+
+const canViewPage = (
+  user: any,
+  pageId: string,
+  isDelegatedSession?: boolean,
+  delegatedPermissionLevel?: string | null
+) => {
+  if (pageId.startsWith("usr-") && user?.role !== "admin") return false;
+  if (isDelegatedSession && delegatedPermissionLevel === "view") return true;
+  if (user?.role === "admin" || user?.role === "manager") return true;
+  if (!hasPermissionMap(user?.permissions)) return true;
+  return user.permissions?.[pageId]?.view === true;
+};
+
+const UserAccessProtectedRoute: React.FC<{
+  element: React.ReactElement;
+}> = ({ element }) => {
+  const { user } = useAppSelector((state) => state.auth);
+  if (user?.role !== "admin") {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-white border border-rose-100 rounded-3xl shadow-sm max-w-xl mx-auto my-12 animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 mb-6 border border-rose-100/50">
+          <X size={32} />
+        </div>
+        <h2 className="text-xl font-black text-slate-800 tracking-tight">Access Denied</h2>
+        <p className="text-sm text-slate-500 mt-2 max-w-sm">
+          You do not have permission to view the User & Access section. Please contact your system administrator if you believe this is an error.
+        </p>
+      </div>
+    );
+  }
+  return element;
+};
+
+const PAGE_LABEL_BY_ID = MENU_ITEMS.flatMap((item) =>
+  (item.subMenus || []).map((sub) => [sub.id, `${item.label} / ${sub.label}`] as const),
+).reduce<Record<string, string>>((acc, [id, label]) => {
+  acc[id] = label;
+  return acc;
+}, {});
 
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -189,7 +233,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener("auth:expired", handleSessionExpired);
   }, [dispatch]);
 
-  const { user, isDelegatedSession } = useAppSelector((state) => state.auth);
+  const { user, isDelegatedSession, delegatedPermissionLevel } = useAppSelector((state) => state.auth);
   const currentUserId = String(user?._id || user?.id || "");
   const normalizeNotificationList = (data: any) =>
     Array.isArray(data) ? data : data?.notifications || [];
@@ -314,7 +358,7 @@ const App: React.FC = () => {
           : notification,
       ),
     );
-    navigate("/users/usr-mgmt");
+    navigate("/notifications/notif-invites");
   };
 
   useEffect(() => {
@@ -501,12 +545,49 @@ const App: React.FC = () => {
   };
 
   if (!isAuthenticated) {
-    return <Login onLoginSuccess={() => { }} />;
+    if (location.pathname !== "/login") {
+      return (
+        <Navigate
+          to="/login"
+          replace
+          state={{ from: `${location.pathname}${location.search}` }}
+        />
+      );
+    }
+
+    return (
+      <Login
+        onLoginSuccess={() => {
+          const from = (location.state as { from?: string } | null)?.from || "/dashboard/dash-overview";
+          navigate(from, { replace: true });
+        }}
+      />
+    );
+  }
+
+  if (location.pathname === "/login") {
+    return <Navigate to="/dashboard/dash-overview" replace />;
   }
 
   const renderContent = () => {
     console.log("📍 renderContent called with activeMenuId:", activeMenuId);
+    if (!canViewPage(user, activeMenuId, isDelegatedSession, delegatedPermissionLevel)) {
+      return (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-800">
+          You do not have permission to view this page.
+        </div>
+      );
+    }
+
     switch (activeMenuId) {
+      // --- Notifications Sub-Menus ---
+      case "notif-all":
+        return <NotificationsPage filterType="all" />;
+      case "notif-invites":
+        return <NotificationsPage filterType="invites" />;
+      case "notif-alerts":
+        return <NotificationsPage filterType="alerts" />;
+
       // --- Dashboard Sub-Menus ---
       case "dash-overview":
         return <Dashboard />;
@@ -778,169 +859,16 @@ const App: React.FC = () => {
       case "rep-exp":
         return <ExpiryAnalysisReportView />;
       case "rep-move":
-      case "in-qc":
-        return <QualityCheckView />;
+        return <MovementAnalysisReportView />;
+      case "rep-val":
+        return <ValuationReportDocView />;
+      case "rep-gst":
+        return <GstTaxReportView />;
+      case "rep-audit":
+        return <AuditReportView />;
+      case "rep-cust":
+        return <CustomerReport />;
 
-      case "in-putaway":
-        return <PutAwayView />;
-
-      case "in-return":
-        return <InwardReturnView />;
-
-      case "in-invoice":
-        return <InvoiceMatchingView />;
-
-      // --- Outward / Dispatch ---
-      case "out-so":
-        return <SalesOrderView />;
-      case "out-pick":
-        return <OutwardOpsView stage="pick" />;
-      case "out-pack":
-        return <OutwardOpsView stage="pack" />;
-      case "out-challan":
-        return <OutwardOpsView stage="challan" />;
-      case "out-dispatch":
-        return <OutwardOpsView stage="dispatch" />;
-      case "out-return":
-        return <SalesReturnView />;
-      case "out-invoice":
-        return <CustomerInvoiceView />;
-
-      // --- Stock Movement ---
-      case "mv-transfer":
-        return <StockTransfer />;
-      case "mv-internal":
-        return <InternalMovementView />;
-      case "mv-adj":
-      case "mv-damage": // Reusing adjustment view for damage entry as they are same logic usually
-        return <StockAdjustmentView />;
-      case "mv-scrap":
-        return <ScrapManagementView />;
-      case "mv-consign":
-        return <ConsignmentStockView />;
-
-      // --- Stock Control ---
-      case "ctrl-ledger":
-        return <StockLedgerView />;
-      case "ctrl-batch":
-        return <BatchTrackingView />;
-      case "ctrl-serial":
-        return <SerialTrackingView />;
-      case "ctrl-expiry":
-        return <ExpiryTrackingView />;
-      case "ctrl-reserve":
-        return <StockReservationView />;
-      case "ctrl-safety":
-        return <ReorderLevelView />; // Reusing Reorder Level view as it serves safety stock purpose
-      case "ctrl-valuation":
-        return <ValuationMethodsView />;
-
-      // --- Inventory Valuation ---
-      case "val-method":
-        return <ValuationMethodsView />;
-      case "val-item":
-        return <ItemWiseValuationView />;
-      case "val-wh":
-        return <WarehouseValuationView />;
-      case "val-realtime":
-        return <RealTimeValuationView />;
-      case "val-closing":
-        return <ClosingStockReportView />;
-      case "val-recalc":
-        return <CostRecalculationView />;
-      case "val-cogs":
-        return <COGSView />;
-
-      // --- Barcode & Automation ---
-      case "bc-gen":
-      case "bc-qr":
-        return <BarcodeGeneratorView />;
-      case "bc-scan":
-        return <BarcodeScannerView />;
-      case "bc-mobile":
-        return <BarcodeScannerView isMobileMode={true} />;
-      case "bc-label":
-        return <LabelPrintingView />;
-      case "bc-rfid":
-        return <RfidIntegrationView />;
-
-      // --- Quality Management ---
-      case "qm-param":
-        return <QualityParametersView />;
-      case "qm-plan":
-        return <InspectionPlansView />;
-      case "qm-check":
-        return <QualityChecklistsView />;
-      case "qm-stock":
-        return <AcceptedRejectedStockView />;
-      case "qm-rework":
-        return <ReworkManagementView />;
-      case "qm-ncr":
-        return <NCRView />;
-
-      // --- Documents Management ---
-      case "doc-inv":
-        return <InvoicesView />;
-      case "doc-chal":
-        return <ChallansDocView />;
-      case "doc-eway":
-        return <EWayBillsView />;
-      case "doc-pack":
-        return <PackingListsDocView />;
-      case "doc-insp":
-        return <InspectionReportsDocView />;
-      case "doc-ver":
-        return <DocumentVersionsView />;
-
-      // --- Returns Management ---
-      case "ret-purchase":
-        return <PurchaseReturnMgmtView />;
-      case "ret-sales":
-        return <SalesReturnMgmtView />;
-      case "ret-replace":
-        return <ReplacementHandlingView />;
-      case "ret-notes":
-        return <DebitCreditNotesView />;
-
-      // --- Vendor Management ---
-      case "vm-master":
-        return <VendorMasterView />;
-      case "vm-price":
-        return <VendorPriceListView />;
-      case "vm-lead":
-        return <LeadTimeManagementView />;
-      case "vm-perf":
-        return <VendorPerformanceView />;
-      case "vm-approved":
-        return <ApprovedVendorListView />;
-
-      // --- Customer Stock ---
-      case "cs-consign":
-      case "cs-loc":
-      case "cs-ret":
-        return <ConsignmentStockView />;
-
-      // --- Approvals & Controls ---
-      case "app-pur":
-        return <PurchaseApprovalView />;
-      case "app-grn":
-        return <GRNApprovalView />;
-      case "app-adj":
-        return <StockAdjustmentApprovalView />;
-      case "app-trans":
-        return <TransferApprovalView />;
-      case "app-ret":
-        return <ReturnApprovalView />;
-
-      // --- Settings & Configuration ---
-      case "set-inv":
-        return <SettingsView defaultTab="inventory" />;
-      case "set-rule":
-        return <SettingsView defaultTab="autoreorder" />;
-      case "set-tax":
-        return <SettingsView defaultTab="tax" />;
-      case "set-num":
-        return <SettingsView defaultTab="number" />;
       // --- Advanced ---
       case "adv-forecast":
       case "adv-ai":
@@ -973,7 +901,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-4 flex-1 max-w-3xl">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-slate-500 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-all active:scale-95 flex-shrink-0"
+              className="text-slate-500 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-all active:scale-[0.98] flex-shrink-0"
               title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
             >
               <ChevronRight size={24} />
@@ -1375,6 +1303,23 @@ const App: React.FC = () => {
                 <p className="mt-3 text-xs text-slate-500">
                   Accepting will switch your account to the invited organisation.
                 </p>
+                {activeInvite.metadata?.permissions && (
+                  <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      Access included
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {Object.entries(activeInvite.metadata.permissions).map(([pageId, permission]: any) => (
+                        <span
+                          key={pageId}
+                          className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-600 border border-slate-200"
+                        >
+                          {PAGE_LABEL_BY_ID[pageId] || pageId} · {permission?.delete || permission?.edit ? "Edit / Delete" : "View only"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">
                 <button
@@ -1448,6 +1393,12 @@ const App: React.FC = () => {
                 path="/dashboard/dash-valuation"
                 element={<ValuationAnalysisView />}
               />
+
+              {/* Notifications */}
+              <Route path="/notifications/notif-all" element={<NotificationsPage filterType="all" />} />
+              <Route path="/notifications/notif-invites" element={<NotificationsPage filterType="invites" />} />
+              <Route path="/notifications/notif-alerts" element={<NotificationsPage filterType="alerts" />} />
+
               <Route
                 path="/dashboard/dash-low-stock"
                 element={
@@ -1699,12 +1650,12 @@ const App: React.FC = () => {
               <Route path="/settings/set-form" element={<SettingsView defaultTab="formeditor" />} />
 
               {/* Users */}
-              <Route path="/users/usr-mgmt" element={<UserManagementView />} />
-              <Route path="/users/usr-rbac" element={<RoleBasedAccessView />} />
-              <Route path="/users/usr-wh" element={<WarehouseAccessView />} />
-              <Route path="/users/usr-hier" element={<ApprovalHierarchyView />} />
-              <Route path="/users/usr-roles" element={<RoleBasedAccessView />} />
-              <Route path="/users/usr-wh-access" element={<WarehouseAccessView />} />
+              <Route path="/users/usr-mgmt" element={<UserAccessProtectedRoute element={<UserManagementView />} />} />
+              <Route path="/users/usr-rbac" element={<UserAccessProtectedRoute element={<RoleBasedAccessView />} />} />
+              <Route path="/users/usr-wh" element={<UserAccessProtectedRoute element={<WarehouseAccessView />} />} />
+              <Route path="/users/usr-hier" element={<UserAccessProtectedRoute element={<ApprovalHierarchyView />} />} />
+              <Route path="/users/usr-roles" element={<UserAccessProtectedRoute element={<RoleBasedAccessView />} />} />
+              <Route path="/users/usr-wh-access" element={<UserAccessProtectedRoute element={<WarehouseAccessView />} />} />
               {/* Advanced */}
               <Route
                 path="/advanced/adv-forecast"
@@ -1825,7 +1776,7 @@ const App: React.FC = () => {
               />
               <Route
                 path="/users/usr-approval-hierarchy"
-                element={<ApprovalHierarchyView />}
+                element={<UserAccessProtectedRoute element={<ApprovalHierarchyView />} />}
               />
 
               {/* Profile */}

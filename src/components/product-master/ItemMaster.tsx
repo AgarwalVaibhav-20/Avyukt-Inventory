@@ -165,9 +165,21 @@ const emptyForm: Partial<InventoryItem> = {
   images: [],
 };
 
+const getPagePermission = (user: any, pageId: string) => {
+  if (user?.role === "admin" || user?.role === "manager") {
+    return { view: true, create: true, edit: true, delete: true };
+  }
+  const permissions = user?.permissions;
+  if (!permissions || Object.keys(permissions).length === 0) {
+    return { view: true, create: true, edit: true, delete: true };
+  }
+  return permissions?.[pageId] || { view: false, create: false, edit: false, delete: false };
+};
+
 const ItemMaster: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const { user } = useAppSelector((state) => state.auth);
   const { items, loading } = useAppSelector((state) => state.inventory);
   const { warehouses, bins: globalBins } = useAppSelector(
     (state) => state.stockMovement,
@@ -194,6 +206,10 @@ const ItemMaster: React.FC = () => {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const pagePermission = getPagePermission(user, "pm-master");
+  const canCreate = pagePermission.create === true;
+  const canEdit = pagePermission.edit === true;
+  const canDelete = pagePermission.delete === true;
 
   const toggleRow = (id: string) => {
     const next = new Set(expandedRows);
@@ -209,6 +225,7 @@ const ItemMaster: React.FC = () => {
     itemType: string;
     uom: string;
     hsnCode: string;
+    sortOrder: string;
   }>({
     category: "all",
     brand: [],
@@ -334,6 +351,10 @@ const ItemMaster: React.FC = () => {
   };
 
   const handleDeleteClick = (id: string) => {
+    if (!canDelete) {
+      alert("You do not have delete permission for Item Master.");
+      return;
+    }
     setDeleteTargetId(id);
     setIsDeleteModalOpen(true);
   };
@@ -355,11 +376,19 @@ const ItemMaster: React.FC = () => {
   };
 
   const handleOpenAdd = () => {
+    if (!canCreate) {
+      alert("You do not have create permission for Item Master.");
+      return;
+    }
     setEditingItem(null);
     setFormData(emptyForm);
     setIsDialogOpen(true);
   };
   const handleOpenEdit = (item: InventoryItem) => {
+    if (!canEdit) {
+      alert("You do not have edit permission for Item Master.");
+      return;
+    }
     setEditingItem(item);
     setIsDialogOpen(true);
   };
@@ -445,6 +474,10 @@ const ItemMaster: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingItem ? !canEdit : !canCreate) {
+      alert("You do not have permission to save Item Master changes.");
+      return;
+    }
     if (!formData.name || !formData.sku) {
       alert("Item Name and SKU are required.");
       return;
@@ -570,13 +603,15 @@ const ItemMaster: React.FC = () => {
             >
               <Download size={13} /> Export
             </Button>
-            <Button
-              onClick={handleOpenAdd}
-              size="sm"
-              className="h-8 text-xs bg-gray-900 hover:bg-gray-800 text-white gap-1.5 font-normal"
-            >
-              <Plus size={13} /> New item
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={handleOpenAdd}
+                size="sm"
+                className="h-8 text-xs bg-gray-900 hover:bg-gray-800 text-white gap-1.5 font-normal"
+              >
+                <Plus size={13} /> New item
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -959,12 +994,14 @@ const ItemMaster: React.FC = () => {
                     {/* Actions */}
                     <td className="py-3">
                       <div className="flex items-center justify-end gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
-                        <ActionBtn
-                          title="Edit"
-                          onClick={() => handleOpenEdit(item)}
-                        >
-                          <Edit size={13} />
-                        </ActionBtn>
+                        {canEdit && (
+                          <ActionBtn
+                            title="Edit"
+                            onClick={() => handleOpenEdit(item)}
+                          >
+                            <Edit size={13} />
+                          </ActionBtn>
+                        )}
                         <ActionBtn
                           title="Variants"
                           onClick={() =>
@@ -1017,13 +1054,15 @@ const ItemMaster: React.FC = () => {
                         >
                           <WarehouseIcon size={13} />
                         </ActionBtn>
-                        <ActionBtn
-                          title="Delete"
-                          onClick={() => handleDeleteClick(item.id)}
-                          className="hover:text-red-500"
-                        >
-                          <Trash2 size={13} />
-                        </ActionBtn>
+                        {canDelete && (
+                          <ActionBtn
+                            title="Delete"
+                            onClick={() => handleDeleteClick(item.id)}
+                            className="hover:text-red-500"
+                          >
+                            <Trash2 size={13} />
+                          </ActionBtn>
+                        )}
                       </div>
                     </td>
                   </tr>

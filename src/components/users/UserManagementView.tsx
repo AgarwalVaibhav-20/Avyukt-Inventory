@@ -7,8 +7,41 @@ import { warehouseService } from '@/services/warehouseService';
 import { delegatedAccessService } from '@/services/delegatedAccessService';
 import DelegatedAccessSection from './DelegatedAccessSection';
 import { notificationService } from '@/services/notificationService';
+import { MENU_ITEMS } from '@/constants';
 
 type PermissionLevel = 'view' | 'edit' | 'delete';
+type PagePermission = { view: boolean; create: boolean; edit: boolean; delete: boolean };
+
+const PAGE_OPTIONS = MENU_ITEMS.flatMap((item) =>
+  (item.subMenus || []).map((sub) => ({
+    id: sub.id,
+    label: sub.label,
+    group: item.label,
+  })),
+);
+
+const normalizePagePermissions = (input: any): Record<string, PagePermission> => {
+  if (!input) return {};
+  const entries =
+    input instanceof Map
+      ? Array.from(input.entries())
+      : typeof input === 'object'
+        ? Object.entries(input)
+        : [];
+
+  return entries.reduce<Record<string, PagePermission>>((acc, [pageId, raw]) => {
+    if (!pageId || !raw || typeof raw !== 'object') return acc;
+    const value = raw as Partial<PagePermission>;
+    const canMutate = Boolean(value.create || value.edit || value.delete);
+    acc[String(pageId)] = {
+      view: Boolean(value.view || canMutate),
+      create: Boolean(value.create || canMutate),
+      edit: Boolean(value.edit || canMutate),
+      delete: Boolean(value.delete || canMutate),
+    };
+    return acc;
+  }, {});
+};
 
 interface User {
   _id: string;
@@ -38,6 +71,7 @@ interface User {
   } | string | null;
   approvalLevel?: number;
   approvalLimit?: number;
+  permissions?: Record<string, PagePermission>;
 }
 
 interface WarehouseOption {
@@ -60,6 +94,7 @@ const UserManagementView: React.FC = () => {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePermissions, setInvitePermissions] = useState<Record<string, PagePermission>>({});
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [requestingId, setRequestingId] = useState<string | null>(null);
   const [requestModal, setRequestModal] = useState<{
@@ -78,6 +113,7 @@ const UserManagementView: React.FC = () => {
     approvalLevel: 1,
     approvalLimit: 0,
     warehouseAccess: [] as { warehouseId: string; accessLevel: 'view' | 'edit' | 'manage'; active: boolean }[],
+    permissions: {} as Record<string, PagePermission>,
   });
 
   const resetForm = () => {
@@ -91,6 +127,7 @@ const UserManagementView: React.FC = () => {
       approvalLevel: 1,
       approvalLimit: 0,
       warehouseAccess: [],
+      permissions: {},
     });
   };
 
@@ -112,6 +149,7 @@ const UserManagementView: React.FC = () => {
     approvalManagerId: user.approvalManagerId || null,
     approvalLevel: Number(user.approvalLevel || 1),
     approvalLimit: Number(user.approvalLimit || 0),
+    permissions: normalizePagePermissions(user.permissions),
   });
 
   const openCreateModal = () => {
@@ -143,6 +181,7 @@ const UserManagementView: React.FC = () => {
         accessLevel: (entry.accessLevel || 'view') as 'view' | 'edit' | 'manage',
         active: entry.active !== false,
       })),
+      permissions: normalizePagePermissions(user.permissions),
     });
     setShowAddModal(true);
   };
@@ -241,6 +280,7 @@ const UserManagementView: React.FC = () => {
       approvalManagerId: form.approvalManagerId || null,
       approvalLevel: Number(form.approvalLevel || 1),
       approvalLimit: Number(form.approvalLimit || 0),
+      permissions: normalizePagePermissions(form.permissions),
     };
 
     try {
@@ -256,6 +296,7 @@ const UserManagementView: React.FC = () => {
           approvalManagerId: payload.approvalManagerId,
           approvalLevel: payload.approvalLevel,
           approvalLimit: payload.approvalLimit,
+          permissions: payload.permissions,
           password: payload.password,
         });
         toast.success('User access updated');
@@ -298,12 +339,17 @@ const UserManagementView: React.FC = () => {
       toast.error('Email is required');
       return;
     }
+    if (Object.keys(invitePermissions).length === 0) {
+      toast.error('Select at least one page access');
+      return;
+    }
 
     try {
       setSubmitting(true);
-      await notificationService.sendInvite(email);
+      await notificationService.sendInvite(email, invitePermissions);
       toast.success(`Invitation sent to ${email}`);
       setInviteEmail('');
+      setInvitePermissions({});
       setShowInviteModal(false);
     } catch (err: any) {
       const msg = err?.response?.data?.message || 'Failed to send invitation';
@@ -387,6 +433,121 @@ const UserManagementView: React.FC = () => {
     if (typeof user.approvalManagerId === 'string') return user.approvalManagerId;
     return user.approvalManagerId.fullname || user.approvalManagerId.email || 'Unassigned';
   };
+
+  const toggleInvitePage = (pageId: string, checked: boolean) => {
+    setInvitePermissions((prev) => {
+      const next = { ...prev };
+      if (checked) {
+        next[pageId] = { view: true, create: false, edit: false, delete: false };
+      } else {
+        delete next[pageId];
+      }
+      return next;
+    });
+  };
+
+  const toggleInviteEditDelete = (pageId: string, checked: boolean) => {
+    setInvitePermissions((prev) => ({
+      ...prev,
+      [pageId]: {
+        view: true,
+        create: checked,
+        edit: checked,
+        delete: checked,
+      },
+    }));
+  };
+
+  const toggleFormPage = (pageId: string, checked: boolean) => {
+    setForm((prev) => {
+      const nextPermissions = { ...prev.permissions };
+      if (checked) {
+        nextPermissions[pageId] = { view: true, create: false, edit: false, delete: false };
+      } else {
+        delete nextPermissions[pageId];
+      }
+      return { ...prev, permissions: nextPermissions };
+    });
+  };
+
+  const toggleFormEditDelete = (pageId: string, checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        [pageId]: {
+          view: true,
+          create: checked,
+          edit: checked,
+          delete: checked,
+        },
+      },
+    }));
+  };
+
+  const renderPagePermissionPicker = (
+    permissions: Record<string, PagePermission>,
+    onTogglePage: (pageId: string, checked: boolean) => void,
+    onToggleEditDelete: (pageId: string, checked: boolean) => void,
+    title = 'Page access',
+    description = 'Select a page, then choose view-only or edit/delete.',
+  ) => (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
+          <p className="text-xs text-slate-500">{description}</p>
+        </div>
+        <span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-500 border border-slate-200">
+          {Object.keys(permissions).length} selected
+        </span>
+      </div>
+      <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
+        {PAGE_OPTIONS.map((page) => {
+          const selected = permissions[page.id];
+          const canMutate = Boolean(selected?.edit || selected?.delete || selected?.create);
+          return (
+            <div key={page.id} className="rounded-lg border border-slate-200 bg-white p-3">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={!!selected}
+                  onChange={(event) => onTogglePage(page.id, event.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-900">{page.label}</p>
+                  <p className="text-[11px] text-slate-500">{page.group}</p>
+                  {selected && (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={selected.view}
+                          disabled
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600"
+                        />
+                        View only
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={canMutate}
+                          onChange={(event) => onToggleEditDelete(page.id, event.target.checked)}
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        Edit / Delete
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </label>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -663,6 +824,14 @@ const UserManagementView: React.FC = () => {
                 </div>
               </div>
 
+              {renderPagePermissionPicker(
+                form.permissions,
+                toggleFormPage,
+                toggleFormEditDelete,
+                'Page permissions',
+                'All pages are shown here. Previously saved permissions are pre-selected.',
+              )}
+
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
@@ -773,13 +942,14 @@ const UserManagementView: React.FC = () => {
       {/* Invite User Modal */}
       {showInviteModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <h3 className="text-lg font-bold text-slate-900">Send Invitation</h3>
               <button
                 onClick={() => {
                   setShowInviteModal(false);
                   setInviteEmail('');
+                  setInvitePermissions({});
                 }}
                 className="p-1 hover:bg-slate-100 rounded"
               >
@@ -798,8 +968,63 @@ const UserManagementView: React.FC = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  The user will see this invite globally in their header after they sign in.
+                  The user will get only the page access selected below after accepting.
                 </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-semibold text-slate-900">Page access</h4>
+                    <p className="text-xs text-slate-500">Select a page, then choose view-only or edit/delete.</p>
+                  </div>
+                  <span className="rounded-full bg-white px-2 py-1 text-[11px] font-medium text-slate-500 border border-slate-200">
+                    {Object.keys(invitePermissions).length} selected
+                  </span>
+                </div>
+                <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                  {PAGE_OPTIONS.map((page) => {
+                    const selected = invitePermissions[page.id];
+                    const canMutate = Boolean(selected?.edit || selected?.delete || selected?.create);
+                    return (
+                      <div key={page.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                        <label className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            checked={!!selected}
+                            onChange={(event) => toggleInvitePage(page.id, event.target.checked)}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-900">{page.label}</p>
+                            <p className="text-[11px] text-slate-500">{page.group}</p>
+                            {selected && (
+                              <div className="mt-3 flex flex-wrap gap-3">
+                                <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={selected.view}
+                                    disabled
+                                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600"
+                                  />
+                                  View only
+                                </label>
+                                <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={canMutate}
+                                    onChange={(event) => toggleInviteEditDelete(page.id, event.target.checked)}
+                                    className="h-3.5 w-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                  />
+                                  Edit / Delete
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
               <div className="flex justify-end gap-2 pt-3">
                 <button
@@ -807,6 +1032,7 @@ const UserManagementView: React.FC = () => {
                   onClick={() => {
                     setShowInviteModal(false);
                     setInviteEmail('');
+                    setInvitePermissions({});
                   }}
                   className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg"
                 >

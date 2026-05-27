@@ -16,17 +16,35 @@ export const notificationService = {
     return res.data;
   },
 
-  async markAllAsRead() {
-    const res = await api.post(`/notifications/mark-all-read`);
+  async markAllAsRead(receiverId?: string) {
+    let rId = receiverId;
+    if (!rId) {
+      try {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          rId = user._id || user.id;
+        }
+      } catch (e) {
+        console.error("Failed to get user for markAllAsRead", e);
+      }
+    }
+    const res = await api.post(`/notifications/mark-all-read`, { receiverId: rId });
     return res.data;
   },
+
   async getNotificationById(id: string) {
     const res = await api.get(`/notifications/${id}`);
     return res.data;
   },
 
-  async sendInvite(email: string) {
-    const res = await api.post("/notifications/invite", { email });
+  async sendInvite(email: string, permissions?: Record<string, {
+    view: boolean;
+    create: boolean;
+    edit: boolean;
+    delete: boolean;
+  }>) {
+    const res = await api.post("/notifications/invite", { email, permissions });
     return res.data;
   },
 

@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  Bell,
   Package,
   Warehouse,
   ArrowDownToLine,
@@ -36,6 +37,16 @@ export const MENU_ITEMS: MenuItem[] = [
       { id: 'dash-movement', label: 'Fast / Slow / Non-Moving' },
       { id: 'dash-expiry', label: 'Expiry Alerts' },
       { id: 'dash-approvals', label: 'Pending Approvals' },
+    ]
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    icon: Bell,
+    subMenus: [
+      { id: 'notif-all', label: 'All Notifications' },
+      { id: 'notif-invites', label: 'Invitations' },
+      { id: 'notif-alerts', label: 'System Alerts' },
     ]
   },
   {
