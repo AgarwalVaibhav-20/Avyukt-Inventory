@@ -483,7 +483,21 @@ const UserManagementView: React.FC = () => {
       },
     }));
   };
+  //Email validation 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const [emailError, setEmailError] = useState("");
 
+  const handleEmailChange = (e) => {
+    const email = e.target.value;
+
+    setForm({ ...form, email });
+
+    if (!emailRegex.test(email)) {
+      setEmailError("Enter a valid email");
+    } else {
+      setEmailError("");
+    }
+  };
   const renderPagePermissionPicker = (
     permissions: Record<string, PagePermission>,
     onTogglePage: (pageId: string, checked: boolean) => void,
@@ -554,22 +568,20 @@ const UserManagementView: React.FC = () => {
       <div className="flex gap-2 border-b border-slate-200 pb-0">
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === 'users'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'users'
+            ? 'border-indigo-600 text-indigo-600'
+            : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
         >
           <Users size={16} />
           User List
         </button>
         <button
           onClick={() => setActiveTab('delegated')}
-          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-            activeTab === 'delegated'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
-          }`}
+          className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'delegated'
+            ? 'border-indigo-600 text-indigo-600'
+            : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
         >
           <Share2 size={16} />
           Delegated Access
@@ -689,7 +701,7 @@ const UserManagementView: React.FC = () => {
                             Edit Access
                           </button>
                           {currentUser?.email !== user.email && (
-                            <button 
+                            <button
                               type="button"
                               onClick={() => handleDeleteUser(user._id)}
                               className="p-2 hover:bg-red-50 hover:text-red-600 rounded transition-colors"
@@ -741,15 +753,27 @@ const UserManagementView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Email *</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Email *
+                  </label>
+
                   <input
                     type="email"
                     required
                     readOnly={!!editingUser}
                     value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm ${editingUser ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-slate-300'}`}
+                    onChange={handleEmailChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm ${editingUser
+                      ? "border-slate-200 bg-slate-50 text-slate-500"
+                      : emailError
+                        ? "border-red-500"
+                        : "border-slate-300"
+                      }`}
                   />
+
+                  {emailError && (
+                    <p className="text-red-500 text-xs mt-1">{emailError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -807,15 +831,25 @@ const UserManagementView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Approval Manager</label>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    Approval Manager
+                  </label>
+
                   <select
                     value={form.approvalManagerId}
-                    onChange={e => setForm({ ...form, approvalManagerId: e.target.value })}
+                    onChange={e =>
+                      setForm({ ...form, approvalManagerId: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   >
                     <option value="">No manager assigned</option>
+
                     {users
-                      .filter((u) => u._id !== editingUser?._id)
+                      .filter(
+                        (u) =>
+                          u._id !== editingUser?._id &&
+                          u.role?.toLowerCase() === "manager"
+                      )
                       .map((u) => (
                         <option key={u._id} value={u._id}>
                           {u.fullname} ({u.role})

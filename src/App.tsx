@@ -361,6 +361,14 @@ const App: React.FC = () => {
     navigate("/notifications/notif-invites");
   };
 
+  // 1. Fetch user profile when authentication status changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchProfile());
+    }
+  }, [dispatch, isAuthenticated]);
+
+  // 2. Setup Socket.IO client for real-time notifications
   useEffect(() => {
     if (!isAuthenticated) {
       setNotifications([]);
@@ -368,14 +376,13 @@ const App: React.FC = () => {
       return;
     }
 
-    dispatch(fetchProfile());
+    let socket: any = null;
 
-    // Setup Socket.IO client for real-time notifications
     // Dynamically import socket.io-client to avoid Vite import-resolution issues
     import("socket.io-client")
       .then(({ io }) => {
         try {
-          const socket = io(
+          socket = io(
             import.meta.env.VITE_SOCKET_URL ||
             (import.meta.env.DEV
               ? "http://localhost:4000"
@@ -442,12 +449,14 @@ const App: React.FC = () => {
       });
 
     return () => {
+      if (socket) {
+        socket.disconnect();
+      }
       if (socketRef.current) {
-        socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, [dispatch, isAuthenticated, currentUserId]);
+  }, [isAuthenticated, currentUserId]);
 
   // Lazy polling: refresh notifications every 60s and when tab becomes visible
   useEffect(() => {
