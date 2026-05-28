@@ -188,3 +188,30 @@
     z-index: 10;
   }
 }
+
+/* Global responsive adjustments to improve mobile presentation */
+@layer base {
+  table {
+    @apply w-full border-collapse;
+  }
+
+  /* Reduce table cell padding on small screens, increase on md+ */
+  table th,
+  table td {
+    @apply px-3 py-2 text-sm;
+  }
+
+  @screen md {
+    table th,
+    table td {
+      @apply px-8 py-4 text-sm;
+    }
+  }
+
+  /* Ensure images and SVGs scale down on small viewports */
+  img,
+  svg {
+    max-width: 100%;
+    height: auto;
+  }
+}
