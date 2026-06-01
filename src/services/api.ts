@@ -2,7 +2,7 @@ import axios from "axios";
 import { authService } from "./authService";
 
 const DEFAULT_API_BASE_URL = import.meta.env.DEV
-  ? "http://localhost:4000"
+  ? "http://localhost:4001"
   : "https://inventory-backend-alpha-eight.vercel.app";
 
 const api = axios.create({

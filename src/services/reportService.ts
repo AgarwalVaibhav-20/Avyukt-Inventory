@@ -8,7 +8,7 @@ import api from './api';
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL ||
   (import.meta.env.DEV
-    ? "http://localhost:4000"
+    ? "http://localhost:4001"
     : "https://inventory-backend-alpha-eight.vercel.app")
 ) + "/api";
 const REPORTS_API = `${API_BASE_URL}/reports`;

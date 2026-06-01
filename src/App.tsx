@@ -385,7 +385,7 @@ const App: React.FC = () => {
           socket = io(
             import.meta.env.VITE_SOCKET_URL ||
             (import.meta.env.DEV
-              ? "http://localhost:4000"
+              ? "http://localhost:4001"
               : "https://inventory-backend-alpha-eight.vercel.app"),
             { transports: ["websocket", "polling"] },
           );
