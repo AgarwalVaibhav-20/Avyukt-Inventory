@@ -11,7 +11,10 @@ import {
   Loader2, 
   Building2, 
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  CheckCircle2,
+  Link2
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -28,10 +31,12 @@ const ProfileView: React.FC = () => {
     postalCode: "",
     companyName: "",
     role: "",
+    linkedCrmOrganisationId: "",
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [copiedInventoryOrgId, setCopiedInventoryOrgId] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -43,6 +48,7 @@ const ProfileView: React.FC = () => {
         postalCode: user.postalCode || "",
         companyName: user.companyName || "",
         role: user.role || "",
+        linkedCrmOrganisationId: user.linkedCrmOrganisationId || "",
       });
       setImagePreview(user.profileImage || null);
     }
@@ -75,6 +81,7 @@ const ProfileView: React.FC = () => {
         mobile: formData.mobile,
         address: formData.address,
         postalCode: formData.postalCode,
+        linkedCrmOrganisationId: formData.linkedCrmOrganisationId,
       };
 
       if (selectedFile) {
@@ -91,6 +98,18 @@ const ProfileView: React.FC = () => {
       }
     } catch (error) {
       toast.error("An unexpected error occurred");
+    }
+  };
+
+  const handleCopyInventoryOrgId = async () => {
+    if (!user?.organisationId) return;
+
+    try {
+      await navigator.clipboard.writeText(String(user.organisationId));
+      setCopiedInventoryOrgId(true);
+      setTimeout(() => setCopiedInventoryOrgId(false), 1800);
+    } catch {
+      toast.error("Unable to copy organization ID");
     }
   };
 
@@ -153,8 +172,25 @@ const ProfileView: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-4">Account Stats</h3>
             <div className="space-y-4">
               <div className="p-3 bg-slate-50 rounded-xl">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Organization ID</p>
-                <p className="text-xs font-mono text-slate-600 mt-1 truncate">{user?.organisationId}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Inventory Organization ID</p>
+                  <button
+                    type="button"
+                    onClick={handleCopyInventoryOrgId}
+                    disabled={!user?.organisationId}
+                    className="text-slate-400 transition-colors hover:text-blue-600 disabled:opacity-40"
+                    title="Copy inventory organization ID"
+                  >
+                    {copiedInventoryOrgId ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+                <p className="text-xs font-mono text-slate-600 mt-1 break-all">{user?.organisationId || "N/A"}</p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <p className="text-[10px] font-bold text-blue-500 uppercase">CRM Link Status</p>
+                <p className="text-xs text-blue-700 mt-1">
+                  {formData.linkedCrmOrganisationId ? "CRM organization linked" : "Paste CRM organization ID to connect"}
+                </p>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Joined On</p>
@@ -237,6 +273,24 @@ const ProfileView: React.FC = () => {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase ml-1">CRM Organization ID</label>
+                <div className="relative">
+                  <Link2 className="absolute left-3 top-3 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    name="linkedCrmOrganisationId"
+                    value={formData.linkedCrmOrganisationId}
+                    onChange={handleInputChange}
+                    className="w-full bg-blue-50 border border-blue-200 rounded-xl pl-10 pr-4 py-2.5 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    placeholder="Paste CRM organisation ID"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 ml-1">
+                  Paste the CRM organisation ID from CRM profile so CRM sync data lands in this Inventory organization.
+                </p>
               </div>
 
               <div className="space-y-2">
