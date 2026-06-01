@@ -16,5 +16,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/1Ifk9VXwpIlmJgLiGJ4-s-7
 1. Install dependencies:
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+3. If you are running the inventory backend locally, set `VITE_API_URL` to the backend root, for example `http://localhost:4001`
+4. Run the app:
    `npm run dev`

@@ -12,12 +12,12 @@ export const automationService = {
   // 1. Generate URLs for visualization
   getBarcodeImageUrl: (text: string, type: 'code128' | 'ean13' | 'qr' = 'code128') => {
       // Point to backend generator
-      const API_URL = api.defaults.baseURL || "http://localhost:4000";
+      const API_URL = api.defaults.baseURL || "http://localhost:4001";
       return `${API_URL}/utils/bc-gen?text=${encodeURIComponent(text)}&type=${type}`;
   },
 
   getQrCodeImageUrl: (text: string) => {
-      const API_URL = api.defaults.baseURL || "http://localhost:4000";
+      const API_URL = api.defaults.baseURL || "http://localhost:4001";
       return `${API_URL}/utils/bc-gen?text=${encodeURIComponent(text)}&type=qr`;
   },
 
@@ -121,4 +121,3 @@ export const automationService = {
       ];
   }
 };
-
