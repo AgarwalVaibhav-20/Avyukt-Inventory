@@ -60,7 +60,7 @@ const ItemVariantPage: React.FC = () => {
   });
 
   useEffect(() => {
-    dispatch(fetchVariants());
+    dispatch(fetchVariants(undefined));
     const loadData = async () => {
       const [productData, uomData, warehouseData] = await Promise.all([
         productService.getAllItems(),

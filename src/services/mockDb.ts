@@ -3,7 +3,7 @@
  * This simulates a real backend database with seeding capabilities.
  */
 
-import { InventoryItem, Category, Brand, UOM, HSN, Attribute, Warehouse, StockTransfer, Vendor, PurchaseOrder, GRN, PutAwayTask, PurchaseReturn, Customer, SalesOrder, PickList, PackList, DeliveryChallan, DispatchNote, SalesReturn, InternalMovement, StockAdjustment, ScrapEntry, ConsignmentEntry, StockLedgerEntry, Batch, SerialNumber, StockReservation, ScanLog, ClosingStockSnapshot, QualityParameter, InspectionPlan, QualityChecklistTemplate, ReworkEntry, NCR, Invoice, EWayBill, InspectionReport, DocumentAttachment, AuditLog, ReplacementOrder, FinancialNote, VendorItemMap, VendorPerformanceReview, InventorySettings, AutoReorderRule, TaxConfig, NumberSeries, CustomField, WorkflowRule, AuditSession, Zone, Rack, Bin } from '@/types';
+import { InventoryItem, Category, Brand, UOM, HSN, Attribute, Warehouse, StockTransfer, Vendor, PurchaseOrder, GRN, PutAwayTask, PurchaseReturn, PurchaseRequisition, PurchaseInvoice, Customer, SalesOrder, PickList, PackList, DeliveryChallan, DispatchNote, SalesReturn, InternalMovement, StockAdjustment, ScrapEntry, ConsignmentEntry, StockLedgerEntry, Batch, SerialNumber, StockReservation, ScanLog, ClosingStockSnapshot, QualityParameter, InspectionPlan, QualityChecklistTemplate, ReworkEntry, NCR, Invoice, EWayBill, InspectionReport, DocumentAttachment, AuditLog, ReplacementOrder, FinancialNote, VendorItemMap, VendorPerformanceReview, InventorySettings, AutoReorderRule, TaxConfig, NumberSeries, CustomField, WorkflowRule, AuditSession, Zone, Rack, Bin } from '@/types';
 
 const DB_KEYS = {
   ITEMS: 'nexus_items',

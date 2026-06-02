@@ -182,7 +182,8 @@ const AcceptedRejectedStockView: React.FC = () => {
                          inspectionRows.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-500 font-medium">No inspection records found.</td></tr> :
                          inspectionRows.map(row => {
                              // Check if NCR or Rework has been raised for this GRN Item
-                             const hasNcr = ncrs.some(n => n.refId === row.grnNo && (n.itemId === row.materialId || n.itemId === row.productId || n.itemId === row._id || n.itemName === row.itemName));
+                             const rowAny = row as any;
+                             const hasNcr = ncrs.some(n => n.refId === rowAny.grnNo && (n.itemId === rowAny.materialId || n.itemId === rowAny.productId || n.itemId === rowAny._id || n.itemName === rowAny.itemName));
                              const hasRework = reworks.some(r => r.reason?.includes(row.grnNo) || r.itemName === row.itemName);
 
                              return (

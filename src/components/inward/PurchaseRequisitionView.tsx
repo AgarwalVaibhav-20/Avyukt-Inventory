@@ -55,6 +55,7 @@ const PurchaseRequisitionView: React.FC = () => {
     requiredDate: "",
     justification: "",
     items: [] as {
+      itemId: string;
       itemName: string;
       quantity: number;
       hsnCode: string;
