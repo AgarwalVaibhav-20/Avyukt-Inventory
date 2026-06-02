@@ -30,7 +30,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const debounceTimer = useRef<NodeJS.Timeout>();
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const pageSuggestions = MENU_ITEMS.flatMap((item) =>
     (item.subMenus || []).map((sub) => ({
       id: `${item.id}-${sub.id}`,

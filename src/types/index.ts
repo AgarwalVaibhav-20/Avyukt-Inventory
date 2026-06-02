@@ -201,6 +201,11 @@ export interface Bin {
   maxCapacity: number; // Max units or volume
   currentOccupancy: number; // Current units stored
   status: 'Empty' | 'Partial' | 'Full' | 'Blocked';
+  code?: string;
+  warehouseId?: string;
+  current?: number;
+  capacity?: number;
+  zone?: string;
 }
 
 export interface WarehouseCapacityStats {
@@ -289,7 +294,7 @@ export interface PurchaseRequisition {
   justification: string;
   items: PRItem[];
   status: 'Draft' | 'Pending Approval' | 'Approved' | 'PO Created' | 'Rejected' | 'Completed';
-  source: 'Manual' | 'Stock Alert' | 'Production Plan';
+  source: 'Manual' | 'Stock Alert' | 'Production Plan' | 'AI Forecast';
 }
 
 export interface PRItem {
@@ -298,6 +303,7 @@ export interface PRItem {
   quantity: number;
   hsnCode?: string;
   taxRate?: number;
+  estimatedPrice?: number;
 }
 
 export interface PurchaseOrder {
@@ -403,7 +409,7 @@ export interface InvoiceMatchItem {
 export interface PurchaseReturn {
   id: string;
   returnNumber: string;
-  grnId: string; // Linked to original GRN
+  grnId?: string; // Linked to original GRN
   purchaseOrderId?: string;
   vendorId: string;
   vendorName: string;
@@ -419,6 +425,7 @@ export interface ReturnItem {
   itemName: string;
   quantity: number;
   reason: string;
+  description?: string;
   productId?: string;
   returnQty?: number;
   unitPrice?: number;
@@ -447,7 +454,7 @@ export interface SalesOrder {
   customerId: string;
   customerName: string;
   date: string;
-  status: 'Draft' | 'Confirmed' | 'Picking' | 'Packed' | 'Challan Generated' | 'Dispatched' | 'Delivered' | 'Cancelled';
+  status: 'Draft' | 'Confirmed' | 'Picking' | 'Packed' | 'Processing' | 'Challan Generated' | 'Dispatched' | 'Delivered' | 'Cancelled';
   totalAmount: number;
   items: SOItem[];
 }
@@ -458,6 +465,8 @@ export interface SOItem {
   quantity: number;
   unitPrice: number;
   pickedQty?: number;
+  description?: string;
+  serialNumbers?: string[];
 }
 
 // Workflow Types
@@ -466,13 +475,18 @@ export interface PickList {
   pickNumber: string;
   soId: string;
   soNumber: string;
+  salesOrderId?: string | { _id?: string; id?: string; soNumber?: string };
+  pickListNo?: string;
   date: string;
-  status: 'Pending' | 'Picked';
+  status: 'Pending' | 'Picked' | 'In Progress' | 'Completed';
   items: {
     itemId: string;
     itemName: string;
     quantity: number;
-    location: string;
+    location?: string;
+    description?: string;
+    required?: number;
+    picked?: number;
   }[];
 }
 
@@ -501,10 +515,16 @@ export interface DispatchNote {
   dispatchNumber: string;
   challanId: string;
   challanNumber: string;
+  dispatchNo?: string;
+  customer?: string;
   transporter: string;
   vehicleNo: string;
   trackingId: string;
   date: string;
+  items?: any[];
+  totalAmount?: number;
+  shipmentRef?: string;
+  status?: string;
 }
 
 export interface SalesReturn {
@@ -614,6 +634,7 @@ export interface SerialNumber {
   serialNumber: string;
   itemId: string;
   itemName: string;
+  sku?: string;
   batchNumber?: string;
   binId?: string;
   status: 'Available' | 'Sold' | 'Reserved' | 'Defective';
@@ -625,6 +646,7 @@ export interface StockReservation {
   reference: string; // SO Number or Project ID
   itemId: string;
   itemName: string;
+  sku?: string;
   quantity: number;
   reservedDate: string;
   expiryDate: string; // Date when reservation expires if not used
@@ -635,7 +657,7 @@ export interface StockReservation {
 
 export interface ApprovalItem {
   id: string;
-  type: 'Purchase Order' | 'GRN QC' | 'Stock Transfer' | 'Adjustment';
+  type: 'Purchase Order' | 'Purchase Requisition' | 'GRN QC' | 'GRN - QC' | 'Stock Transfer' | 'Adjustment';
   reference: string;
   date: string;
   initiator: string; // Vendor Name or User
@@ -659,6 +681,7 @@ export interface WarehouseStockReport {
   totalItems: number;
   totalValue: number;
   utilization: number; // Mock percentage
+  capacity?: number;
 }
 
 export interface InOutSummary {
@@ -680,7 +703,7 @@ export interface ScanLog {
   itemName?: string;
   actionType: 'Check' | 'Inward' | 'Outward' | 'Count';
   status: 'Success' | 'Not Found';
-  deviceId: string;
+  deviceId?: string;
 }
 
 export interface LabelTemplate {
@@ -778,14 +801,22 @@ export interface Invoice {
 
 export interface EWayBill {
   id: string;
+  _id?: string;
   billNumber: string;
+  ewbNo?: string;
   challanId: string;
   challanNumber: string;
+  challanRef?: string;
   customerName: string;
   transporter: string;
   vehicleNo: string;
+  fromPlace?: string;
+  toPlace?: string;
   distance: number;
   validUntil: string;
+  generated?: string;
+  createdAt?: string;
+  goodsValue?: number;
   status: 'Active' | 'Expired' | 'Cancelled';
   generatedDate: string;
 }

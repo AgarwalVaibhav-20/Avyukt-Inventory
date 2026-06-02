@@ -203,7 +203,7 @@ const QualityParametersView: React.FC = () => {
                     </Popover>
                   </td>
                   <td className="px-6 py-4">
-                    <select className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={formData.type || "Numeric"} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+                    <select className="w-full border border-blue-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={formData.type || "Numeric"} onChange={(e) => setFormData({ ...formData, type: e.target.value as "Numeric" | "Pass/Fail" | "Text" })}>
                        <option value="Numeric">Numeric</option>
                        <option value="Pass/Fail">Pass/Fail</option>
                        <option value="Text">Text</option>
@@ -276,7 +276,7 @@ const QualityParametersView: React.FC = () => {
                           </Popover>
                         </td>
                         <td className="px-6 py-4">
-                            <select className="w-full border border-blue-300 rounded px-2 py-1 text-sm" value={formData.type || "Numeric"} onChange={(e) => setFormData({ ...formData, type: e.target.value })}>
+                            <select className="w-full border border-blue-300 rounded px-2 py-1 text-sm" value={formData.type || "Numeric"} onChange={(e) => setFormData({ ...formData, type: e.target.value as "Numeric" | "Pass/Fail" | "Text" })}>
                             <option value="Numeric">Numeric</option>
                             <option value="Pass/Fail">Pass/Fail</option>
                             <option value="Text">Text</option>

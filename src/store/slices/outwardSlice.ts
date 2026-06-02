@@ -71,6 +71,14 @@ interface WorkflowDispatch {
   vehicleNo: string;
   status: string;
   dispatchedOn?: string;
+  items?: {
+    productId: string;
+    description: string;
+    qtyOrdered: number;
+    qtyPacked: number;
+    packed: boolean;
+  }[];
+  totalAmount?: number;
 }
 
 interface OutwardState {

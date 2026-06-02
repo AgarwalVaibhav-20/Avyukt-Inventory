@@ -26,6 +26,11 @@ interface OutwardOpsViewProps {
 }
 
 const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
+  const resolveSalesOrderId = (value: any) =>
+    typeof value === "string" ? value : value?._id || value?.id || value?.soId || "";
+  const resolveSalesOrderNumber = (value: any) =>
+    typeof value === "string" ? value : value?.soNumber || value?.soNo || "";
+
   const dispatch = useAppDispatch();
   const {
     salesOrders,
@@ -67,9 +72,7 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
     () =>
       new Set(
         pickLists.map((pickList) =>
-          typeof pickList.salesOrderId === "object"
-            ? pickList.salesOrderId?._id || pickList.salesOrderId?.id
-            : pickList.salesOrderId,
+          resolveSalesOrderId(pickList.salesOrderId),
         ),
       ),
     [pickLists],
@@ -115,9 +118,7 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
         if (!pickList) throw new Error("Pick list not found");
 
         const soId =
-          typeof pickList.salesOrderId === "object"
-            ? pickList.salesOrderId?._id || pickList.salesOrderId?.id
-            : pickList.salesOrderId;
+          resolveSalesOrderId(pickList.salesOrderId);
 
         const salesOrder = salesOrders.find((order) => order.id === soId);
         if (!salesOrder) throw new Error("Sales order not found");
@@ -210,8 +211,8 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
                       </span>
                       <p className="text-xs text-slate-500">
                         Linked to{" "}
-                        {pickList.soNumber ||
-                          pickList.salesOrderId?.soNumber ||
+                          {pickList.soNumber ||
+                          resolveSalesOrderNumber(pickList.salesOrderId) ||
                           "SO"}
                       </p>
                     </div>
@@ -342,7 +343,7 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
                   <div className="flex justify-between mb-4">
                     <span className="font-bold text-slate-700">
                       {pickList.soNumber ||
-                        pickList.salesOrderId?.soNumber ||
+                        resolveSalesOrderNumber(pickList.salesOrderId) ||
                         "Sales Order"}
                     </span>
                     <span className="text-xs text-green-600 font-medium">

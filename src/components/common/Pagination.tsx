@@ -2,10 +2,11 @@ import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PaginationProps {
-  currentPage: number;
+  currentPage?: number;
+  page?: number;
   totalPages: number;
-  pageSize: number;
-  totalItems: number;
+  pageSize?: number;
+  totalItems?: number;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
   pageSizeOptions?: number[];
@@ -14,15 +15,18 @@ interface PaginationProps {
 
 const Pagination: React.FC<PaginationProps> = ({
   currentPage,
+  page,
   totalPages,
-  pageSize,
-  totalItems,
+  pageSize = 10,
+  totalItems = 0,
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [10, 20, 50, 100],
   className = "",
 }) => {
-  // Generate page numbers to display
+  const resolvedCurrentPage = currentPage ?? page ?? 1;
+  const resolvedTotalItems = totalItems || Math.max(totalPages, 1) * pageSize;
+
   const getPageNumbers = () => {
     const pages: (number | string)[] = [];
     const maxPagesToShow = 5;
@@ -34,12 +38,12 @@ const Pagination: React.FC<PaginationProps> = ({
     } else {
       pages.push(1);
 
-      let startPage = Math.max(2, currentPage - 1);
-      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      let startPage = Math.max(2, resolvedCurrentPage - 1);
+      let endPage = Math.min(totalPages - 1, resolvedCurrentPage + 1);
 
-      if (currentPage <= 2) {
+      if (resolvedCurrentPage <= 2) {
         endPage = 4;
-      } else if (currentPage >= totalPages - 1) {
+      } else if (resolvedCurrentPage >= totalPages - 1) {
         startPage = totalPages - 3;
       }
 
@@ -61,10 +65,10 @@ const Pagination: React.FC<PaginationProps> = ({
     return pages;
   };
 
-  const startItem = (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
+  const startItem = (resolvedCurrentPage - 1) * pageSize + 1;
+  const endItem = Math.min(resolvedCurrentPage * pageSize, resolvedTotalItems);
 
-  if (totalItems === 0) {
+  if (resolvedTotalItems === 0) {
     return null;
   }
 
@@ -74,9 +78,9 @@ const Pagination: React.FC<PaginationProps> = ({
     >
       <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gray-600 min-w-0">
         <span className="whitespace-nowrap">
-          Showing <span className="font-medium">{startItem}</span>–
+          Showing <span className="font-medium">{startItem}</span>-
           <span className="font-medium">{endItem}</span> of{" "}
-          <span className="font-medium">{totalItems}</span>
+          <span className="font-medium">{resolvedTotalItems}</span>
         </span>
         {onPageSizeChange && (
           <span className="flex items-center gap-1 whitespace-nowrap">
@@ -98,8 +102,8 @@ const Pagination: React.FC<PaginationProps> = ({
 
       <div className="flex flex-wrap items-center gap-1 sm:gap-2 min-w-0">
         <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
+          onClick={() => onPageChange(resolvedCurrentPage - 1)}
+          disabled={resolvedCurrentPage === 1}
           className="inline-flex shrink-0 items-center justify-center w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Previous page"
         >
@@ -107,20 +111,20 @@ const Pagination: React.FC<PaginationProps> = ({
         </button>
 
         <div className="flex flex-wrap items-center gap-1 min-w-0">
-          {getPageNumbers().map((page, index) => (
+          {getPageNumbers().map((pageNumber, index) => (
             <React.Fragment key={index}>
-              {page === "..." ? (
+              {pageNumber === "..." ? (
                 <span className="px-2 py-1 text-gray-600 shrink-0">...</span>
               ) : (
                 <button
-                  onClick={() => onPageChange(page as number)}
+                  onClick={() => onPageChange(pageNumber as number)}
                   className={`shrink-0 w-8 h-8 rounded border transition-colors ${
-                    page === currentPage
+                    pageNumber === resolvedCurrentPage
                       ? "bg-blue-600 text-white border-blue-600"
                       : "border-gray-300 text-gray-600 hover:bg-gray-50"
                   }`}
                 >
-                  {page}
+                  {pageNumber}
                 </button>
               )}
             </React.Fragment>
@@ -128,8 +132,8 @@ const Pagination: React.FC<PaginationProps> = ({
         </div>
 
         <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(resolvedCurrentPage + 1)}
+          disabled={resolvedCurrentPage === totalPages}
           className="inline-flex shrink-0 items-center justify-center w-8 h-8 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Next page"
         >
