@@ -183,7 +183,7 @@ const SupplierChallanView: React.FC = () => {
                 <TableRow>
                   <TableCell colSpan={6} className="py-16 text-center">
                     <Loader2
-                      className="animate-spin text-slate-600 mx-auto mb-2"
+                      className="animate-spin-slow text-slate-600 mx-auto mb-2"
                       size={28}
                     />
                     <p className="text-slate-400 text-sm">

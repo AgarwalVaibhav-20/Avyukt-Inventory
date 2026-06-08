@@ -65,7 +65,7 @@ const TransferApprovalView: React.FC = () => {
                 </div>
             </div>
 
-            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
+            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></div> :
              filteredTransfers.length === 0 ? <p className="text-slate-500 text-center py-8">No active transfer requests.</p> :
              <div className="space-y-4">
                  {filteredTransfers.map(trf => (

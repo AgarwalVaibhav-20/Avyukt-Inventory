@@ -165,7 +165,7 @@ const DashboardExpiry: React.FC = () => {
 
       {loading ? (
         <div className="flex items-center justify-center py-12 text-slate-300">
-          <Loader2 size={24} className="animate-spin" />
+          <Loader2 size={24} className="animate-spin-slow" />
         </div>
       ) : visibleBatches.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 gap-2 bg-emerald-50 rounded-xl">

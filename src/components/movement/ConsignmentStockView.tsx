@@ -344,7 +344,7 @@ const ConsignmentStockView: React.FC = () => {
           disabled={loading}
           className="inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:from-blue-700 hover:to-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+          <RefreshCcw size={18} className={loading ? 'animate-spin-slow' : ''} />
           Refresh Data
         </button>
       </div>
@@ -481,7 +481,7 @@ const ConsignmentStockView: React.FC = () => {
                 disabled={actionLoading}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:from-blue-700 hover:to-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <Briefcase size={18} />}
+                {actionLoading ? <Loader2 size={18} className="animate-spin-slow" /> : <Briefcase size={18} />}
                 Save Movement
               </button>
             </div>
@@ -584,7 +584,7 @@ const ConsignmentStockView: React.FC = () => {
                   {pageLoading ? (
                     <tr>
                       <td colSpan={8} className="px-6 py-16 text-center">
-                        <Loader2 size={24} className="mx-auto mb-2 animate-spin text-blue-600" />
+                        <Loader2 size={24} className="mx-auto mb-2 animate-spin-slow text-blue-600" />
                         <p className="text-slate-500 font-medium">Loading customer stock...</p>
                       </td>
                     </tr>
@@ -670,7 +670,7 @@ const ConsignmentStockView: React.FC = () => {
                               </button>
                             )}
                             <label className="inline-flex cursor-pointer items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100">
-                              {documentLoading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                              {documentLoading ? <Loader2 size={12} className="animate-spin-slow" /> : <Upload size={12} />}
                               Upload
                               <input
                                 type="file"

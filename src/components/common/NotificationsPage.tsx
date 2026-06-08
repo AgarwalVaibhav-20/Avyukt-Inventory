@@ -354,7 +354,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ filterType = "all
         {/* List Content */}
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin-slow rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
             <p className="text-xs text-slate-500 mt-4">Fetching your notification mailbox...</p>
           </div>
         ) : filteredNotifications.length === 0 && (!showAccessRequests || pendingAccessRequests.length === 0) ? (

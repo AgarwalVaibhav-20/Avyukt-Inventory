@@ -440,7 +440,7 @@ const PurchaseRequisitionView: React.FC = () => {
               {loading ? (
                 <tr>
                   <td colSpan={6} className="py-20 text-center">
-                    <Loader2 className="mx-auto animate-spin text-indigo-600" size={32} />
+                    <Loader2 className="mx-auto animate-spin-slow text-indigo-600" size={32} />
                     <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-400">
                       Loading requisitions...
                     </p>

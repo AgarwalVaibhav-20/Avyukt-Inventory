@@ -1,130 +1,8 @@
-import React, { useState, useEffect } from "react";
-import ItemVariantPage from "@/components/product-master/ItemVariantPage";
+import React, { Suspense, useState, useEffect } from "react";
 import Sidebar from "@/components/admin/Sidebar";
-import Dashboard from "@/components/dashboard/Dashboard";
-import ItemMaster from "@/components/product-master/ItemMaster";
-import MasterCrud from "@/components/admin/MasterCrud";
-import GenericView from "@/components/admin/GenericView";
-import StockTransfer from "@/components/movement/StockTransfer";
-import PurchaseOrderView from "@/components/inward/PurchaseOrderView";
-import GRNView from "@/components/inward/GRNView";
-import QualityCheckView from "@/components/inward/QualityCheckView";
-import PutAwayView from "@/components/inward/PutAwayView";
-import InwardReturnView from "@/components/inward/InwardReturnView";
-import InvoiceMatchingView from "@/components/inward/InvoiceMatchingView";
-import SalesOrderView from "@/components/outward/SalesOrderView";
-import OutwardOpsView from "@/components/outward/OutwardOpsView";
-import SalesReturnView from "@/components/outward/SalesReturnView";
-import CustomerInvoiceView from "@/components/outward/CustomerInvoiceView";
-import InternalMovementView from "@/components/movement/InternalMovementView";
-import StockAdjustmentView from "@/components/movement/StockAdjustmentView";
-import ScrapManagementView from "@/components/movement/ScrapManagementView";
-import ConsignmentStockView from "@/components/movement/ConsignmentStockView";
-import ItemPricingView from "@/components/product-master/ItemPricingView";
-import ReorderLevelView from "@/components/product-master/ReorderLevelView";
-import BarcodeMappingView from "@/components/barcode/BarcodeMappingView";
-import StockLedgerView from "@/components/control/StockLedgerView";
-import BatchTrackingView from "@/components/control/BatchTrackingView";
-import SerialTrackingView from "@/components/control/SerialTrackingView";
-import ExpiryTrackingView from "@/components/control/ExpiryTrackingView";
-import StockReservationView from "@/components/control/StockReservationView";
-import InventoryValuationWorkspace from "@/components/valuation/InventoryValuationWorkspace";
-import ValuationAnalysisView from "@/components/valuation/ValuationAnalysisView";
-import ValuationMethodsView from "@/components/valuation/ValuationMethodsView";
-import ItemWiseValuationView from "@/components/valuation/ItemWiseValuationView";
-import WarehouseValuationView from "@/components/valuation/WarehouseValuationView";
-import RealTimeValuationView from "@/components/valuation/RealTimeValuationView";
-import ClosingStockReportView from "@/components/valuation/ClosingStockReportView";
-import CostRecalculationView from "@/components/valuation/CostRecalculationView";
-import COGSView from "@/components/valuation/COGSView";
-import AdvancedView from "@/components/advanced/AdvancedView";
-import QualityParametersView from "@/components/quality/QualityParametersView";
-import InspectionPlansView from "@/components/quality/InspectionPlansView";
-import QualityChecklistsView from "@/components/quality/QualityChecklistsView";
-import AcceptedRejectedStockView from "@/components/quality/AcceptedRejectedStockView";
-import ReworkManagementView from "@/components/quality/ReworkManagementView";
-import NCRView from "@/components/quality/NCRView";
-import InvoicesView from "@/components/documents/InvoicesView";
-import ChallansDocView from "@/components/documents/ChallansDocView";
-import EWayBillsView from "@/components/documents/EWayBillsView";
-import PackingListsDocView from "@/components/documents/PackingListsDocView";
-import InspectionReportsDocView from "@/components/documents/InspectionReportsDocView";
-import DocumentVersionsView from "@/components/documents/DocumentVersionsView";
-import StockSummaryReportView from "@/components/reports/StockSummaryReportView";
-import ItemStockReportView from "@/components/reports/ItemStockReportView";
-import WarehouseReportView from "@/components/reports/WarehouseReportView";
-import AgingAnalysisView from "@/components/reports/AgingAnalysisView";
-import ExpiryAnalysisReportView from "@/components/reports/ExpiryAnalysisReportView";
-import MovementAnalysisReportView from "@/components/reports/MovementAnalysisReportView";
-import ValuationReportDocView from "@/components/reports/ValuationReportDocView";
-import GstTaxReportView from "@/components/reports/GstTaxReportView";
-import AuditReportView from "@/components/reports/AuditReportView";
-import CustomerReport from "@/components/reports/CustomerReport";
-import PurchaseReturnMgmtView from "@/components/returns/PurchaseReturnMgmtView";
-import SalesReturnMgmtView from "@/components/returns/SalesReturnMgmtView";
-import ReplacementHandlingView from "@/components/returns/ReplacementHandlingView";
-import DebitCreditNotesView from "@/components/returns/DebitCreditNotesView";
-import CustomerPage from "@/components/customer/Customer";
-import CustomerReturnsView from "@/components/movement/CustomerReturnsView";
-import StockAtCustomerLocationView from "@/components/movement/StockAtCustomerLocationView";
-import VendorMasterView from "@/components/vendor/VendorMasterView";
-import VendorPriceListView from "@/components/vendor/VendorPriceListView";
-import LeadTimeManagementView from "@/components/vendor/LeadTimeManagementView";
-import VendorPerformanceView from "@/components/vendor/VendorPerformanceView";
-import ApprovedVendorListView from "@/components/vendor/ApprovedVendorListView";
-import PurchaseApprovalView from "@/components/approvals/PurchaseApprovalView";
-import GRNApprovalView from "@/components/approvals/GRNApprovalView";
-import StockAdjustmentApprovalView from "@/components/approvals/StockAdjustmentApprovalView";
-import TransferApprovalView from "@/components/approvals/TransferApprovalView";
-import ReturnApprovalView from "@/components/approvals/ReturnApprovalView";
-import SettingsView from "@/components/settings/SettingsView";
-import InventorySettingsView from "@/components/settings/InventorySettingsView";
-import AutoReorderRulesView from "@/components/settings/AutoReorderRulesView";
-import TaxConfigurationView from "@/components/settings/TaxConfigurationView";
-import NumberSeriesView from "@/components/settings/NumberSeriesView";
-import CustomFieldsView from "@/components/settings/CustomFieldsView";
-import WorkflowRulesView from "@/components/settings/WorkflowRulesView";
-import StockAuditView from "@/components/audit/StockAuditView";
-import CycleCountView from "@/components/audit/CycleCountView";
-import PhysicalVerificationView from "@/components/audit/PhysicalVerificationView";
-import AdjustmentHistoryView from "@/components/audit/AdjustmentHistoryView";
-import UserActivityLogView from "@/components/audit/UserActivityLogView";
-import ZoneStructureView from "@/components/warehouse/ZoneStructureView";
-import BinManagementView from "@/components/warehouse/BinManagementView";
-import WarehouseCapacityView from "@/components/warehouse/WarehouseCapacityView";
-import DashboardApprovals from "@/components/dashboard/DashboardApprovals";
-import DashboardExpiry from "@/components/dashboard/DashboardExpiry";
-import DashboardMovement from "@/components/dashboard/DashboardMovement";
-import DashboardWarehouse from "@/components/dashboard/DashboardWarehouse";
-import DashboardInOut from "@/components/dashboard/DashboardInOut";
-import BarcodeGeneratorView from "@/components/barcode/BarcodeGeneratorView";
-import BarcodeScannerView from "@/components/barcode/BarcodeScannerView";
-import LabelPrintingView from "@/components/barcode/LabelPrintingView";
-import RfidIntegrationView from "@/components/barcode/RfidIntegrationView";
-import PurchaseRequisitionView from "@/components/inward/PurchaseRequisitionView";
-import AiAssistantModal from "@/components/common/AiAssistantModal";
-import SearchResultsPage from "@/components/common/SearchResultsPage";
 import GlobalSearch from "@/components/common/GlobalSearch";
-import UserManagementView from "@/components/users/UserManagementView";
-import {
-  ApprovalHierarchyView,
-  RoleBasedAccessView,
-  WarehouseAccessView,
-} from "@/components/users/UserAccessViews";
 import SessionBanner from "@/components/users/SessionBanner";
 
-// Master Data Views
-import CategoryView from "@/components/admin/master/CategoryView";
-import BrandView from "@/components/admin/master/BrandView";
-import UomView from "@/components/admin/master/UomView";
-import HsnView from "@/components/admin/master/HsnView";
-import AttributeView from "@/components/admin/master/AttributeView";
-import WarehouseMasterView from "@/components/admin/master/WarehouseMasterView";
-import MultiWarehouseView from "@/components/admin/master/MultiWarehouseView";
-
-import { productService } from "@/services/productService";
-import { warehouseService } from "@/services/warehouseService";
-import { procurementService } from "@/services/procurementService";
 import {
   Bell,
   Menu,
@@ -133,12 +11,10 @@ import {
   Settings,
   LogOut,
   ChevronDown,
-  Camera,
   ChevronRight,
   Check,
   X,
 } from "lucide-react";
-import ProfileView from "@/components/common/ProfileView";
 import { notificationService } from "@/services/notificationService";
 import { delegatedAccessService } from "@/services/delegatedAccessService";
 import toast, { Toaster } from "react-hot-toast";
@@ -154,10 +30,134 @@ import {
   Navigate,
 } from "react-router-dom";
 import { MENU_ITEMS } from "@/constants";
-import LowStockAlerts from "./components/dashboard/Lowstockalerts";
-import OverstockAlerts from "./components/dashboard/OverStockAlert";
-import NCRReportPage from "./components/reports/NCRReport";
-import NotificationsPage from "@/components/common/NotificationsPage";
+
+const lazyNamed = <T extends React.ComponentType<any>>(
+  importer: () => Promise<Record<string, T>>,
+  exportName: string,
+) =>
+  React.lazy(async () => {
+    const module = await importer();
+    return { default: module[exportName] };
+  });
+
+const PageLoader = () => (
+  <div className="flex min-h-[45vh] items-center justify-center px-4">
+    <div className="h-10 w-10 animate-spin-slow rounded-full border-2 border-slate-200 border-t-blue-600" />
+  </div>
+);
+
+const Dashboard = React.lazy(() => import("@/components/dashboard/Dashboard"));
+const DashboardApprovals = React.lazy(() => import("@/components/dashboard/DashboardApprovals"));
+const DashboardExpiry = React.lazy(() => import("@/components/dashboard/DashboardExpiry"));
+const DashboardMovement = React.lazy(() => import("@/components/dashboard/DashboardMovement"));
+const DashboardWarehouse = React.lazy(() => import("@/components/dashboard/DashboardWarehouse"));
+const DashboardInOut = React.lazy(() => import("@/components/dashboard/DashboardInOut"));
+const LowStockAlerts = React.lazy(() => import("./components/dashboard/Lowstockalerts"));
+const OverstockAlerts = React.lazy(() => import("./components/dashboard/OverStockAlert"));
+const NotificationsPage = React.lazy(() => import("@/components/common/NotificationsPage"));
+const ItemMaster = React.lazy(() => import("@/components/product-master/ItemMaster"));
+const ItemVariantPage = React.lazy(() => import("@/components/product-master/ItemVariantPage"));
+const CategoryView = React.lazy(() => import("@/components/admin/master/CategoryView"));
+const BrandView = React.lazy(() => import("@/components/admin/master/BrandView"));
+const UomView = React.lazy(() => import("@/components/admin/master/UomView"));
+const HsnView = React.lazy(() => import("@/components/admin/master/HsnView"));
+const AttributeView = React.lazy(() => import("@/components/admin/master/AttributeView"));
+const ItemPricingView = React.lazy(() => import("@/components/product-master/ItemPricingView"));
+const ReorderLevelView = React.lazy(() => import("@/components/product-master/ReorderLevelView"));
+const BarcodeMappingView = React.lazy(() => import("@/components/barcode/BarcodeMappingView"));
+const WarehouseMasterView = React.lazy(() => import("@/components/admin/master/WarehouseMasterView"));
+const BinManagementView = React.lazy(() => import("@/components/warehouse/BinManagementView"));
+const ZoneStructureView = React.lazy(() => import("@/components/warehouse/ZoneStructureView"));
+const MultiWarehouseView = React.lazy(() => import("@/components/admin/master/MultiWarehouseView"));
+const WarehouseCapacityView = React.lazy(() => import("@/components/warehouse/WarehouseCapacityView"));
+const PurchaseRequisitionView = React.lazy(() => import("@/components/inward/PurchaseRequisitionView"));
+const PurchaseOrderView = React.lazy(() => import("@/components/inward/PurchaseOrderView"));
+const GRNView = React.lazy(() => import("@/components/inward/GRNView"));
+const QualityCheckView = React.lazy(() => import("@/components/inward/QualityCheckView"));
+const PutAwayView = React.lazy(() => import("@/components/inward/PutAwayView"));
+const InwardReturnView = React.lazy(() => import("@/components/inward/InwardReturnView"));
+const InvoiceMatchingView = React.lazy(() => import("@/components/inward/InvoiceMatchingView"));
+const SalesOrderView = React.lazy(() => import("@/components/outward/SalesOrderView"));
+const OutwardOpsView = React.lazy(() => import("@/components/outward/OutwardOpsView"));
+const SalesReturnView = React.lazy(() => import("@/components/outward/SalesReturnView"));
+const CustomerInvoiceView = React.lazy(() => import("@/components/outward/CustomerInvoiceView"));
+const EWayBillsView = React.lazy(() => import("@/components/documents/EWayBillsView"));
+const StockTransfer = React.lazy(() => import("@/components/movement/StockTransfer"));
+const InternalMovementView = React.lazy(() => import("@/components/movement/InternalMovementView"));
+const StockAdjustmentView = React.lazy(() => import("@/components/movement/StockAdjustmentView"));
+const ScrapManagementView = React.lazy(() => import("@/components/movement/ScrapManagementView"));
+const ConsignmentStockView = React.lazy(() => import("@/components/movement/ConsignmentStockView"));
+const StockReservationView = React.lazy(() => import("@/components/control/StockReservationView"));
+const StockLedgerView = React.lazy(() => import("@/components/control/StockLedgerView"));
+const COGSView = React.lazy(() => import("@/components/valuation/COGSView"));
+const BatchTrackingView = React.lazy(() => import("@/components/control/BatchTrackingView"));
+const SerialTrackingView = React.lazy(() => import("@/components/control/SerialTrackingView"));
+const ExpiryTrackingView = React.lazy(() => import("@/components/control/ExpiryTrackingView"));
+const ValuationAnalysisView = React.lazy(() => import("@/components/valuation/ValuationAnalysisView"));
+const ValuationMethodsView = React.lazy(() => import("@/components/valuation/ValuationMethodsView"));
+const ItemWiseValuationView = React.lazy(() => import("@/components/valuation/ItemWiseValuationView"));
+const WarehouseValuationView = React.lazy(() => import("@/components/valuation/WarehouseValuationView"));
+const RealTimeValuationView = React.lazy(() => import("@/components/valuation/RealTimeValuationView"));
+const ClosingStockReportView = React.lazy(() => import("@/components/valuation/ClosingStockReportView"));
+const CostRecalculationView = React.lazy(() => import("@/components/valuation/CostRecalculationView"));
+const StockSummaryReportView = React.lazy(() => import("@/components/reports/StockSummaryReportView"));
+const ItemStockReportView = React.lazy(() => import("@/components/reports/ItemStockReportView"));
+const WarehouseReportView = React.lazy(() => import("@/components/reports/WarehouseReportView"));
+const AgingAnalysisView = React.lazy(() => import("@/components/reports/AgingAnalysisView"));
+const ExpiryAnalysisReportView = React.lazy(() => import("@/components/reports/ExpiryAnalysisReportView"));
+const MovementAnalysisReportView = React.lazy(() => import("@/components/reports/MovementAnalysisReportView"));
+const ValuationReportDocView = React.lazy(() => import("@/components/reports/ValuationReportDocView"));
+const GstTaxReportView = React.lazy(() => import("@/components/reports/GstTaxReportView"));
+const AuditReportView = React.lazy(() => import("@/components/reports/AuditReportView"));
+const CustomerReport = React.lazy(() => import("@/components/reports/CustomerReport"));
+const NCRReportPage = React.lazy(() => import("./components/reports/NCRReport"));
+const StockAuditView = React.lazy(() => import("@/components/audit/StockAuditView"));
+const CycleCountView = React.lazy(() => import("@/components/audit/CycleCountView"));
+const PhysicalVerificationView = React.lazy(() => import("@/components/audit/PhysicalVerificationView"));
+const AdjustmentHistoryView = React.lazy(() => import("@/components/audit/AdjustmentHistoryView"));
+const UserActivityLogView = React.lazy(() => import("@/components/audit/UserActivityLogView"));
+const VendorMasterView = React.lazy(() => import("@/components/vendor/VendorMasterView"));
+const VendorPriceListView = React.lazy(() => import("@/components/vendor/VendorPriceListView"));
+const LeadTimeManagementView = React.lazy(() => import("@/components/vendor/LeadTimeManagementView"));
+const VendorPerformanceView = React.lazy(() => import("@/components/vendor/VendorPerformanceView"));
+const ApprovedVendorListView = React.lazy(() => import("@/components/vendor/ApprovedVendorListView"));
+const PurchaseApprovalView = React.lazy(() => import("@/components/approvals/PurchaseApprovalView"));
+const GRNApprovalView = React.lazy(() => import("@/components/approvals/GRNApprovalView"));
+const StockAdjustmentApprovalView = React.lazy(() => import("@/components/approvals/StockAdjustmentApprovalView"));
+const TransferApprovalView = React.lazy(() => import("@/components/approvals/TransferApprovalView"));
+const ReturnApprovalView = React.lazy(() => import("@/components/approvals/ReturnApprovalView"));
+const SettingsView = React.lazy(() => import("@/components/settings/SettingsView"));
+const UserManagementView = React.lazy(() => import("@/components/users/UserManagementView"));
+const RoleBasedAccessView = lazyNamed(() => import("@/components/users/UserAccessViews"), "RoleBasedAccessView");
+const WarehouseAccessView = lazyNamed(() => import("@/components/users/UserAccessViews"), "WarehouseAccessView");
+const ApprovalHierarchyView = lazyNamed(() => import("@/components/users/UserAccessViews"), "ApprovalHierarchyView");
+const AdvancedView = React.lazy(() => import("@/components/advanced/AdvancedView"));
+const BarcodeGeneratorView = React.lazy(() => import("@/components/barcode/BarcodeGeneratorView"));
+const BarcodeScannerView = React.lazy(() => import("@/components/barcode/BarcodeScannerView"));
+const LabelPrintingView = React.lazy(() => import("@/components/barcode/LabelPrintingView"));
+const RfidIntegrationView = React.lazy(() => import("@/components/barcode/RfidIntegrationView"));
+const QualityParametersView = React.lazy(() => import("@/components/quality/QualityParametersView"));
+const InspectionPlansView = React.lazy(() => import("@/components/quality/InspectionPlansView"));
+const QualityChecklistsView = React.lazy(() => import("@/components/quality/QualityChecklistsView"));
+const AcceptedRejectedStockView = React.lazy(() => import("@/components/quality/AcceptedRejectedStockView"));
+const ReworkManagementView = React.lazy(() => import("@/components/quality/ReworkManagementView"));
+const NCRView = React.lazy(() => import("@/components/quality/NCRView"));
+const InvoicesView = React.lazy(() => import("@/components/documents/InvoicesView"));
+const ChallansDocView = React.lazy(() => import("@/components/documents/ChallansDocView"));
+const PackingListsDocView = React.lazy(() => import("@/components/documents/PackingListsDocView"));
+const InspectionReportsDocView = React.lazy(() => import("@/components/documents/InspectionReportsDocView"));
+const DocumentVersionsView = React.lazy(() => import("@/components/documents/DocumentVersionsView"));
+const PurchaseReturnMgmtView = React.lazy(() => import("@/components/returns/PurchaseReturnMgmtView"));
+const SalesReturnMgmtView = React.lazy(() => import("@/components/returns/SalesReturnMgmtView"));
+const ReplacementHandlingView = React.lazy(() => import("@/components/returns/ReplacementHandlingView"));
+const DebitCreditNotesView = React.lazy(() => import("@/components/returns/DebitCreditNotesView"));
+const CustomerPage = React.lazy(() => import("@/components/customer/Customer"));
+const StockAtCustomerLocationView = React.lazy(() => import("@/components/movement/StockAtCustomerLocationView"));
+const CustomerReturnsView = React.lazy(() => import("@/components/movement/CustomerReturnsView"));
+const ProfileView = React.lazy(() => import("@/components/common/ProfileView"));
+const SearchResultsPage = React.lazy(() => import("@/components/common/SearchResultsPage"));
+const GenericView = React.lazy(() => import("@/components/admin/GenericView"));
+const AiAssistantModal = React.lazy(() => import("@/components/common/AiAssistantModal"));
 
 const hasPermissionMap = (permissions: any) =>
   permissions && typeof permissions === "object" && Object.keys(permissions).length > 0;
@@ -202,6 +202,46 @@ const PAGE_LABEL_BY_ID = MENU_ITEMS.flatMap((item) =>
   return acc;
 }, {});
 
+const hydrateResponsiveTables = () => {
+  const tables = Array.from(document.querySelectorAll<HTMLTableElement>("table"));
+
+  tables.forEach((table) => {
+    if (table.dataset.mobileTable === "scroll") return;
+
+    const headers = Array.from(
+      table.querySelectorAll<HTMLTableCellElement>("thead tr:first-child th"),
+    ).map((header) => header.textContent?.replace(/\s+/g, " ").trim() || "");
+
+    if (!headers.length) {
+      const firstRowHeaders = Array.from(
+        table.querySelectorAll<HTMLTableCellElement>("tr:first-child th"),
+      ).map((header) => header.textContent?.replace(/\s+/g, " ").trim() || "");
+      headers.push(...firstRowHeaders);
+    }
+
+    if (!headers.length) return;
+
+    table.dataset.mobileTable = table.dataset.mobileTable || "cards";
+    Array.from(table.querySelectorAll<HTMLTableRowElement>("tbody tr")).forEach((row) => {
+      let cellIndex = 0;
+      Array.from(row.children).forEach((cell) => {
+        if (!(cell instanceof HTMLTableCellElement) || cell.tagName.toLowerCase() !== "td") {
+          return;
+        }
+
+        const span = Number(cell.getAttribute("colspan") || 1);
+        const label = headers[cellIndex] || "";
+        if (label && span === 1) {
+          cell.dataset.label = label;
+        } else {
+          delete cell.dataset.label;
+        }
+        cellIndex += Number.isFinite(span) && span > 0 ? span : 1;
+      });
+    });
+  });
+};
+
 const App: React.FC = () => {
   const dispatch = useAppDispatch();
   const location = useLocation();
@@ -223,6 +263,7 @@ const App: React.FC = () => {
 
   // Socket ref
   const socketRef = React.useRef<any>(null);
+  const contentRef = React.useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const handleSessionExpired = () => {
@@ -277,6 +318,32 @@ const App: React.FC = () => {
   const headerRequestCount =
     pendingInvites.length +
     Math.max(pendingAccessRequests.length, pendingAccessNotifications.length);
+
+  useEffect(() => {
+    let frameId = 0;
+    const scheduleTableHydration = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        frameId = 0;
+        hydrateResponsiveTables();
+      });
+    };
+
+    scheduleTableHydration();
+    const observer = new MutationObserver(() => {
+      scheduleTableHydration();
+    });
+
+    observer.observe(contentRef.current || document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, [location.pathname]);
 
   const handleInviteResponse = async (
     notificationId: string,
@@ -906,20 +973,25 @@ const App: React.FC = () => {
         className={`flex-1 flex flex-col h-screen overflow-hidden transition-all duration-300 ${isSidebarOpen ? "md:pl-72" : "pl-0"}`}
       >
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10">
-          <div className="flex items-center gap-4 flex-1 max-w-3xl">
+        <header className="min-h-16 bg-white border-b border-slate-200 flex items-center justify-between gap-3 px-3 sm:px-6 py-3 z-10">
+          <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 max-w-3xl">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="text-slate-500 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition-all active:scale-[0.98] flex-shrink-0"
+              className="text-slate-500 hover:text-slate-700 p-2 rounded-lg hover:bg-slate-100 transition-all active:scale-[0.98] flex-shrink-0"
               title={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
             >
-              <ChevronRight size={24} />
+              {isSidebarOpen ? (
+                <X className="md:hidden" size={22} />
+              ) : (
+                <Menu className="md:hidden" size={22} />
+              )}
+              <ChevronRight className="hidden md:block" size={24} />
             </button>
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-800 truncate">
+              <h1 className="text-lg sm:text-xl font-bold text-slate-800 truncate">
                 {activeLabel}
               </h1>
-              <p className="text-xs text-slate-500 hidden sm:block truncate">
+              <p className="text-xs text-slate-500 hidden sm:block truncate max-w-[18rem] lg:max-w-none">
                 ACT Business Solution / {parentLabel} / {activeLabel}
               </p>
             </div>
@@ -929,7 +1001,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* AI Button */}
             <button
               onClick={() => setShowAiModal(true)}
@@ -941,11 +1013,11 @@ const App: React.FC = () => {
             {headerRequestCount > 0 && (
               <button
                 onClick={() => setShowNotifications(true)}
-                className="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
+                className="flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-semibold text-indigo-700 hover:bg-indigo-100"
                 title="Pending invitations and access requests"
               >
                 <Bell size={14} />
-                Invitation
+                <span className="hidden sm:inline">Invitation</span>
                 <span className="rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] leading-none text-white">
                   {headerRequestCount}
                 </span>
@@ -1373,8 +1445,9 @@ const App: React.FC = () => {
         )}
 
         {/* Main Content Scrollable Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
+        <main ref={contentRef} className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-4 md:p-8">
+          <div className="mx-auto w-full max-w-7xl min-w-0">
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Dashboard */}
               <Route path="/dashboard/dash-overview" element={<Dashboard />} />
@@ -1802,12 +1875,15 @@ const App: React.FC = () => {
                 }
               />
             </Routes>
+            </Suspense>
           </div>
         </main>
       </div>
 
       {showAiModal && (
-        <AiAssistantModal onClose={() => setShowAiModal(false)} />
+        <Suspense fallback={null}>
+          <AiAssistantModal onClose={() => setShowAiModal(false)} />
+        </Suspense>
       )}
       <Toaster position="top-right" reverseOrder={false} />
     </div>

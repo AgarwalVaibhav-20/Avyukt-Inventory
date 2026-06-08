@@ -54,7 +54,7 @@ const AdjustmentHistoryView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
+                        {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> :
                          filtered.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No logs found.</td></tr> :
                          filtered.map(adj => (
                             <tr key={adj.id} className="hover:bg-slate-50">

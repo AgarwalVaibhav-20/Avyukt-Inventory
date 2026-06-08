@@ -76,7 +76,7 @@ const ScrapManagementView: React.FC = () => {
            </div>
            <div className="flex justify-end">
                <button onClick={handleSubmit} disabled={actionLoading} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 text-sm font-medium flex items-center gap-2">
-                   {actionLoading ? <Loader2 className="animate-spin" size={16}/> : <Trash2 size={16}/>} Scrap Item
+                   {actionLoading ? <Loader2 className="animate-spin-slow" size={16}/> : <Trash2 size={16}/>} Scrap Item
                </button>
            </div>
        </div>

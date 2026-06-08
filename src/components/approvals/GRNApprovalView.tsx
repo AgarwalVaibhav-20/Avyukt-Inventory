@@ -51,7 +51,7 @@ const GRNApprovalView: React.FC = () => {
                 </div>
             </div>
 
-            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
+            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></div> :
              filteredGRNs.length === 0 ? <p className="text-slate-500 text-center py-8">No GRNs awaiting approval.</p> :
              <div className="space-y-4">
                  {filteredGRNs.map(grn => (

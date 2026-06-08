@@ -178,7 +178,7 @@ const AcceptedRejectedStockView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {loading ? <tr><td colSpan={8} className="py-8 text-center"><Loader2 className="animate-spin inline text-blue-600" size={24}/></td></tr> :
+                        {loading ? <tr><td colSpan={8} className="py-8 text-center"><Loader2 className="animate-spin-slow inline text-blue-600" size={24}/></td></tr> :
                          inspectionRows.length === 0 ? <tr><td colSpan={8} className="py-8 text-center text-slate-500 font-medium">No inspection records found.</td></tr> :
                          inspectionRows.map(row => {
                              // Check if NCR or Rework has been raised for this GRN Item

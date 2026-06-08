@@ -70,7 +70,7 @@ const LabelPrintingView: React.FC = () => {
                     />
                 </div>
                 <div className="overflow-y-auto max-h-[400px] border border-slate-200 rounded-lg divide-y divide-slate-100">
-                    {loading ? <div className="p-4 text-center"><Loader2 className="animate-spin inline"/></div> :
+                    {loading ? <div className="p-4 text-center"><Loader2 className="animate-spin-slow inline"/></div> :
                      filteredItems.map(item => (
                         <div 
                             key={item.id} 
@@ -128,7 +128,7 @@ const LabelPrintingView: React.FC = () => {
                             disabled={printing || selectedItems.size === 0}
                             className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium shadow-lg shadow-blue-200"
                         >
-                            {printing ? <Loader2 className="animate-spin" size={18}/> : <Printer size={18}/>}
+                            {printing ? <Loader2 className="animate-spin-slow" size={18}/> : <Printer size={18}/>}
                             Print {selectedItems.size} Labels
                         </button>
                     </div>

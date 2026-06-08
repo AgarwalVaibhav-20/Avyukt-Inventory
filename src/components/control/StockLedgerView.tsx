@@ -161,7 +161,7 @@ const StockLedgerView: React.FC = () => {
                                      <tr>
                                         <td colSpan={6} className="py-32 text-center">
                                             <div className="flex flex-col items-center">
-                                                <Loader2 className="animate-spin text-blue-600 mb-4" size={48}/>
+                                                <Loader2 className="animate-spin-slow text-blue-600 mb-4" size={48}/>
                                                 <p className="text-xs font-black text-slate-900 uppercase tracking-[0.3em]">Querying Audit Ledger...</p>
                                             </div>
                                         </td>

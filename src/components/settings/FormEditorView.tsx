@@ -169,7 +169,7 @@ const FormEditorView: React.FC = () => {
   if (loading) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
-        <Loader2 className="mx-auto mb-3 animate-spin text-blue-600" size={28} />
+        <Loader2 className="mx-auto mb-3 animate-spin-slow text-blue-600" size={28} />
         <p className="text-sm font-medium text-slate-600">Loading form registry...</p>
       </div>
     );
@@ -326,7 +326,7 @@ const FormEditorView: React.FC = () => {
                       disabled={saving}
                       className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:from-blue-700 hover:to-blue-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                      {saving ? <Loader2 size={16} className="animate-spin-slow" /> : <Save size={16} />}
                       Save Form
                     </button>
                   </div>

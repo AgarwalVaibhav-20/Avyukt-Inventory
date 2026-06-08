@@ -504,7 +504,7 @@ const BinManagementView: React.FC = () => {
         {loading ? (
           <div className="col-span-3 text-center py-20 bg-white border border-slate-100 rounded-3xl shadow-sm">
             <Loader2
-              className="animate-spin text-indigo-600 mb-4 inline-block"
+              className="animate-spin-slow text-indigo-600 mb-4 inline-block"
               size={40}
             />
             <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">

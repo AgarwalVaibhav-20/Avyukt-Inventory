@@ -266,7 +266,7 @@ const DashboardInOut: React.FC = () => {
 
       {loading ? (
         <div className="flex items-center justify-center h-64 text-slate-300">
-          <Loader2 size={24} className="animate-spin" />
+          <Loader2 size={24} className="animate-spin-slow" />
         </div>
       ) : (
         <>

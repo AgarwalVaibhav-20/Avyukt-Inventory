@@ -75,7 +75,7 @@ const ApprovedVendorListView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
+                        {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> :
                          filteredVendors.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No active vendors.</td></tr> :
                          pagedVendors.map(v => (
                             <tr key={v.id} className="hover:bg-slate-50">

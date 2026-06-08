@@ -85,7 +85,7 @@ const BarcodeGeneratorView: React.FC = () => {
                         </button>
                     ))}
                     
-                    {loading && <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div>}
+                    {loading && <div className="text-center py-4"><Loader2 className="animate-spin-slow inline"/></div>}
                     
                     {!loading && items.length < totalItems && (
                         <button 

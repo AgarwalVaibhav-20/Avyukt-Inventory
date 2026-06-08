@@ -181,7 +181,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({
               className="absolute right-3 text-gray-400 hover:text-gray-600"
             >
               {isLoading ? (
-                <Loader className="h-5 w-5 animate-spin" />
+                <Loader className="h-5 w-5 animate-spin-slow" />
               ) : (
                 <X className="h-5 w-5" />
               )}
@@ -205,7 +205,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({
 
           {isLoading && (
             <div className="flex items-center justify-center p-4">
-              <Loader className="h-5 w-5 animate-spin text-blue-500" />
+              <Loader className="h-5 w-5 animate-spin-slow text-blue-500" />
             </div>
           )}
 

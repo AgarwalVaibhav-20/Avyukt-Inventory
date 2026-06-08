@@ -154,7 +154,7 @@ const CustomerReturnsView: React.FC = () => {
           disabled={loading}
           className="inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r from-rose-600 to-rose-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:from-rose-700 hover:to-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+          <RefreshCcw size={18} className={loading ? 'animate-spin-slow' : ''} />
           Refresh Data
         </button>
       </div>
@@ -352,7 +352,7 @@ const CustomerReturnsView: React.FC = () => {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:from-rose-700 hover:to-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {actionLoading ? (
-                  <Loader2 size={18} className="animate-spin" />
+                  <Loader2 size={18} className="animate-spin-slow" />
                 ) : (
                   <ArrowDownLeft size={18} />
                 )}
@@ -411,7 +411,7 @@ const CustomerReturnsView: React.FC = () => {
                   {pageLoading ? (
                     <tr>
                       <td colSpan={6} className="px-6 py-16 text-center">
-                        <Loader2 size={24} className="mx-auto mb-2 animate-spin text-rose-600" />
+                        <Loader2 size={24} className="mx-auto mb-2 animate-spin-slow text-rose-600" />
                         <p className="font-medium text-slate-500">Loading return records...</p>
                       </td>
                     </tr>

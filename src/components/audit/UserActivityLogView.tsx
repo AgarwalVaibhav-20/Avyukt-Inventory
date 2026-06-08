@@ -89,7 +89,7 @@ const UserActivityLogView: React.FC = () => {
                         onClick={() => dispatch(fetchAuditLogs())}
                         className="inline-flex items-center gap-2 px-3 py-2 border rounded-lg text-sm text-slate-600 hover:bg-slate-50"
                     >
-                        <RefreshCw size={15} className={loading ? 'animate-spin' : ''}/>
+                        <RefreshCw size={15} className={loading ? 'animate-spin-slow' : ''}/>
                         Refresh
                     </button>
                 </div>
@@ -113,7 +113,7 @@ const UserActivityLogView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
+                        {loading ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> : 
                          filtered.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No logs found.</td></tr> :
                          pagedItems.map(log => (
                             <tr key={log.id} className="hover:bg-slate-50">

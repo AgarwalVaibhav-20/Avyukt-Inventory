@@ -107,7 +107,7 @@ const ExpiryAnalysisReportView: React.FC = () => {
   if (loading)
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-blue-500 mr-2" size={24} />
+        <Loader2 className="animate-spin-slow text-blue-500 mr-2" size={24} />
         <span className="text-slate-500 text-sm">
           Loading expiry analysis...
         </span>

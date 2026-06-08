@@ -552,7 +552,7 @@ const EWayBillsView: React.FC = () => {
                     className="gap-2"
                   >
                     {actionLoading ? (
-                      <Loader2 size={15} className="animate-spin" />
+                      <Loader2 size={15} className="animate-spin-slow" />
                     ) : (
                       <ShieldCheck size={15} />
                     )}
@@ -614,7 +614,7 @@ const EWayBillsView: React.FC = () => {
             {loading && (
               <div className="absolute inset-0 bg-white/70 backdrop-blur-[1px] z-20 flex items-center justify-center">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Loader2 size={18} className="animate-spin" />
+                  <Loader2 size={18} className="animate-spin-slow" />
                   Loading...
                 </div>
               </div>

@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ChevronRight,
   Search,
-  Menu as MenuIcon,
   X,
   Box,
   User as UserIcon,
@@ -44,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isDelegatedSession, isAuthenticated, delegatedPermissionLevel } = useAppSelector((state) => state.auth);
-  const { items } = useAppSelector((state) => state.inventory);
+  const { items, loading: inventoryLoading, hasLoaded: inventoryHasLoaded } = useAppSelector((state) => state.inventory);
   const { expiryBatches } = useAppSelector((state) => state.stockControl);
   const { prs, pos, qcQueue } = useAppSelector((state) => state.procurement);
 
@@ -84,10 +83,20 @@ const Sidebar: React.FC<SidebarProps> = ({
       }
     };
 
-    fetchList();
+    const initialDelay = window.setTimeout(() => {
+      void fetchList();
+      dispatch(fetchStockControlData());
+      dispatch(fetchPRs());
+      dispatch(fetchPOs());
+      dispatch(fetchQCQueue());
+    }, 400);
+
     const interval = setInterval(fetchList, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
+    return () => {
+      window.clearTimeout(initialDelay);
+      clearInterval(interval);
+    };
+  }, [dispatch, isAuthenticated]);
 
   const currentUserId = String(user?._id || user?.id || "");
   const pendingInvites = notifications.filter((notification) => {
@@ -136,12 +145,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    dispatch(fetchItems());
+    if (!inventoryHasLoaded && !inventoryLoading) {
+      dispatch(fetchItems());
+    }
     dispatch(fetchStockControlData());
     dispatch(fetchPRs());
     dispatch(fetchPOs());
     dispatch(fetchQCQueue());
-  }, [dispatch, isAuthenticated]);
+  }, [dispatch, inventoryHasLoaded, inventoryLoading, isAuthenticated]);
 
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(
     new Set(["dashboard"]),
@@ -244,7 +255,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <div
         className={`
-        fixed top-0 left-0 z-30 h-screen w-72 bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out
+        fixed top-0 left-0 z-30 h-screen w-[86vw] max-w-[18rem] bg-slate-900 text-slate-300 transition-transform duration-300 ease-in-out sm:w-72
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         flex flex-col border-r border-slate-800 shadow-xl
       `}

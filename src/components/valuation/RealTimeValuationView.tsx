@@ -44,7 +44,7 @@ const RealTimeValuationView: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="animate-spin text-blue-500" size={32} />
+        <Loader2 className="animate-spin-slow text-blue-500" size={32} />
       </div>
     );
   }

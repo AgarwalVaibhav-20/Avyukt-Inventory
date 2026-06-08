@@ -232,7 +232,7 @@ function OtpForm({ email, onVerifySuccess }: { email: string; onVerifySuccess?: 
       >
         {loading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />
             Verifying...
           </>
         ) : (
@@ -335,7 +335,7 @@ function LoginForm({
       >
         {loading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />
             Signing in...
           </>
         ) : (
@@ -486,7 +486,7 @@ function ForgotPasswordForm({ onBackToLogin }: { onBackToLogin: () => void }) {
       >
         {loading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />
             {codeSent ? "Resetting..." : "Sending code..."}
           </>
         ) : codeSent ? (
@@ -655,7 +655,7 @@ function SignupForm({ onSignupSuccess }: { onSignupSuccess: (email: string) => v
       >
         {loading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin-slow" />
             Creating account...
           </>
         ) : (
@@ -775,7 +775,7 @@ function OtpFormLegacy({
         disabled={loading}
         className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-sm shadow-blue-200 transition-all"
       >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify OTP"}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin-slow" /> : "Verify OTP"}
       </Button>
     </form>
   );

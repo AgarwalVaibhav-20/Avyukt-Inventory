@@ -207,7 +207,7 @@ const PurchaseApprovalView: React.FC = () => {
            </div>
            {loading ? (
              <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[2.5rem] border border-slate-50">
-               <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
+               <Loader2 className="animate-spin-slow text-indigo-600 mb-4" size={48} />
                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Synchronizing Requisition Queue...</p>
              </div>
            ) : filteredPRs.length === 0 ? (
@@ -291,7 +291,7 @@ const PurchaseApprovalView: React.FC = () => {
                                 onClick={() => handlePRAction(pr.id, 'approve')}
                                 disabled={processingId === pr.id}
                              >
-                               {processingId === pr.id ? <Loader2 className="animate-spin" size={18}/> : <CheckCircle2 size={18} />}
+                               {processingId === pr.id ? <Loader2 className="animate-spin-slow" size={18}/> : <CheckCircle2 size={18} />}
                                Approve Requisition
                              </Button>
                           </div>
@@ -353,7 +353,7 @@ const PurchaseApprovalView: React.FC = () => {
            </div>
            {loading ? (
              <div className="flex flex-col items-center justify-center py-24 bg-white rounded-[2.5rem] border border-slate-50">
-               <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
+               <Loader2 className="animate-spin-slow text-indigo-600 mb-4" size={48} />
              </div>
            ) : filteredPOs.length === 0 ? (
              <Card className="border-none shadow-sm bg-white rounded-[2.5rem] py-20 text-center">
@@ -428,7 +428,7 @@ const PurchaseApprovalView: React.FC = () => {
                                 onClick={() => handlePOAction(po.id, 'approve')}
                                 disabled={processingId === po.id}
                              >
-                               {processingId === po.id ? <Loader2 className="animate-spin" size={18}/> : <ArrowRight size={18} />}
+                               {processingId === po.id ? <Loader2 className="animate-spin-slow" size={18}/> : <ArrowRight size={18} />}
                                Authorize & Dispatch PO
                              </Button>
                           </div>

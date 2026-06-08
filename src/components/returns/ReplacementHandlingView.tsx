@@ -103,7 +103,7 @@ const ReplacementHandlingView: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {loading ? <div className="col-span-full py-10 text-center"><Loader2 className="inline animate-spin"/></div> :
+                {loading ? <div className="col-span-full py-10 text-center"><Loader2 className="inline animate-spin-slow"/></div> :
                  replacements.length === 0 ? <div className="col-span-full py-10 text-center text-slate-500">No active replacements.</div> :
                  replacements.map(rep => (
                     <div key={rep.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">

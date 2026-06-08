@@ -497,7 +497,7 @@ const PurchaseOrderView: React.FC = () => {
                     disabled={localLoading}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-16 py-4 rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-3 shadow-2xl shadow-blue-200 font-black uppercase tracking-widest active:scale-95"
                  >
-                    {localLoading ? <Loader2 className="animate-spin" size={20}/> : <Check size={20}/>}
+                    {localLoading ? <Loader2 className="animate-spin-slow" size={20}/> : <Check size={20}/>}
                     Confirm & Dispatch PO
                  </button>
              </div>
@@ -580,7 +580,7 @@ const PurchaseOrderView: React.FC = () => {
                 {loading && pos.length === 0 ? (
                     <tr><td colSpan={6} className="py-32 text-center">
                         <div className="flex flex-col items-center">
-                            <div className="w-16 h-16 border-4 border-blue-50 border-t-blue-600 rounded-full animate-spin mb-6"></div>
+                            <div className="w-16 h-16 border-4 border-blue-50 border-t-blue-600 rounded-full animate-spin-slow mb-6"></div>
                             <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">Establishing Secure Sync...</p>
                         </div>
                     </td></tr>
@@ -841,7 +841,7 @@ const PurchaseOrderView: React.FC = () => {
                                   onClick={handleUpdatePO}
                                   disabled={localLoading}
                               >
-                                  {localLoading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                                  {localLoading ? <Loader2 className="animate-spin-slow" size={18} /> : <Check size={18} />}
                                   Authorize & Submit for Approval
                               </button>
                           </div>

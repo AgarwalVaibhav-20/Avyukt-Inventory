@@ -135,7 +135,7 @@ const COGSView: React.FC = () => {
                   {loading ? (
                     <tr>
                       <td colSpan={5} className="py-32 text-center">
-                        <Loader2 className="mx-auto mb-4 animate-spin text-emerald-600" size={48} />
+                        <Loader2 className="mx-auto mb-4 animate-spin-slow text-emerald-600" size={48} />
                         <p className="text-xs font-black uppercase tracking-widest text-slate-400">
                           Calculating Financial Impact...
                         </p>

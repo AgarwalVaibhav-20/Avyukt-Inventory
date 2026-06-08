@@ -71,7 +71,7 @@ const ExpiryTrackingView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
+                        {loading ? <tr><td colSpan={5} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> :
                          error ? <tr><td colSpan={5} className="py-8 text-center text-red-600">{error}</td></tr> :
                          sortedBatches.length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-slate-500">No expiry batches found.</td></tr> :
                          sortedBatches.map(b => {

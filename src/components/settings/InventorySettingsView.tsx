@@ -33,7 +33,7 @@ const InventorySettingsView: React.FC = () => {
       alert("Settings updated successfully!");
   };
 
-  if (loading || !settings) return <div className="text-center py-8"><Loader2 className="animate-spin inline"/></div>;
+  if (loading || !settings) return <div className="text-center py-8"><Loader2 className="animate-spin-slow inline"/></div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -127,7 +127,7 @@ const InventorySettingsView: React.FC = () => {
                         disabled={saving}
                         className="bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
                     >
-                        {saving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>}
+                        {saving ? <Loader2 className="animate-spin-slow" size={16}/> : <Save size={16}/>}
                         Save Changes
                     </button>
                 </div>

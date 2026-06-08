@@ -233,7 +233,7 @@ const ZoneStructureView: React.FC = () => {
   if (loading)
     return (
       <div className="text-center py-8">
-        <Loader2 className="animate-spin inline" />
+        <Loader2 className="animate-spin-slow inline" />
       </div>
     );
 

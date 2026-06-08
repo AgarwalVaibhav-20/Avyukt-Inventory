@@ -62,7 +62,7 @@ const InwardReturnView: React.FC = () => {
           onClick={() => { dispatch(fetchGRNs()); dispatch(fetchReturns()); }}
           className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
         >
-          <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw size={20} className={loading ? 'animate-spin-slow' : ''} />
         </button>
       </div>
 
@@ -79,7 +79,7 @@ const InwardReturnView: React.FC = () => {
             
             {loading ? (
                 <div className="flex justify-center py-20">
-                    <Loader2 className="animate-spin text-blue-600" size={32}/>
+                    <Loader2 className="animate-spin-slow text-blue-600" size={32}/>
                 </div>
             ) : rejectedGRNs.length === 0 ? (
                 <div className="bg-slate-50 border border-dashed border-slate-200 p-12 rounded-2xl text-center">
@@ -120,7 +120,7 @@ const InwardReturnView: React.FC = () => {
                                 disabled={submittingId === grn.id}
                                 className="w-full bg-slate-900 text-white py-3 rounded-xl hover:bg-red-600 transition-all font-black text-xs uppercase tracking-widest flex justify-center items-center gap-2 group-hover:shadow-lg group-hover:shadow-red-100"
                             >
-                                {submittingId === grn.id ? <Loader2 className="animate-spin" size={16}/> : <Undo2 size={16}/>}
+                                {submittingId === grn.id ? <Loader2 className="animate-spin-slow" size={16}/> : <Undo2 size={16}/>}
                                 Generate Return Note
                             </button>
                         </div>

@@ -5,12 +5,14 @@ import { InventoryItem } from '@/types';
 interface InventoryState {
   items: InventoryItem[];
   loading: boolean;
+  hasLoaded: boolean;
   error: string | null;
 }
 
 const initialState: InventoryState = {
   items: [],
   loading: false,
+  hasLoaded: false,
   error: null,
 };
 
@@ -44,13 +46,16 @@ const inventorySlice = createSlice({
     builder
       .addCase(fetchItems.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchItems.fulfilled, (state, action) => {
         state.loading = false;
+        state.hasLoaded = true;
         state.items = action.payload;
       })
       .addCase(fetchItems.rejected, (state, action) => {
         state.loading = false;
+        state.hasLoaded = true;
         state.error = action.payload as string;
       })
       .addCase(updateInventoryItem.fulfilled, (state, action) => {

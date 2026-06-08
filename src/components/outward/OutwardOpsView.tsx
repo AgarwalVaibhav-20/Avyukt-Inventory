@@ -373,7 +373,7 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
                     className="w-full bg-amber-500 text-white text-sm py-2 rounded hover:bg-amber-600 flex justify-center items-center gap-2 disabled:opacity-60"
                   >
                     {processingId === pickList.id ? (
-                      <Loader2 className="animate-spin" size={16} />
+                      <Loader2 className="animate-spin-slow" size={16} />
                     ) : (
                       <Box size={16} />
                     )}
@@ -559,7 +559,7 @@ const OutwardOpsView: React.FC<OutwardOpsViewProps> = ({ stage }) => {
     <div className="animate-fade-in">
       {loading ? (
         <div className="text-center py-8">
-          <Loader2 className="animate-spin inline" /> Loading Workflow...
+          <Loader2 className="animate-spin-slow inline" /> Loading Workflow...
         </div>
       ) : (
         <>

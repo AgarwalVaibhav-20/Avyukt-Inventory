@@ -226,7 +226,7 @@ const VendorMasterView: React.FC = () => {
                 <div className="flex justify-end gap-3 pt-6 border-t border-slate-50">
                     <button type="button" onClick={() => setIsEditing(false)} className="px-6 py-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 text-sm font-bold transition-colors">Discard</button>
                     <button type="button" onClick={handleSave} disabled={localLoading} className="px-10 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-black flex items-center gap-2 shadow-lg shadow-blue-100">
-                        {localLoading ? <Loader2 className="animate-spin" size={18}/> : <Save size={18}/>}
+                        {localLoading ? <Loader2 className="animate-spin-slow" size={18}/> : <Save size={18}/>}
                         Confirm & Save
                     </button>
                 </div>
@@ -236,7 +236,7 @@ const VendorMasterView: React.FC = () => {
         {/* Vendors Grid */}
         {loading && vendors.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20">
-                <Loader2 className="animate-spin text-blue-600 mb-4" size={40}/>
+                <Loader2 className="animate-spin-slow text-blue-600 mb-4" size={40}/>
                 <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Syncing Vendor Database...</p>
             </div>
         ) : filteredVendors.length === 0 ? (

@@ -150,7 +150,7 @@ const MultiWarehouseView: React.FC = () => {
   if (loading && warehouses.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin-slow text-blue-600" />
       </div>
     );
   }

@@ -149,7 +149,7 @@ const StockAtCustomerLocationView: React.FC = () => {
           disabled={loading}
           className="inline-flex items-center gap-2 self-start rounded-lg bg-gradient-to-r from-teal-600 to-teal-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:from-teal-700 hover:to-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+          <RefreshCcw size={18} className={loading ? 'animate-spin-slow' : ''} />
           Refresh Data
         </button>
       </div>
@@ -229,7 +229,7 @@ const StockAtCustomerLocationView: React.FC = () => {
       <div className="space-y-5">
         {loading ? (
           <div className="py-16 text-center">
-            <Loader2 size={28} className="mx-auto mb-3 animate-spin text-teal-600" />
+            <Loader2 size={28} className="mx-auto mb-3 animate-spin-slow text-teal-600" />
             <p className="text-slate-500 font-medium">Loading customer stock positions...</p>
           </div>
         ) : filteredCustomers.length === 0 ? (

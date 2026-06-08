@@ -393,7 +393,7 @@ const SalesOrderView: React.FC = () => {
               {isPageLoading ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center">
-                    <Loader2 className="animate-spin inline mr-2" /> Loading...
+                    <Loader2 className="animate-spin-slow inline mr-2" /> Loading...
                   </td>
                 </tr>
               ) : filteredSalesOrders.length === 0 ? (

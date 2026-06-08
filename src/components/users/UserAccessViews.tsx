@@ -210,7 +210,7 @@ export const RoleBasedAccessView: React.FC = () => {
     >
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-400" />
+          <Loader2 className="mx-auto h-8 w-8 animate-spin-slow text-slate-400" />
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -331,7 +331,7 @@ export const WarehouseAccessView: React.FC = () => {
     >
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-400" />
+          <Loader2 className="mx-auto h-8 w-8 animate-spin-slow text-slate-400" />
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -434,7 +434,7 @@ export const ApprovalHierarchyView: React.FC = () => {
     >
       {loading ? (
         <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-400" />
+          <Loader2 className="mx-auto h-8 w-8 animate-spin-slow text-slate-400" />
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">

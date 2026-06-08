@@ -260,7 +260,7 @@ const StockTransfer: React.FC = () => {
                 disabled={actionLoading || loading || transferItems.length === 0}
                 className="flex items-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-lg hover:bg-blue-700 transition-colors shadow-lg font-bold disabled:opacity-50"
             >
-                {actionLoading ? <Loader2 className="animate-spin" size={18}/> : <ArrowRightLeft size={18}/>}
+                {actionLoading ? <Loader2 className="animate-spin-slow" size={18}/> : <ArrowRightLeft size={18}/>}
                 Initiate Inter-Warehouse Transfer
             </button>
           </div>
@@ -305,7 +305,7 @@ const StockTransfer: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                         <tr><td colSpan={5} className="py-12 text-center text-slate-500"><Loader2 className="animate-spin inline mr-2"/> Loading transfers...</td></tr>
+                         <tr><td colSpan={5} className="py-12 text-center text-slate-500"><Loader2 className="animate-spin-slow inline mr-2"/> Loading transfers...</td></tr>
                     ) : filteredTransfers.length === 0 ? (
                          <tr><td colSpan={5} className="py-12 text-center text-slate-500 font-medium">No transfers recorded in the system.</td></tr>
                     ) : (

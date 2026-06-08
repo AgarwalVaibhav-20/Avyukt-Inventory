@@ -624,7 +624,7 @@ const UserManagementView: React.FC = () => {
 
           {loading ? (
             <div className="p-12 text-center">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin text-slate-400" />
+              <Loader2 className="mx-auto h-8 w-8 animate-spin-slow text-slate-400" />
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="p-12 text-center text-slate-500">No users found</div>
@@ -685,7 +685,7 @@ const UserManagementView: React.FC = () => {
                               className="px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50 rounded flex items-center gap-1 disabled:opacity-50"
                             >
                               {requestingId === user._id ? (
-                                <Loader2 size={14} className="animate-spin" />
+                                <Loader2 size={14} className="animate-spin-slow" />
                               ) : (
                                 <span />
                               )}
@@ -873,7 +873,7 @@ const UserManagementView: React.FC = () => {
                     <h4 className="text-sm font-semibold text-slate-900">Warehouse-wise access</h4>
                     <p className="text-xs text-slate-500">Leave everything unchecked for full access.</p>
                   </div>
-                  {warehouseLoading && <Loader2 size={16} className="animate-spin text-slate-400" />}
+                  {warehouseLoading && <Loader2 size={16} className="animate-spin-slow text-slate-400" />}
                 </div>
 
                 {warehouses.length === 0 ? (
@@ -965,7 +965,7 @@ const UserManagementView: React.FC = () => {
                   disabled={submitting}
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-2"
                 >
-                  {submitting && <Loader2 size={14} className="animate-spin" />}
+                  {submitting && <Loader2 size={14} className="animate-spin-slow" />}
                   {editingUser ? 'Save Changes' : 'Create User'}
                 </button>
               </div>
@@ -1078,7 +1078,7 @@ const UserManagementView: React.FC = () => {
                   disabled={submitting}
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-2"
                 >
-                  {submitting && <Loader2 size={14} className="animate-spin" />}
+                  {submitting && <Loader2 size={14} className="animate-spin-slow" />}
                   Send Invite
                 </button>
               </div>
@@ -1159,7 +1159,7 @@ const UserManagementView: React.FC = () => {
                   disabled={!!requestingId}
                   className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-lg flex items-center gap-2"
                 >
-                  {requestingId && <Loader2 size={14} className="animate-spin" />}
+                  {requestingId && <Loader2 size={14} className="animate-spin-slow" />}
                   Send Request
                 </button>
               </div>
