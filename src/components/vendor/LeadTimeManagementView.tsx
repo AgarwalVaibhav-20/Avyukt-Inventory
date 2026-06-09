@@ -63,7 +63,7 @@ const LeadTimeManagementView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={4} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> : 
+                        {loading ? <tr><td colSpan={4} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
                          data.sort((a,b) => a.leadTimeDays - b.leadTimeDays).map(item => (
                             <tr key={item.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4 font-medium text-slate-800">{item.itemName}</td>

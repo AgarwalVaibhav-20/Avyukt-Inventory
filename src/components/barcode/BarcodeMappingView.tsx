@@ -116,7 +116,7 @@ const BarcodeMappingView: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                     {loading ? (
-                        <tr><td colSpan={4} className="py-8 text-center"><Loader2 className="animate-spin-slow inline mr-2"/> Loading...</td></tr>
+                        <tr><td colSpan={4} className="py-8 text-center"><Loader2 className="animate-spin inline mr-2"/> Loading...</td></tr>
                     ) : filteredItems.length === 0 ? (
                         <tr><td colSpan={4} className="py-8 text-center text-slate-500">No items found.</td></tr>
                     ) : (

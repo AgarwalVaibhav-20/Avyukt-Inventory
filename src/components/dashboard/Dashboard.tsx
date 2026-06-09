@@ -370,7 +370,7 @@ const Dashboard: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-96 p-1">
         <div className="text-center">
-          <Loader2 size={40} className="animate-spin-slow text-blue-500 mx-auto mb-4" />
+          <Loader2 size={40} className="animate-spin text-blue-500 mx-auto mb-4" />
           <p className="text-slate-600">Loading dashboard data...</p>
         </div>
       </div>
@@ -564,7 +564,7 @@ const Dashboard: React.FC = () => {
             disabled={loadingAi}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-indigo-600 bg-slate-50 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
           >
-            <RefreshCcw size={12} className={loadingAi ? "animate-spin-slow" : ""} />
+            <RefreshCcw size={12} className={loadingAi ? "animate-spin" : ""} />
             {loadingAi ? "Analyzing..." : "Refresh Analysis"}
           </button>
         </div>

@@ -307,7 +307,7 @@ const SalesReturnView: React.FC = () => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl border border-slate-200">
-        <Loader2 className="animate-spin-slow text-blue-600 mb-4" size={32} />
+        <Loader2 className="animate-spin text-blue-600 mb-4" size={32} />
         <p className="text-slate-500 font-medium">Loading Return Module...</p>
       </div>
     );
@@ -537,7 +537,7 @@ const SalesReturnView: React.FC = () => {
                             disabled={actionLoading}
                             className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-slate-200 disabled:opacity-50 flex items-center justify-center gap-2"
                         >
-                            {actionLoading ? <Loader2 className="animate-spin-slow" size={18}/> : <CornerDownLeft size={18}/>}
+                            {actionLoading ? <Loader2 className="animate-spin" size={18}/> : <CornerDownLeft size={18}/>}
                             Process Physical Return
                         </button>
                      </div>
@@ -762,7 +762,7 @@ const SalesReturnView: React.FC = () => {
                 disabled={actionLoading}
                 className="h-11 rounded-xl px-8 bg-slate-900 text-white font-bold hover:bg-black text-xs flex items-center justify-center gap-1.5 shadow-md"
               >
-                {actionLoading ? <Loader2 className="animate-spin-slow" size={16} /> : <CheckCircle2 size={16} />}
+                {actionLoading ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
                 Submit Inspection & Route Stock
               </Button>
             </div>

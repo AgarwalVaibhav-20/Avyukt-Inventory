@@ -256,7 +256,7 @@ const GRNView: React.FC = () => {
           }}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-[13px] font-semibold text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors active:scale-[.98]"
         >
-          <RefreshCw size={14} className={loading ? "animate-spin-slow" : ""} />
+          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           Sync
         </button>
       </div>
@@ -509,7 +509,7 @@ const GRNView: React.FC = () => {
                     className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-4 py-2.5 transition-colors active:scale-[.98]"
                   >
                     {submitting ? (
-                      <Loader2 className="animate-spin-slow" size={16} />
+                      <Loader2 className="animate-spin" size={16} />
                     ) : (
                       <CheckSquare size={16} />
                     )}
@@ -648,7 +648,7 @@ const GRNView: React.FC = () => {
                   {loading && grns.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-24 text-center">
-                        <div className="w-8 h-8 border-2 border-blue-100 border-t-blue-500 rounded-full animate-spin-slow mx-auto mb-3" />
+                        <div className="w-8 h-8 border-2 border-blue-100 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
                         <p className="text-[12px] text-slate-400 font-medium">
                           Loading inbound logs…
                         </p>

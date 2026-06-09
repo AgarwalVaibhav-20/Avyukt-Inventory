@@ -386,7 +386,7 @@ const InternalMovementView: React.FC = () => {
               className="w-full bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               {actionLoading ? (
-                <Loader2 className="animate-spin-slow" size={16} />
+                <Loader2 className="animate-spin" size={16} />
               ) : (
                 <ArrowRightLeft size={16} />
               )}

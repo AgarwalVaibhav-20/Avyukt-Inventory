@@ -38,7 +38,7 @@ const CostRecalculationView: React.FC = () => {
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm text-center">
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50">
-          <RefreshCcw size={32} className={`text-blue-600 ${status === "processing" ? "animate-spin-slow" : ""}`} />
+          <RefreshCcw size={32} className={`text-blue-600 ${status === "processing" ? "animate-spin" : ""}`} />
         </div>
 
         <h2 className="mb-2 text-2xl font-bold text-slate-800">Cost Recalculation Utility</h2>

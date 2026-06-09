@@ -35,7 +35,7 @@ const StockAdjustmentApprovalView: React.FC = () => {
                 <AlertOctagon className="text-orange-600" size={20}/> Stock Adjustment Approvals
             </h2>
 
-            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></div> :
+            {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
              adjustments.length === 0 ? <p className="text-slate-500 text-center py-8">No adjustments pending approval.</p> :
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  {adjustments.map(adj => (

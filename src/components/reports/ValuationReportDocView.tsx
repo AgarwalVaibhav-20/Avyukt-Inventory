@@ -82,7 +82,7 @@ const ValuationReportDocView: React.FC = () => {
   if (loading) return (
     <div className="flex h-screen justify-center items-center">
       <div className="text-center">
-        <Loader2 className="animate-spin-slow text-blue-600 mx-auto mb-4" size={48} />
+        <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
         <p className="text-slate-600 font-medium">Calculating inventory valuation...</p>
       </div>
     </div>

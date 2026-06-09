@@ -366,7 +366,7 @@ const DashboardMovement: React.FC = () => {
             {loading ? (
               <tr>
                 <td colSpan={9} className="py-12 text-center text-slate-300">
-                  <Loader2 size={22} className="animate-spin-slow inline" />
+                  <Loader2 size={22} className="animate-spin inline" />
                 </td>
               </tr>
             ) : filtered.length === 0 ? (

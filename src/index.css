@@ -123,11 +123,9 @@
 @layer base {
   * {
     border-color: var(--border);
-    box-sizing: border-box;
   }
   body {
     @apply bg-background text-foreground font-sans;
-    min-width: 0;
   }
 }
 
@@ -189,31 +187,15 @@
     pointer-events: none;
     z-index: 10;
   }
-
-  @keyframes spin-slow {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .animate-spin-slow {
-    animation: spin-slow 4s linear infinite;
-  }
 }
 
+/* Global responsive adjustments to improve mobile presentation */
 @layer base {
-  html,
-  body,
-  #root {
-    min-height: 100%;
-    width: 100%;
-    overflow-x: hidden;
-  }
-
   table {
     @apply w-full border-collapse;
   }
 
+  /* Reduce table cell padding on small screens, increase on md+ */
   table th,
   table td {
     @apply px-3 py-2 text-sm;
@@ -226,161 +208,10 @@
     }
   }
 
+  /* Ensure images and SVGs scale down on small viewports */
   img,
   svg {
     max-width: 100%;
     height: auto;
-  }
-
-  input,
-  select,
-  textarea,
-  button {
-    max-width: 100%;
-  }
-}
-
-@layer components {
-  @media (max-width: 640px) {
-    #root * {
-      min-width: 0;
-    }
-
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6,
-    p,
-    span,
-    label,
-    a,
-    button {
-      overflow-wrap: anywhere;
-    }
-
-    [class*="grid-cols-"] {
-      grid-template-columns: minmax(0, 1fr) !important;
-    }
-
-    [data-radix-popper-content-wrapper] {
-      max-width: calc(100vw - 1rem) !important;
-      min-width: 0 !important;
-    }
-
-    [role="dialog"] {
-      max-width: calc(100vw - 1rem);
-    }
-
-    [data-slot="table-container"],
-    .overflow-x-auto:has(> table[data-mobile-table="cards"]) {
-      overflow-x: visible;
-    }
-
-    table[data-mobile-table="cards"] {
-      display: block;
-      width: 100%;
-      min-width: 0 !important;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-
-    table[data-mobile-table="cards"] caption {
-      display: block;
-      width: 100%;
-      margin-bottom: 0.75rem;
-      text-align: left;
-    }
-
-    table[data-mobile-table="cards"] thead {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
-      clip-path: inset(50%);
-    }
-
-    table[data-mobile-table="cards"] tbody {
-      display: grid;
-      gap: 0.75rem;
-      width: 100%;
-    }
-
-    table[data-mobile-table="cards"] tr {
-      display: grid;
-      width: 100%;
-      gap: 0;
-      overflow: hidden;
-      border: 1px solid rgb(226 232 240);
-      border-radius: 0.75rem;
-      background: white;
-      box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
-    }
-
-    table[data-mobile-table="cards"] tr:hover {
-      background: white;
-    }
-
-    table[data-mobile-table="cards"] td {
-      display: grid;
-      grid-template-columns: minmax(7.5rem, 40%) minmax(0, 1fr);
-      align-items: start;
-      width: 100%;
-      min-width: 0;
-      gap: 0.75rem;
-      border-bottom: 1px solid rgb(241 245 249);
-      padding: 0.75rem 0.875rem !important;
-      text-align: right;
-      white-space: normal !important;
-      word-break: break-word;
-    }
-
-    table[data-mobile-table="cards"] td:last-child {
-      border-bottom: 0;
-    }
-
-    table[data-mobile-table="cards"] td::before {
-      content: attr(data-label);
-      min-width: 0;
-      text-align: left;
-      font-size: 0.6875rem;
-      font-weight: 700;
-      line-height: 1.25rem;
-      color: rgb(100 116 139);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    table[data-mobile-table="cards"] td:not([data-label]) {
-      display: block;
-      text-align: left;
-    }
-
-    table[data-mobile-table="cards"] td:not([data-label])::before {
-      content: none;
-    }
-
-    table[data-mobile-table="cards"] td > * {
-      min-width: 0;
-      max-width: 100%;
-      justify-self: end;
-    }
-
-    table[data-mobile-table="cards"] td > .flex,
-    table[data-mobile-table="cards"] td > div[class*="flex"] {
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    table[data-mobile-table="cards"] td:not([data-label]) > * {
-      justify-self: stretch;
-    }
-
-    table[data-mobile-table="cards"] .text-right {
-      text-align: right;
-    }
   }
 }

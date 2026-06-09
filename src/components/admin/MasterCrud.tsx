@@ -503,7 +503,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
                     className="py-8 text-center text-slate-500"
                   >
                     <div className="flex items-center justify-center gap-2">
-                      <Loader2 className="animate-spin-slow" size={20} /> Loading
+                      <Loader2 className="animate-spin" size={20} /> Loading
                       data...
                     </div>
                   </td>

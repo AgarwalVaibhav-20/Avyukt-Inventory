@@ -262,7 +262,7 @@ const DashboardApprovals: React.FC = () => {
       <div className="mt-5">
         {loading ? (
           <div className="flex items-center justify-center py-12 text-slate-300">
-            <Loader2 size={24} className="animate-spin-slow" />
+            <Loader2 size={24} className="animate-spin" />
           </div>
         ) : approvals.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-300 gap-2">
@@ -322,7 +322,7 @@ const DashboardApprovals: React.FC = () => {
                     disabled={!!processingId}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition-colors disabled:opacity-60"
                   >
-                    {processingId === item.id ? <Loader2 size={13} className="animate-spin-slow" /> : <Check size={13} />}
+                    {processingId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                     Approve
                   </button>
                 </div>

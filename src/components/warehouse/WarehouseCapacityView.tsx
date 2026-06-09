@@ -91,7 +91,7 @@ const WarehouseCapacityView: React.FC = () => {
             disabled={loading}
             className="rounded-xl shadow-sm hover:shadow-md transition-all h-11 px-6"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin-slow' : ''}`} /> 
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> 
             Refresh Data
           </Button>
         </div>
@@ -136,7 +136,7 @@ const WarehouseCapacityView: React.FC = () => {
 
       {loading && stats.length === 0 ? (
         <div className="py-32 text-center">
-          <Loader2 className="animate-spin-slow inline text-blue-600 mb-4" size={48} />
+          <Loader2 className="animate-spin inline text-blue-600 mb-4" size={48} />
           <p className="text-slate-500 font-bold text-lg">Aggregating facility data across network...</p>
           <p className="text-sm text-slate-400 mt-2">Connecting to live bin sensors and inventory logs.</p>
         </div>

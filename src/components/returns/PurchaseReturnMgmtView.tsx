@@ -181,7 +181,7 @@ const PurchaseReturnMgmtView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {loading ? <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="inline animate-spin-slow"/></td></tr> : 
+                        {loading ? <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="inline animate-spin"/></td></tr> : 
                          filteredReturns.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-slate-500">No returns found.</td></tr> :
                          filteredReturns.map(r => {
                              const hasDebitNote = financialNotes.some(n => n.referenceId === r.id);
@@ -215,7 +215,7 @@ const PurchaseReturnMgmtView: React.FC = () => {
                                                 disabled={!!processingId}
                                                 className="ml-auto inline-flex items-center gap-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50"
                                             >
-                                                {processingId === r.id ? <Loader2 size={12} className="animate-spin-slow"/> : <ArrowUpRight size={14}/>} Issue Debit Note
+                                                {processingId === r.id ? <Loader2 size={12} className="animate-spin"/> : <ArrowUpRight size={14}/>} Issue Debit Note
                                             </button>
                                         )}
                                     </td>

@@ -55,9 +55,9 @@ const urgencyOrder: Record<Urgency, number> = { critical: 0, high: 1, medium: 2 
 const getItemStock = (item: InventoryItem) =>
   Number(item.stock ?? item.stocks?.reduce((total, stock) => total + Number(stock.quantity || 0), 0) ?? 0);
 
-const getUrgency = (currentQty: number, threshold: number): Urgency => {
-  if (currentQty === 0) return "critical";
-  if (threshold > 0 && currentQty <= threshold) return "high";
+const getUrgency = (currentQty: number, reorderLevel: number, minStock: number): Urgency => {
+  if (currentQty <= minStock || currentQty === 0) return "critical";
+  if (reorderLevel > 0 && currentQty <= reorderLevel * 0.5) return "high";
   return "medium";
 };
 
@@ -75,8 +75,7 @@ const getWarehouseLabel = (warehouseId: unknown, warehouseNames: Map<string, str
 const toStockItem = (item: InventoryItem, warehouseNames: Map<string, string>): StockItem => {
   const currentQty = getItemStock(item);
   const reorderLevel = Number(item.reorderLevel ?? 0);
-  const minStock = reorderLevel;
-  const threshold = reorderLevel;
+  const minStock = Number(item.minimumStockLevel ?? reorderLevel);
   const warehouseLabel = item.stocks?.length
     ? item.stocks.map(stock => getWarehouseLabel(stock.warehouseId, warehouseNames)).join(", ")
     : item.warehouseId
@@ -99,7 +98,7 @@ const toStockItem = (item: InventoryItem, warehouseNames: Map<string, string>): 
     reorderLevel,
     minStock,
     unit: item.stockUom || item.uom || "units",
-    urgency: getUrgency(currentQty, threshold),
+    urgency: getUrgency(currentQty, reorderLevel, minStock),
     lastOrdered: extra.updatedAt || item.lastUpdated || "-",
     supplier: extra.supplierName || extra.vendorName || extra.supplier || item.brand || "-",
   };
@@ -107,7 +106,7 @@ const toStockItem = (item: InventoryItem, warehouseNames: Map<string, string>): 
 
 export default function LowStockAlerts() {
   const dispatch = useAppDispatch();
-  const { items, loading, hasLoaded, error } = useAppSelector((state) => state.inventory);
+  const { items, loading, error } = useAppSelector((state) => state.inventory);
   const { warehouses: warehouseList, loading: warehouseLoading } = useAppSelector((state) => state.warehouse);
   const [sortBy, setSortBy] = useState<SortKey>("urgency");
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -115,10 +114,10 @@ export default function LowStockAlerts() {
   const [selectedWarehouse, setSelectedWarehouse] = useState("All");
 
   useEffect(() => {
-    if (!hasLoaded && !loading) {
+    if (!items.length && !loading) {
       dispatch(fetchItems());
     }
-  }, [dispatch, hasLoaded, loading]);
+  }, [dispatch, items.length, loading]);
 
   useEffect(() => {
     if (!warehouseList.length && !warehouseLoading) {
@@ -142,8 +141,7 @@ export default function LowStockAlerts() {
         .filter((item) => {
           const currentQty = getItemStock(item);
           const reorderLevel = Number(item.reorderLevel ?? 0);
-          const threshold = reorderLevel;
-          return currentQty === 0 || (threshold > 0 && currentQty <= threshold);
+          return currentQty === 0 || (reorderLevel > 0 && currentQty <= reorderLevel);
         })
         .map(item => toStockItem(item, warehouseNames)),
     [items, warehouseNames],
@@ -300,10 +298,10 @@ export default function LowStockAlerts() {
               </tr>
             </thead>
             <tbody>
-              {loading && !hasLoaded && (
+              {loading && lowStockItems.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-5 py-16 text-center">
-                    <Loader2 className="w-8 h-8 text-red-400 mx-auto mb-3 animate-spin-slow" />
+                    <Loader2 className="w-8 h-8 text-red-400 mx-auto mb-3 animate-spin" />
                     <p className="text-gray-400 text-sm">Loading low stock items...</p>
                   </td>
                 </tr>

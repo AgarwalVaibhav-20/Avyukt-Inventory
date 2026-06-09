@@ -121,17 +121,17 @@ const toOverstockItem = (item: InventoryItem): OverstockItem => {
 
 export default function OverstockAlerts() {
   const dispatch = useAppDispatch();
-  const { items, loading, hasLoaded, error } = useAppSelector((state) => state.inventory);
+  const { items, loading, error } = useAppSelector((state) => state.inventory);
   const [sortBy, setSortBy] = useState<SortKey>("level");
   const [filter, setFilter] = useState<FilterLevel>("all");
   const [search, setSearch] = useState("");
   const [selectedWarehouse, setSelectedWarehouse] = useState("All");
 
   useEffect(() => {
-    if (!hasLoaded && !loading) {
+    if (!items.length && !loading) {
       dispatch(fetchItems());
     }
-  }, [dispatch, hasLoaded, loading]);
+  }, [dispatch, items.length, loading]);
 
   const overstockItems = useMemo(
     () =>
@@ -325,10 +325,10 @@ export default function OverstockAlerts() {
               </tr>
             </thead>
             <tbody>
-              {loading && !hasLoaded && (
+              {loading && overstockItems.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-5 py-16 text-center">
-                    <Loader2 className="w-8 h-8 text-orange-400 mx-auto mb-3 animate-spin-slow" />
+                    <Loader2 className="w-8 h-8 text-orange-400 mx-auto mb-3 animate-spin" />
                     <p className="text-gray-400 text-sm">Loading overstock items...</p>
                   </td>
                 </tr>

@@ -73,7 +73,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 disabled:opacity-75 text-white font-medium text-sm rounded-xl shadow-md hover:shadow-red-500/20 active:scale-[0.98] transition-all duration-150 cursor-pointer"
           >
             {isLoading ? (
-              <div className="w-5 h-5 border-2 border-white/35 border-t-white rounded-full animate-spin-slow" />
+              <div className="w-5 h-5 border-2 border-white/35 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <Trash2 className="w-4 h-4" />

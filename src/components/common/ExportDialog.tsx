@@ -157,7 +157,7 @@ const ExportDialog: React.FC<ExportDialogProps> = ({
           >
             {exporting ? (
               <>
-                <Loader2 size={16} className="animate-spin-slow" />
+                <Loader2 size={16} className="animate-spin" />
                 Exporting...
               </>
             ) : (

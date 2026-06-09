@@ -411,7 +411,7 @@ const SalesReturnMgmtView: React.FC = () => {
                         className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-600 transition-all"
                         title="Refresh Data"
                     >
-                        <RefreshCw size={18} className={loading ? "animate-spin-slow" : ""} />
+                        <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
                     </button>
                 </div>
             </div>
@@ -523,7 +523,7 @@ const SalesReturnMgmtView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {loading ? <tr><td colSpan={7} className="py-10 text-center"><Loader2 className="inline animate-spin-slow text-blue-600" size={28}/></td></tr> : 
+                        {loading ? <tr><td colSpan={7} className="py-10 text-center"><Loader2 className="inline animate-spin text-blue-600" size={28}/></td></tr> : 
                          filteredReturns.length === 0 ? <tr><td colSpan={7} className="py-10 text-center text-slate-500 font-medium">No sales returns match your filters.</td></tr> :
                          filteredReturns.map(r => {
                              const hasCN = financialNotes.some(n => n.referenceId === r.id) || r.status === 'Processed' || r.status === 'Completed';
@@ -772,7 +772,7 @@ const SalesReturnMgmtView: React.FC = () => {
                         disabled={!!processingId || !!qtyError}
                         className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                       >
-                        {processingId === 'creating' ? <Loader2 className="animate-spin-slow" size={18}/> : <CheckCircle2 size={18}/>}
+                        {processingId === 'creating' ? <Loader2 className="animate-spin" size={18}/> : <CheckCircle2 size={18}/>}
                         Confirm Return & Generate Credit Note
                       </button>
                     </div>
@@ -914,7 +914,7 @@ const SalesReturnMgmtView: React.FC = () => {
                   className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl shadow-slate-900/20 hover:bg-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   title={!isQtyValid ? `Sum must equal ${totalReturnedQty} units` : ''}
                 >
-                  {processingId ? <Loader2 className="animate-spin-slow" size={18}/> : <ShieldCheck size={18}/>}
+                  {processingId ? <Loader2 className="animate-spin" size={18}/> : <ShieldCheck size={18}/>}
                   Confirm QC Decision & Post to Stock Ledger
                 </button>
               </div>

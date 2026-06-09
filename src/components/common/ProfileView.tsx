@@ -116,7 +116,7 @@ const ProfileView: React.FC = () => {
   if (profileLoading && !user) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <Loader2 size={40} className="text-blue-600 animate-spin-slow" />
+        <Loader2 size={40} className="text-blue-600 animate-spin" />
         <p className="text-slate-500 font-medium">Loading profile data...</p>
       </div>
     );
@@ -314,7 +314,7 @@ const ProfileView: React.FC = () => {
                   className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/40 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {updateLoading ? (
-                    <Loader2 size={20} className="animate-spin-slow" />
+                    <Loader2 size={20} className="animate-spin" />
                   ) : (
                     <Save size={20} />
                   )}

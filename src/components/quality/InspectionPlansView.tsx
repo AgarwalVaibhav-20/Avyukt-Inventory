@@ -212,7 +212,7 @@ const InspectionPlansView: React.FC = () => {
             )}
 
             <div className="grid gap-4">
-                {loading ? <div className="text-center py-8"><Loader2 className="animate-spin-slow inline"/></div> :
+                {loading ? <div className="text-center py-8"><Loader2 className="animate-spin inline"/></div> :
                  filteredPlans.length === 0 ? <div className="text-center text-slate-500 py-8">No plans defined.</div> :
                  filteredPlans.map(p => (
                     <div key={p.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50">

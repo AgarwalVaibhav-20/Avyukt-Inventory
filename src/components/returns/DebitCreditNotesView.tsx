@@ -110,7 +110,7 @@ const DebitCreditNotesView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {loading ? <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="inline animate-spin-slow"/></td></tr> :
+                        {loading ? <tr><td colSpan={6} className="py-10 text-center"><Loader2 className="inline animate-spin"/></td></tr> :
                          notes.length === 0 ? <tr><td colSpan={6} className="py-10 text-center text-slate-500">No notes issued.</td></tr> :
                          notes.map(note => (
                             <tr key={note.id} className="hover:bg-slate-50/70">

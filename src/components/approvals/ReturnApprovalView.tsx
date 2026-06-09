@@ -76,7 +76,7 @@ const ReturnApprovalView: React.FC = () => {
                         <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search return, party, item..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm" />
                     </div>
                 </div>
-                {loading ? <div className="text-center py-4"><Loader2 className="animate-spin-slow inline"/></div> :
+                {loading ? <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div> :
                  filteredReturns.length === 0 ? <p className="text-center text-slate-500 py-4">No pending approvals.</p> :
                  <div className="space-y-4">
                      {filteredReturns.map((ret: any) => (

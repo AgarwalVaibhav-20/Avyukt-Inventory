@@ -315,7 +315,7 @@ const DocumentVersionsView: React.FC = () => {
               disabled={uploading}
               className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-60"
             >
-              {uploading ? <Loader2 className="animate-spin-slow" size={16} /> : <Upload size={16} />}
+              {uploading ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />}
               Upload
             </button>
           </div>
@@ -371,7 +371,7 @@ const DocumentVersionsView: React.FC = () => {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {loading ? (
             <div className="col-span-3 py-8 text-center">
-              <Loader2 className="inline animate-spin-slow" />
+              <Loader2 className="inline animate-spin" />
             </div>
           ) : filteredFiles.length === 0 ? (
             <div className="col-span-3 py-8 text-center text-slate-500">No files uploaded.</div>

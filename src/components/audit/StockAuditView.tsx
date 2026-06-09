@@ -97,7 +97,7 @@ const StockAuditView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {(loading || auditLoading) ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> : 
+                        {(loading || auditLoading) ? <tr><td colSpan={6} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> : 
                          audits.length === 0 ? <tr><td colSpan={6} className="py-8 text-center text-slate-500">No audits recorded.</td></tr> :
                          audits.map(a => (
                             <tr key={a.id} className="hover:bg-slate-50">

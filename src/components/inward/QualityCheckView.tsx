@@ -88,7 +88,7 @@ const QualityCheckView: React.FC = () => {
           {loading ? (
              <div className="flex justify-center py-12">
                 <div className="text-center">
-                    <Loader2 className="animate-spin-slow text-blue-600 mx-auto mb-2" size={32}/>
+                    <Loader2 className="animate-spin text-blue-600 mx-auto mb-2" size={32}/>
                     <p className="text-slate-500 text-sm font-medium">Refreshing inspection queue...</p>
                 </div>
              </div>
@@ -159,7 +159,7 @@ const QualityCheckView: React.FC = () => {
                         disabled={submitting}
                         className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl hover:bg-emerald-700 transition-all flex items-center gap-2 text-sm font-black shadow-lg shadow-emerald-100"
                       >
-                        {submitting ? <Loader2 className="animate-spin-slow" size={18}/> : <ClipboardCheck size={18}/>}
+                        {submitting ? <Loader2 className="animate-spin" size={18}/> : <ClipboardCheck size={18}/>}
                         Complete Inspection
                       </button>
                   </div>

@@ -874,7 +874,7 @@ const ItemMaster: React.FC = () => {
             {loading ? (
               <tr>
                 <td colSpan={6} className="py-24 text-center">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin-slow text-gray-300" />
+                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-gray-300" />
                   <p className="text-xs text-gray-400 mt-2">Loading...</p>
                 </td>
               </tr>

@@ -119,7 +119,7 @@ const NCRView: React.FC = () => {
             )}
 
             <div className="space-y-3">
-                {loading ? <div className="text-center py-4"><Loader2 className="animate-spin-slow inline"/></div> :
+                {loading ? <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div> :
                  filteredNCRs.length === 0 ? <p className="text-center text-slate-500 py-4">No open NCRs.</p> :
                  filteredNCRs.map(ncr => (
                     <div key={ncr.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50 hover:bg-white transition-colors">

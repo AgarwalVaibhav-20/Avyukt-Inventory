@@ -330,7 +330,7 @@ const SearchResultsPage: React.FC = () => {
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader className="h-8 w-8 animate-spin-slow text-blue-600" />
+            <Loader className="h-8 w-8 animate-spin text-blue-600" />
           </div>
         ) : error ? (
           <div className="flex items-center justify-center p-8 bg-red-50 border border-red-200 rounded-lg">

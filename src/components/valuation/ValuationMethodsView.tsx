@@ -83,7 +83,7 @@ const ValuationMethodsView: React.FC = () => {
 
         {loading ? (
           <div className="py-10 text-center text-slate-500">
-            <Loader2 className="mx-auto mb-3 animate-spin-slow text-blue-600" />
+            <Loader2 className="mx-auto mb-3 animate-spin text-blue-600" />
             Loading settings...
           </div>
         ) : (

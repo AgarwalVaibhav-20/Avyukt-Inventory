@@ -563,7 +563,7 @@ const DelegatedAccessSection: React.FC = () => {
               >
                 {requestLoading ? (
                   <>
-                    <Loader2 size={16} className="animate-spin-slow" />
+                    <Loader2 size={16} className="animate-spin" />
                     Sending...
                   </>
                 ) : (
@@ -588,14 +588,14 @@ const DelegatedAccessSection: React.FC = () => {
               disabled={receivedLoading}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <RefreshCw size={16} className={receivedLoading ? 'animate-spin-slow' : ''} />
+              <RefreshCw size={16} className={receivedLoading ? 'animate-spin' : ''} />
             </button>
           </div>
 
           <div className="divide-y divide-slate-200">
             {receivedLoading ? (
               <div className="p-8 text-center">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin-slow text-slate-400 mb-2" />
+                <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400 mb-2" />
                 <p className="text-sm text-slate-500">Loading requests...</p>
               </div>
             ) : receivedRequests.length === 0 ? (
@@ -634,7 +634,7 @@ const DelegatedAccessSection: React.FC = () => {
                           title="Approve"
                         >
                           {processingId === req._id ? (
-                            <Loader2 size={16} className="animate-spin-slow" />
+                            <Loader2 size={16} className="animate-spin" />
                           ) : (
                             <Check size={16} />
                           )}
@@ -646,7 +646,7 @@ const DelegatedAccessSection: React.FC = () => {
                           title="Reject"
                         >
                           {processingId === req._id ? (
-                            <Loader2 size={16} className="animate-spin-slow" />
+                            <Loader2 size={16} className="animate-spin" />
                           ) : (
                             <X size={16} />
                           )}
@@ -671,14 +671,14 @@ const DelegatedAccessSection: React.FC = () => {
               disabled={sentLoading}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <RefreshCw size={16} className={sentLoading ? 'animate-spin-slow' : ''} />
+              <RefreshCw size={16} className={sentLoading ? 'animate-spin' : ''} />
             </button>
           </div>
 
           <div className="divide-y divide-slate-200">
             {sentLoading ? (
               <div className="p-8 text-center">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin-slow text-slate-400 mb-2" />
+                <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400 mb-2" />
                 <p className="text-sm text-slate-500">Loading requests...</p>
               </div>
             ) : sentRequests.length === 0 ? (
@@ -727,14 +727,14 @@ const DelegatedAccessSection: React.FC = () => {
               disabled={approvedLoading}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
             >
-              <RefreshCw size={16} className={approvedLoading ? 'animate-spin-slow' : ''} />
+              <RefreshCw size={16} className={approvedLoading ? 'animate-spin' : ''} />
             </button>
           </div>
 
           <div className="divide-y divide-slate-200">
             {approvedLoading ? (
               <div className="p-8 text-center">
-                <Loader2 className="mx-auto h-5 w-5 animate-spin-slow text-slate-400 mb-2" />
+                <Loader2 className="mx-auto h-5 w-5 animate-spin text-slate-400 mb-2" />
                 <p className="text-sm text-slate-500">Loading access...</p>
               </div>
             ) : approvedAccess.length === 0 ? (
@@ -767,7 +767,7 @@ const DelegatedAccessSection: React.FC = () => {
                         title="Open this user's dashboard"
                       >
                         {openingId === access._id ? (
-                          <Loader2 size={14} className="animate-spin-slow" />
+                          <Loader2 size={14} className="animate-spin" />
                         ) : (
                           <LogIn size={14} />
                         )}
@@ -780,7 +780,7 @@ const DelegatedAccessSection: React.FC = () => {
                         title="Revoke Access"
                       >
                         {processingId === access._id ? (
-                          <Loader2 size={16} className="animate-spin-slow" />
+                          <Loader2 size={16} className="animate-spin" />
                         ) : (
                           <Trash2 size={16} />
                         )}

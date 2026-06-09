@@ -235,7 +235,7 @@ const StockReservationView: React.FC = () => {
                             disabled={actionLoading} 
                             className="bg-amber-600 text-white px-10 py-4 rounded-2xl font-black text-sm hover:bg-amber-700 shadow-xl shadow-amber-200/50 flex items-center gap-3 transition-all active:scale-95 disabled:opacity-50"
                         >
-                            {actionLoading ? <Loader2 className="animate-spin-slow" size={20}/> : <ShieldCheck size={20}/>}
+                            {actionLoading ? <Loader2 className="animate-spin" size={20}/> : <ShieldCheck size={20}/>}
                             {editingId ? 'Save Changes' : 'Confirm Reservation'}
                         </button>
                     </div>
@@ -301,7 +301,7 @@ const StockReservationView: React.FC = () => {
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-24">
-                    <Loader2 className="animate-spin-slow text-amber-600 mb-4" size={48}/>
+                    <Loader2 className="animate-spin text-amber-600 mb-4" size={48}/>
                     <p className="text-slate-400 font-black uppercase text-xs tracking-widest">Querying Reserved Ledger...</p>
                 </div>
             ) : filteredReservations.length === 0 ? (

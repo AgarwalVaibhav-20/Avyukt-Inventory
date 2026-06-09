@@ -164,7 +164,7 @@ const ClosingStockReportView: React.FC = () => {
               {loading ? (
                 <tr>
                   <td colSpan={5} className="py-10 text-center text-slate-500">
-                    <Loader2 className="mx-auto mb-3 animate-spin-slow text-indigo-600" />
+                    <Loader2 className="mx-auto mb-3 animate-spin text-indigo-600" />
                     Loading closing stock reports...
                   </td>
                 </tr>

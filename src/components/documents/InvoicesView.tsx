@@ -135,7 +135,7 @@ const InvoicesView: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={7} className="py-8 text-center"><Loader2 className="animate-spin-slow inline"/></td></tr> :
+                        {loading ? <tr><td colSpan={7} className="py-8 text-center"><Loader2 className="animate-spin inline"/></td></tr> :
                          filteredItems.length === 0 ? <tr><td colSpan={7} className="py-8 text-center text-slate-500">No invoices found.</td></tr> :
                          pagedItems.map(inv => (
                             <tr key={inv.id} className="hover:bg-slate-50">

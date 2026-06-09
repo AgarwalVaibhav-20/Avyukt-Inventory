@@ -420,7 +420,7 @@ const InventoryValuationWorkspace: React.FC<{ initialSection?: Section }> = ({ i
               {loading ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-10 text-center text-slate-500">
-                    <Loader2 className="mx-auto mb-2 animate-spin-slow" size={20} />
+                    <Loader2 className="mx-auto mb-2 animate-spin" size={20} />
                     Calculating valuation...
                   </td>
                 </tr>
@@ -553,7 +553,7 @@ const InventoryValuationWorkspace: React.FC<{ initialSection?: Section }> = ({ i
           </thead>
           <tbody className="divide-y divide-slate-100">
             {loading ? (
-              <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-500"><Loader2 className="mx-auto mb-2 animate-spin-slow" size={20} />Loading report...</td></tr>
+              <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-500"><Loader2 className="mx-auto mb-2 animate-spin" size={20} />Loading report...</td></tr>
             ) : closingRows.length === 0 ? (
               <tr><td colSpan={5} className="px-6 py-10 text-center text-slate-500">No closing stock reports match the selected filters.</td></tr>
             ) : (
@@ -622,7 +622,7 @@ const InventoryValuationWorkspace: React.FC<{ initialSection?: Section }> = ({ i
             }}
             className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-200 transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <RefreshCcw size={16} className={recalcStatus === "running" ? "animate-spin-slow" : ""} />
+            <RefreshCcw size={16} className={recalcStatus === "running" ? "animate-spin" : ""} />
             Run recalculation
           </button>
         </div>
@@ -765,7 +765,7 @@ const InventoryValuationWorkspace: React.FC<{ initialSection?: Section }> = ({ i
 
       {loading && (
         <div className="fixed bottom-6 right-6 rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-300">
-          <Loader2 className="mr-2 inline animate-spin-slow" size={16} />
+          <Loader2 className="mr-2 inline animate-spin" size={16} />
           Updating valuation data
         </div>
       )}

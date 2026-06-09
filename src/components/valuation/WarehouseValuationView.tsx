@@ -112,7 +112,7 @@ const WarehouseValuationView: React.FC = () => {
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="py-10 text-center text-slate-500">
-                      <Loader2 className="mx-auto mb-3 animate-spin-slow text-blue-600" />
+                      <Loader2 className="mx-auto mb-3 animate-spin text-blue-600" />
                       Loading warehouse valuation...
                     </td>
                   </tr>
@@ -158,7 +158,7 @@ const WarehouseValuationView: React.FC = () => {
           <div className="h-72">
             {loading ? (
               <div className="flex h-full items-center justify-center text-slate-500">
-                <Loader2 className="animate-spin-slow text-slate-400" />
+                <Loader2 className="animate-spin text-slate-400" />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">

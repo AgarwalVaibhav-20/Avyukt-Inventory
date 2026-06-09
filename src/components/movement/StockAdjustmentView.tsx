@@ -129,7 +129,7 @@ const StockAdjustmentView: React.FC = () => {
                  disabled={actionLoading}
                  className={`px-6 py-2 rounded-lg text-white text-sm font-medium flex items-center gap-2 ${isDeduction ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                >
-                 {actionLoading ? <Loader2 className="animate-spin-slow" size={16}/> : <AlertOctagon size={16}/>}
+                 {actionLoading ? <Loader2 className="animate-spin" size={16}/> : <AlertOctagon size={16}/>}
                  Confirm Adjustment
                </button>
            </div>

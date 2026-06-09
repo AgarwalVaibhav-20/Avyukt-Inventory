@@ -102,7 +102,7 @@ const PutAwayView: React.FC = () => {
       {/* Tasks Grid */}
       {loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-100">
-             <Loader2 className="animate-spin-slow text-blue-600 mb-4" size={40}/>
+             <Loader2 className="animate-spin text-blue-600 mb-4" size={40}/>
              <p className="text-slate-500 font-bold">Synchronizing put-away queue...</p>
           </div>
       ) : filteredTasks.length === 0 ? (
@@ -150,7 +150,7 @@ const PutAwayView: React.FC = () => {
                                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Storage Bin</label>
                                       {loadingBins ? (
                                           <div className="h-10 flex items-center justify-center bg-slate-50 rounded-xl border-2 border-slate-100">
-                                              <Loader2 size={16} className="animate-spin-slow text-blue-500 mr-2"/>
+                                              <Loader2 size={16} className="animate-spin text-blue-500 mr-2"/>
                                               <span className="text-xs text-slate-400 font-bold">Loading available bins...</span>
                                           </div>
                                       ) : (
@@ -171,7 +171,7 @@ const PutAwayView: React.FC = () => {
                                           disabled={completingId === task.id || !location}
                                           className="flex-1 bg-emerald-600 text-white text-xs font-black py-2.5 rounded-xl hover:bg-emerald-700 disabled:bg-slate-200 disabled:shadow-none flex justify-center items-center gap-2 shadow-lg shadow-emerald-100 transition-all active:scale-95"
                                       >
-                                          {completingId === task.id ? <Loader2 size={16} className="animate-spin-slow"/> : <CheckCircle size={16}/>}
+                                          {completingId === task.id ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle size={16}/>}
                                           Confirm Placement
                                       </button>
                                       <button 

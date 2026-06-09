@@ -71,7 +71,7 @@ const PhysicalVerificationView: React.FC<PhysicalVerificationViewProps> = ({ ses
       onBack();
   };
 
-  if (loading) return <div className="text-center py-8"><Loader2 className="animate-spin-slow inline mr-2"/> Loading Session...</div>;
+  if (loading) return <div className="text-center py-8"><Loader2 className="animate-spin inline mr-2"/> Loading Session...</div>;
   if (!session) return (
     <div className="text-center py-12 bg-white rounded-xl border border-slate-200 shadow-sm">
       <AlertTriangle className="mx-auto text-amber-500 mb-4" size={48}/>
@@ -103,7 +103,7 @@ const PhysicalVerificationView: React.FC<PhysicalVerificationViewProps> = ({ ses
                         disabled={finishing}
                         className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-2"
                     >
-                        {finishing ? <Loader2 className="animate-spin-slow" size={16}/> : <CheckCircle size={16}/>}
+                        {finishing ? <Loader2 className="animate-spin" size={16}/> : <CheckCircle size={16}/>}
                         Finalize & Adjust Stock
                     </button>
                 )}
@@ -173,7 +173,7 @@ const PhysicalVerificationView: React.FC<PhysicalVerificationViewProps> = ({ ses
                                                 title="Save physical count to backend"
                                             >
                                                 {savingItemId === item.itemId ? (
-                                                    <Loader2 size={16} className="animate-spin-slow"/>
+                                                    <Loader2 size={16} className="animate-spin"/>
                                                 ) : savedItemIds[item.itemId] || item.status === 'Counted' ? (
                                                     <CheckCircle size={16} className="text-green-600"/>
                                                 ) : (

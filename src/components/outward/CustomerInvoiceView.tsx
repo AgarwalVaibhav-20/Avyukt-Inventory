@@ -141,7 +141,7 @@ const CustomerInvoiceView: React.FC = () => {
                     <td colSpan={6} className="py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <Loader2
-                          className="animate-spin-slow text-blue-600 mb-2"
+                          className="animate-spin text-blue-600 mb-2"
                           size={32}
                         />
                         <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
@@ -235,7 +235,7 @@ const CustomerInvoiceView: React.FC = () => {
                                 disabled={updatingId === map.id}
                               />
                               {updatingId === map.id ? (
-                                <Loader2 size={18} className="animate-spin-slow" />
+                                <Loader2 size={18} className="animate-spin" />
                               ) : (
                                 <FileUp size={18} />
                               )}

@@ -185,7 +185,7 @@ const BatchTrackingView: React.FC = () => {
                                 disabled={actionLoading} 
                                 className="bg-purple-600 text-white px-10 py-4 rounded-2xl hover:bg-purple-700 transition-all shadow-xl shadow-purple-100 font-black text-xs uppercase tracking-widest disabled:opacity-60 active:scale-95"
                             >
-                                {actionLoading ? <Loader2 className="animate-spin-slow" size={18}/> : 'Initialize Batch Record'}
+                                {actionLoading ? <Loader2 className="animate-spin" size={18}/> : 'Initialize Batch Record'}
                             </button>
                         </div>
                     </div>
@@ -239,7 +239,7 @@ const BatchTrackingView: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {loading && batches.length === 0 ? (
                                 <div className="col-span-full py-40 text-center">
-                                    <div className="w-16 h-16 border-4 border-purple-50 border-t-purple-600 rounded-full animate-spin-slow mx-auto mb-6"></div>
+                                    <div className="w-16 h-16 border-4 border-purple-50 border-t-purple-600 rounded-full animate-spin mx-auto mb-6"></div>
                                     <p className="text-slate-400 font-black uppercase tracking-[0.3em] text-[10px]">Scanning Cryptographic Ledger...</p>
                                 </div>
                             ) : filteredBatches.length === 0 ? (
