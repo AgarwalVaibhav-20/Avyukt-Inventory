@@ -125,5 +125,15 @@ export const authService = {
       localStorage.setItem('user', JSON.stringify(response.data.user));
     }
     return response.data;
+  },
+
+  getCrmLinkedUsers: async () => {
+    const response = await api.get('/auth/crm-linked-users');
+    return response.data;
+  },
+
+  removeCrmLinkedUser: async (userId: string) => {
+    const response = await api.delete(`/auth/crm-linked-users/${userId}`);
+    return response.data;
   }
 };

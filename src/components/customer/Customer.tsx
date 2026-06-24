@@ -759,18 +759,18 @@ export default function CustomerPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3.5"><StatusBadge status={c.status}/></td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-2 py-3.5 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <button onClick={()=>setProfileCustomer(c)}
                               className="p-1.5 rounded-lg hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition-colors" title="View">
-                              <Eye size={15}/>
+                              <Eye size={16}/>
                             </button>
                             <button className="p-1.5 rounded-lg hover:bg-amber-100 text-gray-400 hover:text-amber-600 transition-colors" title="Edit">
-                              <Edit2 size={15}/>
+                              <Edit2 size={16}/>
                             </button>
                             <button onClick={()=>deleteCustomer(c)}
                               className="p-1.5 rounded-lg hover:bg-red-100 text-gray-400 hover:text-red-600 transition-colors" title="Delete">
-                              <Trash2 size={15}/>
+                              <Trash2 size={16}/>
                             </button>
                           </div>
                         </td>

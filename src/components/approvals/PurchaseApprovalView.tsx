@@ -187,7 +187,7 @@ const PurchaseApprovalView: React.FC = () => {
                     className="w-full appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-medium text-slate-700 shadow-sm outline-none transition-all focus:border-indigo-500/40 focus:ring-4 focus:ring-indigo-500/10"
                   >
                     <option value="all">All statuses</option>
-                    <option value="Pending">Pending</option>
+                    <option value="Pending Approval">Pending Approval</option>
                     <option value="Approved">Approved</option>
                     <option value="Rejected">Rejected</option>
                   </select>

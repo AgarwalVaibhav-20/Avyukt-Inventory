@@ -71,6 +71,7 @@ const mapLedgerEntry = (entry: any): StockLedgerEntry => ({
       ? -Math.abs(Number(entry.quantity ?? entry.qty ?? 0))
       : Math.abs(Number(entry.quantity ?? entry.qty ?? 0)),
   runningBalance: Number(entry.balanceAfter ?? entry.balance ?? 0),
+  cost: Number(entry.unitPrice ?? 0),
   sku:
     typeof entry.productId === 'object'
       ? entry.productId?.sku || ''

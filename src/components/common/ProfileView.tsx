@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfile, fetchProfile } from "@/store/slices/authSlice";
+import { authService } from "@/services/authService";
 import { 
   User, 
   Mail, 
@@ -14,7 +15,9 @@ import {
   AlertCircle,
   Copy,
   CheckCircle2,
-  Link2
+  Link2,
+  Users,
+  Trash2
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -37,6 +40,10 @@ const ProfileView: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [copiedInventoryOrgId, setCopiedInventoryOrgId] = useState(false);
+  const [linkedUsers, setLinkedUsers] = useState<any[]>([]);
+  const [linkedUsersLoading, setLinkedUsersLoading] = useState(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
+  const [linkedUsersCount, setLinkedUsersCount] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -53,6 +60,31 @@ const ProfileView: React.FC = () => {
       setImagePreview(user.profileImage || null);
     }
   }, [user]);
+
+  const fetchLinkedUsers = useCallback(async () => {
+    if (!formData.linkedCrmOrganisationId) {
+      setLinkedUsers([]);
+      setLinkedUsersCount(0);
+      return;
+    }
+    setLinkedUsersLoading(true);
+    try {
+      const data = await authService.getCrmLinkedUsers();
+      setLinkedUsers(data.users || []);
+      setLinkedUsersCount((data.users || []).length);
+    } catch {
+      setLinkedUsers([]);
+      setLinkedUsersCount(0);
+    } finally {
+      setLinkedUsersLoading(false);
+    }
+  }, [formData.linkedCrmOrganisationId]);
+
+  useEffect(() => {
+    if (formData.linkedCrmOrganisationId) {
+      fetchLinkedUsers();
+    }
+  }, [formData.linkedCrmOrganisationId, fetchLinkedUsers]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -93,11 +125,26 @@ const ProfileView: React.FC = () => {
       if (updateProfile.fulfilled.match(resultAction)) {
         toast.success("Profile updated successfully!");
         setSelectedFile(null);
+        fetchLinkedUsers();
       } else {
         toast.error(resultAction.payload as string || "Failed to update profile");
       }
     } catch (error) {
       toast.error("An unexpected error occurred");
+    }
+  };
+
+  const handleRemoveLinkedUser = async (userId: string) => {
+    setRemovingUserId(userId);
+    try {
+      await authService.removeCrmLinkedUser(userId);
+      setLinkedUsers((prev) => prev.filter((u) => u._id !== userId));
+      setLinkedUsersCount((prev) => prev - 1);
+      toast.success("CRM link removed");
+    } catch {
+      toast.error("Failed to remove CRM link");
+    } finally {
+      setRemovingUserId(null);
     }
   };
 
@@ -191,6 +238,11 @@ const ProfileView: React.FC = () => {
                 <p className="text-xs text-blue-700 mt-1">
                   {formData.linkedCrmOrganisationId ? "CRM organization linked" : "Paste CRM organization ID to connect"}
                 </p>
+                {linkedUsersCount > 0 && (
+                  <p className="text-xs text-blue-600 mt-1 font-medium flex items-center gap-1">
+                    <Users size={12} /> {linkedUsersCount} other user{linkedUsersCount > 1 ? 's' : ''} connected
+                  </p>
+                )}
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <p className="text-[10px] font-bold text-slate-400 uppercase">Joined On</p>
@@ -291,6 +343,50 @@ const ProfileView: React.FC = () => {
                 <p className="text-xs text-slate-500 ml-1">
                   Paste the CRM organisation ID from CRM profile so CRM sync data lands in this Inventory organization.
                 </p>
+
+                {formData.linkedCrmOrganisationId && (
+                  <div className="mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-bold text-amber-700 uppercase flex items-center gap-1.5">
+                        <Users size={13} /> Linked Users
+                      </p>
+                      {linkedUsersLoading && <Loader2 size={13} className="animate-spin text-amber-500" />}
+                      {!linkedUsersLoading && linkedUsersCount > 0 && (
+                        <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">
+                          {linkedUsersCount}
+                        </span>
+                      )}
+                    </div>
+                    {linkedUsers.length === 0 && !linkedUsersLoading && (
+                      <p className="text-xs text-amber-600">You are the only user connected to this CRM organisation.</p>
+                    )}
+                    {linkedUsers.length > 0 && (
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                        {linkedUsers.map((lu) => (
+                          <div key={lu._id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium text-slate-700 truncate">{lu.fullname || lu.email}</p>
+                              <p className="text-[10px] text-slate-400 truncate">{lu.email}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveLinkedUser(lu._id)}
+                              disabled={removingUserId === lu._id}
+                              className="ml-2 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                              title="Remove CRM link from this user"
+                            >
+                              {removingUserId === lu._id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={14} />
+                              )}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
