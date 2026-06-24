@@ -33,7 +33,7 @@ interface MasterCrudProps {
   title: string;
   description: string;
   columns: ColumnDef[];
-  type: string; // e.g. 'category', 'uom', 'brand', 'hsn'
+  type?: string; // e.g. 'category', 'uom', 'brand', 'hsn'
   fetchData?: (orgId?: string) => Promise<any[]>;
   addData?: (data: any) => Promise<any>;
   updateData?: (id: string, data: any) => Promise<any>;
@@ -75,7 +75,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
   const organisationId =
     user?.organisationId || localStorage.getItem("organisationId");
 
-  const data = Array.isArray(reduxData[type])
+  const data = type && Array.isArray(reduxData[type])
     ? reduxData[type]
     : Array.isArray(localData)
       ? localData
@@ -165,7 +165,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     });
 
     try {
-      if (type && !addData) {
+      if (type && !addData && type) {
         await dispatch(addMasterData({ ...formattedData, type })).unwrap();
       } else if (addData) {
         console.log("Saving data:", formattedData);
@@ -230,7 +230,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     });
 
     try {
-      if (type && !updateData) {
+      if (type && !updateData && type) {
         await dispatch(
           updateMasterData({ id: editingId, payload: formattedData }),
         ).unwrap();
@@ -268,7 +268,7 @@ const MasterCrud: React.FC<MasterCrudProps> = ({
     if (!deleteTargetId) return;
     setIsDeleting(true);
     try {
-      if (type && !deleteData) {
+      if (type && !deleteData && type) {
         await dispatch(
           deleteMasterData({ id: deleteTargetId, organisationId: organisationId!, type }),
         ).unwrap();

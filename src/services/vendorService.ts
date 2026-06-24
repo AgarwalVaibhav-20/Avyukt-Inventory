@@ -90,7 +90,7 @@ export const vendorService = {
     return unwrap<any>(response).map(toFrontendPriceEntry);
   },
 
-  saveVendorItemMap: async (data: Omit<VendorItemMap, 'id' | 'lastUpdated'>): Promise<VendorItemMap> => {
+  saveVendorItemMap: async (data: Partial<VendorItemMap> & Pick<VendorItemMap, 'vendorId' | 'vendorName' | 'itemId' | 'itemName' | 'sku' | 'price' | 'currency' | 'leadTimeDays'>): Promise<VendorItemMap> => {
     const payload = {
       item: data.itemName,
       itemId: data.itemId,

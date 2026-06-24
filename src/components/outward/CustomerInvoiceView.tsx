@@ -264,7 +264,6 @@ const CustomerInvoiceView: React.FC = () => {
       <Dialog
         open={isLinkModalOpen}
         onOpenChange={setIsLinkModalOpen}
-        className="border-2 border-slate-200 shadow-sm"
       >
         <DialogContent className="sm:max-w-[425px] bg-white border border-slate-200 shadow-sm p-6">
           <DialogHeader>

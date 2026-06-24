@@ -245,7 +245,7 @@ const SalesReturnMgmtView: React.FC = () => {
   };
 
   const handleOpenQcModal = (ret: SalesReturn) => {
-    const item = ret.items[0] || { quantity: 1 };
+    const item: any = ret.items[0] || { quantity: 1 };
     const quantity = Number(item.quantity || item.returnQty || 1);
     const serials = Array.isArray(item.serialNumbers) ? item.serialNumbers : [];
     setShowQcModal(ret);

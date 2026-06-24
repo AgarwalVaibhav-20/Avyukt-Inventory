@@ -137,7 +137,7 @@ export const procurementService = {
       rating: v.rating || v.vendorRating || 0,
     }));
   },
-  addVendor: async (data: Omit<Vendor, 'id'>) => {
+  addVendor: async (data: Omit<Vendor, 'id' | 'rating'>) => {
     const response = await api.post('/purchase/vendors', {
       vendorName: data.name,
       vendorCode: data.code,
