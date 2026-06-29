@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
 import { warehouseService } from '@/services/warehouseService';
 import { StockTransfer } from '@/types';
-import { ArrowRightLeft, CheckCircle, XCircle, Loader2, MapPin, Search } from 'lucide-react';
+import { getAndClearNotifications } from '@/services/workflowEngine';
+import { ArrowRightLeft, CheckCircle, XCircle, Loader2, MapPin, Search, Zap } from 'lucide-react';
 
 const TransferApprovalView: React.FC = () => {
   const [transfers, setTransfers] = useState<StockTransfer[]>([]);
@@ -10,6 +11,7 @@ const TransferApprovalView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [wfNotifications, setWfNotifications] = useState<{ id: string; message: string }[]>([]);
 
   useEffect(() => {
     loadData();
@@ -28,6 +30,11 @@ const TransferApprovalView: React.FC = () => {
     setWarehouseNames(wMap);
     
     setLoading(false);
+    const notifications = getAndClearNotifications();
+    if (notifications.length > 0) {
+      setWfNotifications(notifications.map((n) => ({ id: n.id, message: n.message })));
+      setTimeout(() => setWfNotifications([]), 5000);
+    }
   };
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
@@ -64,6 +71,17 @@ const TransferApprovalView: React.FC = () => {
                     <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search transfer, warehouse, item..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm md:w-80" />
                 </div>
             </div>
+
+            {wfNotifications.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {wfNotifications.map((n) => (
+                  <div key={n.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <Zap size={14} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                    {n.message}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
              filteredTransfers.length === 0 ? <p className="text-slate-500 text-center py-8">No active transfer requests.</p> :

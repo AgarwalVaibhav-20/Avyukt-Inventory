@@ -345,7 +345,11 @@ const SEED_DATA = {
       { id: 'cf1', module: 'Item', fieldName: 'Material Certification', fieldType: 'Text', required: false }
   ] as CustomField[],
   workflowRules: [
-      { id: 'wf1', name: 'High Value PO Approval', module: 'Purchase', triggerEvent: 'Create', condition: 'Amount > 10000', action: 'Notification', active: true }
+      { id: 'wf1', name: 'High Value PO', module: 'Purchase', triggerEvent: 'Create', condition: 'Amount > 10000', action: 'Notification', active: true },
+      { id: 'wf2', name: 'Small GRN Auto-Approve', module: 'Stock', triggerEvent: 'Create', condition: 'Amount < 5', action: 'Auto-Approve', active: true },
+      { id: 'wf3', name: 'Large Transfer Notification', module: 'Stock', triggerEvent: 'Create', condition: 'Amount > 20', action: 'Notification', active: true },
+      { id: 'wf4', name: 'Adjustment Alert', module: 'Stock', triggerEvent: 'Approve', condition: 'Amount > 50', action: 'Notification', active: true },
+      { id: 'wf5', name: 'High Value PR Notification', module: 'Purchase', triggerEvent: 'Create', condition: 'Amount > 50000', action: 'Email', active: true }
   ] as WorkflowRule[],
   auditSessions: [
       { id: 'aud1', reference: 'AUD-2023-001', type: 'Full', status: 'Completed', startDate: '2023-10-01', completionDate: '2023-10-02', warehouseId: 'w1', warehouseName: 'Central Hub - NY', auditor: 'John Doe', progress: 100, items: [] }

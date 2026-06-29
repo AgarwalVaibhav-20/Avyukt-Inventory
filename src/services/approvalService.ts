@@ -1,6 +1,7 @@
 import { mockDb } from './mockDb';
 import api from './api';
 import { PurchaseOrder, GRN, StockAdjustment, StockTransfer, PurchaseReturn, SalesReturn, PutAwayTask, PurchaseRequisition } from '@/types';
+import { shouldAutoApprove, fireNotifications } from './workflowEngine';
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -58,16 +59,46 @@ const toFrontendSalesReturn = (item: any): SalesReturn => ({
   status: item.status || 'Pending',
 });
 
+type ApprovalKind =
+  | 'Purchase Requisition'
+  | 'Purchase Order'
+  | 'GRN'
+  | 'Stock Adjustment'
+  | 'Stock Transfer'
+  | 'Purchase Return'
+  | 'Sales Return';
+
+async function filterAutoApproved<T extends Record<string, unknown>>(
+  items: T[],
+  kind: ApprovalKind,
+  approveFn: (id: string) => Promise<void>,
+): Promise<T[]> {
+  const remaining: T[] = [];
+  for (const item of items) {
+    if (await shouldAutoApprove(item, kind)) {
+      try {
+        await approveFn(item.id as string);
+        console.log(`⚡ Auto-approved ${kind} #${item.id}`);
+      } catch (e) {
+        console.warn(`⚠️ Auto-approve failed for ${kind} #${item.id}`, e);
+        remaining.push(item);
+      }
+    } else {
+      remaining.push(item);
+    }
+  }
+  return remaining;
+}
+
 export const approvalService = {
   // --- Purchase Requisitions (PR) ---
   getPendingPRs: async (): Promise<PurchaseRequisition[]> => {
-    // Attempt real API if available, fallback to mock logic for PRs
     try {
       console.log("🌐 Fetching pending PRs from API...");
       const response = await api.get('/purchase/requisitions/pending');
       const data = response.data.data ?? [];
-      console.log(`�... API Success: Found ${data.length} pending PRs`);
-      return data.map((pr: any) => ({
+      console.log(`API Success: Found ${data.length} pending PRs`);
+      let items = data.map((pr: any) => ({
         ...pr,
         id: String(pr._id || pr.id || ''),
         items: (pr.items || []).map((item: any) => ({
@@ -77,11 +108,14 @@ export const approvalService = {
             estimatedPrice: Number(item.unitPrice || item.estimatedPrice || 0)
         }))
       }));
+      items = await filterAutoApproved(items, 'Purchase Requisition', (id) => approvalService.approvePR(id));
+      return items;
     } catch (e: any) {
       console.error("❌ API Error fetching pending PRs:", e.response?.data || e.message);
       await delay(200);
-      const mockData = mockDb.getPRs().filter(p => p.status === 'Pending Approval');
+      let mockData = mockDb.getPRs().filter(p => p.status === 'Pending Approval');
       console.log(`⚠️ Falling back to mock data: ${mockData.length} items`);
+      mockData = await filterAutoApproved(mockData, 'Purchase Requisition', (id) => approvalService.approvePR(id));
       return mockData;
     }
   },
@@ -98,6 +132,9 @@ export const approvalService = {
           mockDb.savePRs(prs);
       }
     }
+    const prs = mockDb.getPRs();
+    const pr = prs.find(p => p.id === id);
+    if (pr) fireNotifications('Update', pr as any, 'Purchase Requisition');
   },
 
   rejectPR: async (id: string): Promise<void> => {
@@ -112,6 +149,9 @@ export const approvalService = {
           mockDb.savePRs(prs);
       }
     }
+    const prs = mockDb.getPRs();
+    const pr = prs.find(p => p.id === id);
+    if (pr) fireNotifications('Update', pr as any, 'Purchase Requisition');
   },
 
   // --- Purchase Orders ---
@@ -121,7 +161,7 @@ export const approvalService = {
         params: { status: 'Pending', limit: 1000 }
       });
       const data = response.data.purchaseOrders ?? response.data.data ?? [];
-      return data.map((po: any) => ({
+      let items = data.map((po: any) => ({
         ...po,
         id: String(po._id || po.id || ''),
         items: (po.productLines || []).map((line: any) => ({
@@ -132,11 +172,15 @@ export const approvalService = {
           receivedQty: Number(line.receivedQuantity || 0),
         })),
       }));
+      items = await filterAutoApproved(items, 'Purchase Order', (id) => approvalService.approvePO(id));
+      return items;
     } catch (e) {
       await delay(200);
-      return mockDb.getPOs().filter(
+      let mockData = mockDb.getPOs().filter(
         p => p.status === 'Draft' || p.status === 'Pending Approval' || p.status === 'Pending'
       );
+      mockData = await filterAutoApproved(mockData, 'Purchase Order', (id) => approvalService.approvePO(id));
+      return mockData;
     }
   },
 
@@ -152,6 +196,9 @@ export const approvalService = {
           mockDb.savePOs(pos);
       }
     }
+    const pos = mockDb.getPOs();
+    const po = pos.find(p => p.id === id);
+    if (po) fireNotifications('Update', po as any, 'Purchase Order');
   },
 
   rejectPO: async (id: string): Promise<void> => {
@@ -166,6 +213,9 @@ export const approvalService = {
           mockDb.savePOs(pos);
       }
     }
+    const pos = mockDb.getPOs();
+    const po = pos.find(p => p.id === id);
+    if (po) fireNotifications('Update', po as any, 'Purchase Order');
   },
 
   // --- GRN (Goods Receipt Note) ---
@@ -174,10 +224,14 @@ export const approvalService = {
       const response = await api.get('/api/inward/grns/for-approval', {
         params: { limit: 1000 }
       });
-      return (response.data.data ?? []).map(toFrontendGRN);
+      let items = (response.data.data ?? []).map(toFrontendGRN);
+      items = await filterAutoApproved(items, 'GRN', (id) => approvalService.approveGRN(id));
+      return items;
     } catch (e) {
       await delay(200);
-      return mockDb.getGRNs().filter(g => g.status === 'QC Completed');
+      let mockData = mockDb.getGRNs().filter(g => g.status === 'QC Completed');
+      mockData = await filterAutoApproved(mockData, 'GRN', (id) => approvalService.approveGRN(id));
+      return mockData;
     }
   },
 
@@ -193,6 +247,9 @@ export const approvalService = {
           mockDb.saveGRNs(grns);
       }
     }
+    const grns = mockDb.getGRNs();
+    const grn = grns.find(g => g.id === id);
+    if (grn) fireNotifications('Approve', grn as any, 'GRN');
   },
 
   rejectGRN: async (id: string): Promise<void> => {
@@ -207,6 +264,9 @@ export const approvalService = {
           mockDb.saveGRNs(grns);
       }
     }
+    const grns = mockDb.getGRNs();
+    const grn = grns.find(g => g.id === id);
+    if (grn) fireNotifications('Update', grn as any, 'GRN');
   },
 
   // --- Stock Adjustments ---
@@ -216,7 +276,7 @@ export const approvalService = {
         params: { status: 'Pending', page: 1, limit: 200 },
       });
       const data = response.data.data ?? [];
-      return data.map((adjustment: any) => {
+      let items = data.map((adjustment: any) => {
         const delta = Number(adjustment.delta || 0);
         const quantity = Math.abs(delta || adjustment.quantity || adjustment.adjustedQty || 0);
         return {
@@ -235,9 +295,13 @@ export const approvalService = {
           status: adjustment.status || 'Pending',
         };
       });
+      items = await filterAutoApproved(items, 'Stock Adjustment', (id) => approvalService.approveAdjustment(id));
+      return items;
     } catch (e) {
       await delay(200);
-      return mockDb.getAdjustments().filter(a => a.status === 'Pending');
+      let mockData = mockDb.getAdjustments().filter(a => a.status === 'Pending');
+      mockData = await filterAutoApproved(mockData, 'Stock Adjustment', (id) => approvalService.approveAdjustment(id));
+      return mockData;
     }
   },
 
@@ -254,7 +318,6 @@ export const approvalService = {
         adjustments[idx].status = 'Approved';
         mockDb.saveAdjustments(adjustments);
 
-        // Update Actual Stock Here (Moved logic from creation to approval for 'Pending' items)
         const adj = adjustments[idx];
         const items = mockDb.getItems();
         const itemIdx = items.findIndex(i => i.id === adj.itemId);
@@ -268,6 +331,9 @@ export const approvalService = {
             mockDb.saveItems(items);
         }
     }
+    const adjustments2 = mockDb.getAdjustments();
+    const adj2 = adjustments2.find(a => a.id === id);
+    if (adj2) fireNotifications('Approve', adj2 as any, 'Stock Adjustment');
   },
 
   rejectAdjustment: async (id: string): Promise<void> => {
@@ -283,6 +349,8 @@ export const approvalService = {
         adjustments[idx].status = 'Rejected';
         mockDb.saveAdjustments(adjustments);
     }
+    const adj = mockDb.getAdjustments().find(a => a.id === id);
+    if (adj) fireNotifications('Update', adj as any, 'Stock Adjustment');
   },
 
   // --- Stock Transfers ---
@@ -308,7 +376,8 @@ export const approvalService = {
         date: new Date(transfer.createdAt).toISOString().split("T")[0],
         referenceNo: transfer.ref || `TRF-${String(transfer._id).slice(-6).toUpperCase()}`,
       }));
-      return transfers.filter((t: StockTransfer) => t.status === 'Pending');
+      const filtered = transfers.filter((t: StockTransfer) => t.status === 'Pending');
+      return await filterAutoApproved(filtered, 'Stock Transfer', (id) => approvalService.approveTransfer(id));
     } catch (e) {
       console.error("Failed to fetch pending transfers", e);
       return [];
@@ -317,10 +386,12 @@ export const approvalService = {
 
   approveTransfer: async (id: string): Promise<void> => {
     await api.put(`/api/transfer/complete/${id}`);
+    fireNotifications('Approve', { id } as any, 'Stock Transfer');
   },
 
   rejectTransfer: async (id: string): Promise<void> => {
     await api.put(`/api/transfer/cancel/${id}`);
+    fireNotifications('Update', { id } as any, 'Stock Transfer');
   },
 
   // --- Returns (Purchase & Sales) ---
@@ -330,12 +401,16 @@ export const approvalService = {
         params: { limit: 1000 },
       });
       const data = response.data.data ?? [];
-      return data
+      let items = data
         .map(toFrontendPurchaseReturn)
         .filter((ret) => ret.status === 'Draft' || ret.status === 'Pending Approval' || ret.status === 'Pending');
+      items = await filterAutoApproved(items, 'Purchase Return', (id) => approvalService.approvePurchaseReturn(id));
+      return items;
     } catch (e) {
       await delay(200);
-      return mockDb.getPurchaseReturns().filter(r => r.status === 'Draft' || r.status === 'Pending Approval');
+      let mockData = mockDb.getPurchaseReturns().filter(r => r.status === 'Draft' || r.status === 'Pending Approval');
+      mockData = await filterAutoApproved(mockData, 'Purchase Return', (id) => approvalService.approvePurchaseReturn(id));
+      return mockData;
     }
   },
 
@@ -352,6 +427,8 @@ export const approvalService = {
         returns[idx].status = 'Sent';
         mockDb.savePurchaseReturns(returns);
     }
+    const ret = mockDb.getPurchaseReturns().find(r => r.id === id);
+    if (ret) fireNotifications('Approve', ret as any, 'Purchase Return');
   },
 
   rejectPurchaseReturn: async (id: string): Promise<void> => {
@@ -367,6 +444,8 @@ export const approvalService = {
         returns[idx].status = 'Rejected';
         mockDb.savePurchaseReturns(returns);
     }
+    const ret = mockDb.getPurchaseReturns().find(r => r.id === id);
+    if (ret) fireNotifications('Update', ret as any, 'Purchase Return');
   },
 
   getPendingSalesReturns: async (): Promise<SalesReturn[]> => {
@@ -375,12 +454,16 @@ export const approvalService = {
         params: { limit: 1000 },
       });
       const data = response.data.data ?? [];
-      return data
+      let items = data
         .map(toFrontendSalesReturn)
         .filter((ret) => ret.status === 'Received' || ret.status === 'Pending Approval' || ret.status === 'Pending');
+      items = await filterAutoApproved(items, 'Sales Return', (id) => approvalService.approveSalesReturn(id));
+      return items;
     } catch (e) {
       await delay(200);
-      return mockDb.getSalesReturns().filter(r => r.status === 'Received' || r.status === 'Pending Approval');
+      let mockData = mockDb.getSalesReturns().filter(r => r.status === 'Received' || r.status === 'Pending Approval');
+      mockData = await filterAutoApproved(mockData, 'Sales Return', (id) => approvalService.approveSalesReturn(id));
+      return mockData;
     }
   },
 
@@ -397,6 +480,8 @@ export const approvalService = {
         returns[idx].status = 'Processed';
         mockDb.saveSalesReturns(returns);
     }
+    const ret = mockDb.getSalesReturns().find(r => r.id === id);
+    if (ret) fireNotifications('Approve', ret as any, 'Sales Return');
   },
 
   rejectSalesReturn: async (id: string): Promise<void> => {
@@ -412,5 +497,7 @@ export const approvalService = {
         returns[idx].status = 'Rejected';
         mockDb.saveSalesReturns(returns);
     }
+    const ret = mockDb.getSalesReturns().find(r => r.id === id);
+    if (ret) fireNotifications('Update', ret as any, 'Sales Return');
   }
 };

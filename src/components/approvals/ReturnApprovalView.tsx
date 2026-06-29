@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
 import { PurchaseReturn, SalesReturn } from '@/types';
-import { CheckCircle, XCircle, Loader2, Search } from 'lucide-react';
+import { getAndClearNotifications } from '@/services/workflowEngine';
+import { CheckCircle, XCircle, Loader2, Search, Zap } from 'lucide-react';
 
 const ReturnApprovalView: React.FC = () => {
   const [purchaseReturns, setPurchaseReturns] = useState<PurchaseReturn[]>([]);
@@ -10,6 +11,7 @@ const ReturnApprovalView: React.FC = () => {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [tab, setTab] = useState<'purchase' | 'sales'>('purchase');
   const [searchTerm, setSearchTerm] = useState('');
+  const [wfNotifications, setWfNotifications] = useState<{ id: string; message: string }[]>([]);
 
   useEffect(() => {
     loadData();
@@ -24,6 +26,11 @@ const ReturnApprovalView: React.FC = () => {
     setPurchaseReturns(pData);
     setSalesReturns(sData);
     setLoading(false);
+    const notifications = getAndClearNotifications();
+    if (notifications.length > 0) {
+      setWfNotifications(notifications.map((n) => ({ id: n.id, message: n.message })));
+      setTimeout(() => setWfNotifications([]), 5000);
+    }
   };
 
   const handleAction = async (id: string, type: 'purchase' | 'sales', action: 'approve' | 'reject') => {
@@ -76,6 +83,18 @@ const ReturnApprovalView: React.FC = () => {
                         <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search return, party, item..." className="w-full rounded-lg border py-2 pl-9 pr-4 text-sm" />
                     </div>
                 </div>
+
+                {wfNotifications.length > 0 && (
+                  <div className="mb-4 space-y-2">
+                    {wfNotifications.map((n) => (
+                      <div key={n.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        <Zap size={14} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                        {n.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {loading ? <div className="text-center py-4"><Loader2 className="animate-spin inline"/></div> :
                  filteredReturns.length === 0 ? <p className="text-center text-slate-500 py-4">No pending approvals.</p> :
                  <div className="space-y-4">

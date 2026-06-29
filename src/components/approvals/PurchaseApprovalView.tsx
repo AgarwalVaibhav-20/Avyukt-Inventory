@@ -17,6 +17,7 @@ import {
   Clock,
   Building2,
   IndianRupee,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Pagination from '@/components/common/Pagination';
 import { useListControls } from '@/hooks/useListControls';
+import { getAndClearNotifications } from '@/services/workflowEngine';
 
 const PurchaseApprovalView: React.FC = () => {
   const [activeTab, setActiveTab] = useState('requisitions');
@@ -31,6 +33,7 @@ const PurchaseApprovalView: React.FC = () => {
   const [pos, setPOs] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [wfNotifications, setWfNotifications] = useState<{ id: string; message: string }[]>([]);
   const [prSearch, setPRSearch] = useState('');
   const [poSearch, setPOSearch] = useState('');
   const [prFilters, setPRFilters] = useState({ status: 'all', sortOrder: 'newest' });
@@ -50,6 +53,11 @@ const PurchaseApprovalView: React.FC = () => {
       const poData = await approvalService.getPendingPOs();
       setPRs(prData);
       setPOs(poData);
+      const notifications = getAndClearNotifications();
+      if (notifications.length > 0) {
+        setWfNotifications(notifications.map((n) => ({ id: n.id, message: n.message })));
+        setTimeout(() => setWfNotifications([]), 5000);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -143,6 +151,17 @@ const PurchaseApprovalView: React.FC = () => {
            </Badge>
         </div>
       </div>
+
+      {wfNotifications.length > 0 && (
+        <div className="space-y-2">
+          {wfNotifications.map((n) => (
+            <div key={n.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <Zap size={16} className="mt-0.5 flex-shrink-0 text-amber-500" />
+              {n.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       <Tabs defaultValue="requisitions" onValueChange={setActiveTab} className="w-full">
         <TabsList className="bg-white p-2 rounded-[2rem] border border-slate-100 shadow-sm h-auto gap-2 mb-8">

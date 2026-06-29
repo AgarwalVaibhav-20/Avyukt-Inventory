@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { approvalService } from '@/services/approvalService';
 import { StockAdjustment } from '@/types';
-import { AlertOctagon, CheckCircle, XCircle, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
+import { getAndClearNotifications } from '@/services/workflowEngine';
+import { AlertOctagon, CheckCircle, XCircle, Loader2, ArrowUp, ArrowDown, Zap } from 'lucide-react';
 
 const StockAdjustmentApprovalView: React.FC = () => {
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [wfNotifications, setWfNotifications] = useState<{ id: string; message: string }[]>([]);
 
   useEffect(() => {
     loadData();
@@ -17,6 +19,11 @@ const StockAdjustmentApprovalView: React.FC = () => {
     const data = await approvalService.getPendingAdjustments();
     setAdjustments(data);
     setLoading(false);
+    const notifications = getAndClearNotifications();
+    if (notifications.length > 0) {
+      setWfNotifications(notifications.map((n) => ({ id: n.id, message: n.message })));
+      setTimeout(() => setWfNotifications([]), 5000);
+    }
   };
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
@@ -34,6 +41,17 @@ const StockAdjustmentApprovalView: React.FC = () => {
             <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                 <AlertOctagon className="text-orange-600" size={20}/> Stock Adjustment Approvals
             </h2>
+
+            {wfNotifications.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {wfNotifications.map((n) => (
+                  <div key={n.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <Zap size={14} className="mt-0.5 flex-shrink-0 text-amber-500" />
+                    {n.message}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {loading ? <div className="py-8 text-center"><Loader2 className="animate-spin inline"/></div> :
              adjustments.length === 0 ? <p className="text-slate-500 text-center py-8">No adjustments pending approval.</p> :

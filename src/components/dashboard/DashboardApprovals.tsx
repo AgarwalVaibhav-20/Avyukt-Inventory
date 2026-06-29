@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { approvalService } from "@/services/approvalService";
 import { settingsService } from "@/services/settingsService";
+import { getAndClearNotifications } from "@/services/workflowEngine";
 import {
   CheckCircle,
   Clock,
@@ -14,6 +15,7 @@ import {
   FileText,
   X,
   AlertCircle,
+  Zap,
 } from "lucide-react";
 
 type ApprovalKind =
@@ -80,6 +82,7 @@ const DashboardApprovals: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [wfNotifications, setWfNotifications] = useState<{ id: string; message: string }[]>([]);
   const prDateFormat = settingsService.getPurchaseRequisitionDateFormat();
   const formatPrDate = (value?: string) =>
     value ? settingsService.formatDisplayDate(value, prDateFormat) : "Date unavailable";
@@ -184,6 +187,14 @@ const DashboardApprovals: React.FC = () => {
       ];
 
       setApprovals(sortInbox(inbox));
+      const notifications = getAndClearNotifications();
+      if (notifications.length > 0) {
+        setWfNotifications((prev) => [
+          ...prev,
+          ...notifications.map((n) => ({ id: n.id, message: n.message })),
+        ]);
+        setTimeout(() => setWfNotifications([]), 5000);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load pending approvals");
       setApprovals([]);
@@ -212,6 +223,14 @@ const DashboardApprovals: React.FC = () => {
         action === "approve" ? await approvalService.approveSalesReturn(item.id) : await approvalService.rejectSalesReturn(item.id);
       }
       await loadData();
+      const notifications = getAndClearNotifications();
+      if (notifications.length > 0) {
+        setWfNotifications((prev) => [
+          ...prev,
+          ...notifications.map((n) => ({ id: n.id, message: n.message })),
+        ]);
+        setTimeout(() => setWfNotifications([]), 5000);
+      }
     } catch (err: any) {
       setError(err.message || `Failed to ${action} approval`);
     } finally {
@@ -256,6 +275,17 @@ const DashboardApprovals: React.FC = () => {
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
           <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
           {error}
+        </div>
+      )}
+
+      {wfNotifications.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {wfNotifications.map((n) => (
+            <div key={n.id} className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <Zap size={14} className="mt-0.5 flex-shrink-0 text-amber-500" />
+              {n.message}
+            </div>
+          ))}
         </div>
       )}
 
